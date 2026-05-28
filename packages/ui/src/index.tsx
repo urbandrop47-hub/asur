@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
 
 const shellStyle: CSSProperties = {
   borderRadius: 28,
@@ -90,10 +90,22 @@ export function Pill({ tone = "neutral", children }: PillProps) {
   );
 }
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  href?: string;
+type ButtonBaseProps = {
   variant?: "primary" | "ghost";
+  children: ReactNode;
 };
+
+type AnchorButtonProps = ButtonBaseProps &
+  Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "children"> & {
+    href: string;
+  };
+
+type NativeButtonProps = ButtonBaseProps &
+  ButtonHTMLAttributes<HTMLButtonElement> & {
+    href?: undefined;
+  };
+
+export type ButtonProps = AnchorButtonProps | NativeButtonProps;
 
 export function Button({ href, variant = "primary", children, ...props }: ButtonProps) {
   const styles: Record<NonNullable<ButtonProps["variant"]>, CSSProperties> = {
@@ -124,15 +136,17 @@ export function Button({ href, variant = "primary", children, ...props }: Button
   };
 
   if (href) {
+    const anchorProps = props as Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "children">;
     return (
-      <a style={{ ...base, ...styles[variant] }} href={href} {...props}>
+      <a style={{ ...base, ...styles[variant] }} href={href} {...anchorProps}>
         {children}
       </a>
     );
   }
 
+  const buttonProps = props as ButtonHTMLAttributes<HTMLButtonElement>;
   return (
-    <button type="button" style={{ ...base, ...styles[variant] }} {...props}>
+    <button type="button" style={{ ...base, ...styles[variant] }} {...buttonProps}>
       {children}
     </button>
   );

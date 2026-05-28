@@ -1,1 +1,1 @@
-export { authSessionSchema } from "@asur/validations";
+export { authSessionSchema } from "../shared/validations";

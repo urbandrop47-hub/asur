@@ -1,10 +1,11 @@
 import express from "express";
+import type { Express } from "express";
 import cors from "cors";
 import { apiRouter } from "./routes";
 import { errorHandlerMiddleware } from "./middlewares/error-handler";
 import { notFoundMiddleware } from "./middlewares/not-found";
 
-export function createApp() {
+export function createApp(): Express {
   const app = express();
 
   app.use(cors({ origin: true, credentials: true }));

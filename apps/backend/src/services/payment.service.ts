@@ -23,7 +23,7 @@ export async function createRazorpayOrder(input: { orderId: string; amount: numb
     amount: input.amount * 100,
     currency: input.currency,
     receipt: input.orderId,
-    payment_capture: 1
+    payment_capture: true
   });
 
   return order;

@@ -1,1 +1,1 @@
-export { productSchema } from "@asur/validations";
+export { productSchema } from "../shared/validations";

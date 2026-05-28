@@ -61,13 +61,15 @@ export const userRepository = {
 
     const existing = mockStore.users.find((user) => user.firebaseUid === input.firebaseUid);
     if (existing) {
-      Object.assign(existing, touchProfile({
+      const updated: UserProfile = {
         ...existing,
         phoneNumber: input.phoneNumber ?? existing.phoneNumber,
         email: input.email ?? existing.email,
         name: input.name ?? existing.name,
-        avatarUrl: input.avatarUrl ?? existing.avatarUrl
-      }));
+        avatarUrl: input.avatarUrl ?? existing.avatarUrl,
+        updatedAt: new Date().toISOString()
+      };
+      Object.assign(existing, updated);
       return existing;
     }
 

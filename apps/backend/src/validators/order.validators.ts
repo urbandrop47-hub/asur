@@ -1,1 +1,1 @@
-export { createOrderSchema } from "@asur/validations";
+export { createOrderSchema } from "../shared/validations";

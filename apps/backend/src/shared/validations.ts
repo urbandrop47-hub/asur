@@ -76,11 +76,6 @@ export const authSessionSchema = z.object({
   idToken: z.string().min(10)
 });
 
-export const paymentCreateOrderSchema = z.object({
-  orderId: z.string().min(1),
-  amount: z.number().nonnegative()
-});
-
 export const cartItemSchema = z.object({
   productId: z.string().min(1),
   variantSku: z.string().min(1),
@@ -92,6 +87,11 @@ export const createOrderSchema = z.object({
   customerId: z.string().min(1),
   items: z.array(cartItemSchema).min(1),
   shippingAddress: addressSchema
+});
+
+export const paymentCreateOrderSchema = z.object({
+  orderId: z.string().min(1),
+  amount: z.number().nonnegative()
 });
 
 export const paymentVerificationSchema = z.object({

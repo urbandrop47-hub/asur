@@ -5,7 +5,7 @@ import { ordersRouter } from "./orders.routes";
 import { paymentsRouter } from "./payments.routes";
 import { productsRouter } from "./products.routes";
 
-export const apiRouter = Router();
+export const apiRouter: Router = Router();
 
 apiRouter.use(`${API_BASE_PATH}/auth`, authRouter);
 apiRouter.use(`${API_BASE_PATH}/products`, productsRouter);

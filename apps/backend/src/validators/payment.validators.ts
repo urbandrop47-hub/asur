@@ -1,1 +1,1 @@
-export { paymentCreateOrderSchema, paymentVerificationSchema } from "@asur/validations";
+export { paymentCreateOrderSchema, paymentVerificationSchema } from "../shared/validations";
