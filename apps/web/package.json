@@ -1,0 +1,28 @@
+{
+  "name": "@asur/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "echo 'lint skipped for @asur/web'",
+    "test": "echo 'test skipped for @asur/web'"
+  },
+  "dependencies": {
+    "@asur/api-client": "workspace:*",
+    "@asur/constants": "workspace:*",
+    "@asur/types": "workspace:*",
+    "@asur/ui": "workspace:*",
+    "@asur/utils": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.8.3"
+  }
+}

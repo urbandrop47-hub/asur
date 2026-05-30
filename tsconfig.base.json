@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "allowJs": false,
+    "checkJs": false,
+    "strict": true,
+    "noEmit": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@asur/api-client": ["packages/api-client/src/index.ts"],
+      "@asur/constants": ["packages/constants/src/index.ts"],
+      "@asur/types": ["packages/types/src/index.ts"],
+      "@asur/ui": ["packages/ui/src/index.tsx"],
+      "@asur/utils": ["packages/utils/src/index.ts"],
+      "@asur/validations": ["packages/validations/src/index.ts"]
+    }
+  }
+}

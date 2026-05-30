@@ -1,0 +1,42 @@
+import { Schema, model, models } from "mongoose";
+import type { Product } from "@asur/types";
+
+const mediaSchema = new Schema(
+  {
+    url: { type: String, required: true },
+    alt: { type: String },
+    width: { type: Number },
+    height: { type: Number }
+  },
+  { _id: false }
+);
+
+const variantSchema = new Schema(
+  {
+    size: { type: String, required: true },
+    color: { type: String, required: true },
+    sku: { type: String, required: true },
+    stock: { type: Number, required: true },
+    price: { type: Number, required: true },
+    compareAtPrice: { type: Number }
+  },
+  { _id: false }
+);
+
+const productSchema = new Schema<Product>(
+  {
+    id: { type: String, required: true, index: true },
+    title: { type: String, required: true },
+    slug: { type: String, required: true, unique: true, index: true },
+    description: { type: String, required: true },
+    category: { type: String, required: true },
+    tags: { type: [String], default: [] },
+    media: { type: [mediaSchema], default: [] },
+    variants: { type: [variantSchema], default: [] },
+    seo: { type: Schema.Types.Mixed },
+    status: { type: String, required: true, default: "active" }
+  },
+  { versionKey: false }
+);
+
+export const ProductModel = models.Product ?? model<Product>("Product", productSchema);
