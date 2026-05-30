@@ -1,4 +1,5 @@
 import { Schema, model, models } from "mongoose";
+import { productFits } from "@asur/constants";
 import type { Product } from "@asur/types";
 
 const mediaSchema = new Schema(
@@ -33,6 +34,14 @@ const productSchema = new Schema<Product>(
     tags: { type: [String], default: [] },
     media: { type: [mediaSchema], default: [] },
     variants: { type: [variantSchema], default: [] },
+    collectionSlugs: { type: [String], default: [] },
+    drop: {
+      slug: { type: String },
+      name: { type: String },
+      season: { type: String },
+      launchDate: { type: String }
+    },
+    fit: { type: String, enum: productFits },
     seo: { type: Schema.Types.Mixed },
     status: { type: String, required: true, default: "active" }
   },

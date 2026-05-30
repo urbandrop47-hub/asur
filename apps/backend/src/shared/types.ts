@@ -50,6 +50,14 @@ export type SeoMeta = {
 };
 
 export type ProductStatus = "draft" | "active" | "archived";
+export type ProductFit = "regular" | "oversized" | "boxy" | "relaxed";
+
+export type ProductDrop = {
+  slug: string;
+  name: string;
+  season?: string;
+  launchDate?: string;
+};
 
 export type Product = {
   id: ID;
@@ -60,6 +68,9 @@ export type Product = {
   tags: string[];
   media: MediaAsset[];
   variants: ProductVariant[];
+  collectionSlugs: string[];
+  drop?: ProductDrop;
+  fit?: ProductFit;
   seo?: SeoMeta;
   status: ProductStatus;
 };

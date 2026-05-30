@@ -9,6 +9,13 @@ export const featuredProducts: Product[] = [
     category: "Outerwear",
     tags: ["streetwear", "overshirt", "drop-01"],
     media: [],
+    collectionSlugs: ["core-collection"],
+    drop: {
+      slug: "launch-01",
+      name: "Launch 01",
+      season: "SS26"
+    },
+    fit: "oversized",
     variants: [{ size: "M", color: "Obsidian", sku: "EMB-M-OBS", stock: 24, price: 8900 }],
     status: "active"
   },
@@ -20,6 +27,7 @@ export const featuredProducts: Product[] = [
     category: "Bottoms",
     tags: ["cargo", "utility", "drop-02"],
     media: [],
+    collectionSlugs: ["utility"],
     variants: [{ size: "L", color: "Ash", sku: "AUR-L-ASH", stock: 18, price: 6400 }],
     status: "active"
   },
@@ -31,6 +39,7 @@ export const featuredProducts: Product[] = [
     category: "Knitwear",
     tags: ["hoodie", "essential", "drop-03"],
     media: [],
+    collectionSlugs: ["core-collection"],
     variants: [{ size: "XL", color: "Graphite", sku: "VAN-XL-GRA", stock: 12, price: 5200 }],
     status: "active"
   }
@@ -39,7 +48,7 @@ export const featuredProducts: Product[] = [
 export const releaseWorkflow = [
   {
     title: "Authenticate",
-    description: "Firebase OTP and Google login create a clean identity layer before checkout begins."
+    description: "Firebase email/password and Google login create a clean identity layer before checkout begins."
   },
   {
     title: "Pay",

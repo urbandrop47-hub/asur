@@ -4,6 +4,7 @@ import cors from "cors";
 import { apiRouter } from "./routes";
 import { errorHandlerMiddleware } from "./middlewares/error-handler";
 import { notFoundMiddleware } from "./middlewares/not-found";
+import { hasMongoConnection } from "./config/env";
 
 export function createApp(): Express {
   const app = express();
@@ -18,6 +19,7 @@ export function createApp(): Express {
       data: {
         service: "asur-backend",
         status: "ok",
+        database: hasMongoConnection ? "mongodb" : "in-memory",
         timestamp: new Date().toISOString()
       }
     });

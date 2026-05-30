@@ -1,9 +1,11 @@
-import { AppShell, Button, Pill, Timeline } from "@asur/ui";
+import { AppShell, Pill, Timeline } from "@asur/ui";
+import { AuthPanel } from "../../components/auth-panel";
 
 const authFlow = [
-  { title: "Phone OTP", description: "Firebase delivers the code and returns an identity token after verification.", tone: "info" as const },
-  { title: "Google login", description: "Users can opt into a Google credential without losing the same session model.", tone: "success" as const },
-  { title: "Backend session", description: "The frontend forwards the token to the backend so the app can create or fetch a user profile.", tone: "warning" as const }
+  { title: "Email or Google login", description: "Users can sign in with email/password or a Google credential without changing the session model.", tone: "success" as const },
+  { title: "Provider linking", description: "A signed-in user can attach Google and email/password to the same Firebase account.", tone: "info" as const },
+  { title: "Backend session", description: "The frontend forwards the token to the backend so the app can create or fetch a user profile.", tone: "warning" as const },
+  { title: "Admin routing", description: "Users with an admin role in Mongo go straight into the admin panel after sign-in.", tone: "info" as const }
 ];
 
 export default function AuthPage() {
@@ -14,16 +16,19 @@ export default function AuthPage() {
           <h1>Authentication</h1>
           <p>Firebase manages identity, while MongoDB stores the user profile, addresses, and roles.</p>
         </div>
-        <Button href="/account">Open account</Button>
       </div>
 
-      <AppShell title="Identity flow" subtitle="OTP and Google auth are both routed through the same backend session contract.">
+      <AppShell title="Identity flow" subtitle="Email/password and Google auth are routed through the same backend session contract, and the same Firebase user can link both providers.">
         <div className="actions">
-          <Pill tone="info">Firebase OTP</Pill>
+          <Pill tone="info">Email/password</Pill>
           <Pill tone="success">Google sign-in</Pill>
+          <Pill tone="info">Provider linking</Pill>
           <Pill tone="warning">Backend verification</Pill>
+          <Pill tone="info">Admin redirect</Pill>
         </div>
       </AppShell>
+
+      <AuthPanel />
 
       <Timeline steps={authFlow} />
     </div>

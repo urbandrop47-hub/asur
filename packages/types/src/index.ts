@@ -21,6 +21,14 @@ export type MediaAsset = {
 };
 
 export type ProductStatus = "draft" | "active" | "archived";
+export type ProductFit = "regular" | "oversized" | "boxy" | "relaxed";
+
+export type ProductDrop = {
+  slug: string;
+  name: string;
+  season?: string;
+  launchDate?: string;
+};
 
 export type ProductVariant = {
   size: string;
@@ -40,6 +48,9 @@ export type Product = {
   tags: string[];
   media: MediaAsset[];
   variants: ProductVariant[];
+  collectionSlugs: string[];
+  drop?: ProductDrop;
+  fit?: ProductFit;
   seo?: SeoMeta;
   status: ProductStatus;
 };
@@ -79,6 +90,53 @@ export type Address = {
 };
 
 export type UserRole = "CUSTOMER" | "ADMIN" | "VENDOR" | "SUPER_ADMIN";
+
+export type AdminRole = "ADMIN" | "SUPER_ADMIN";
+export type AdminPermission =
+  | "catalog:read"
+  | "catalog:write"
+  | "catalog:publish"
+  | "catalog:inventory"
+  | "content:write"
+  | "orders:read"
+  | "orders:refund"
+  | "fulfillment:read"
+  | "fulfillment:write"
+  | "users:invite"
+  | "users:assign-role"
+  | "settings:write";
+
+export type AdminInviteStatus = "pending" | "accepted" | "revoked" | "expired";
+
+export type AdminAccessRule = {
+  role: AdminRole;
+  permissions: AdminPermission[];
+};
+
+export type AdminAccessModel = {
+  roles: AdminRole[];
+  permissions: AdminPermission[];
+  invitePolicy: {
+    mode: "invite-only";
+    issuerRoles: AdminRole[];
+  };
+  rules: AdminAccessRule[];
+};
+
+export type AdminInvite = {
+  id: ID;
+  email: string;
+  role: AdminRole;
+  status: AdminInviteStatus;
+  token: string;
+  createdBy?: ID;
+  acceptedBy?: ID;
+  notes?: string;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+  acceptedAt?: string;
+};
 
 export type UserProfile = {
   id: ID;

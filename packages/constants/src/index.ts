@@ -6,7 +6,39 @@ export const API_BASE_PATH = `/api/${API_VERSION}`;
 export const roles = ["CUSTOMER", "ADMIN", "VENDOR", "SUPER_ADMIN"] as const;
 export type Role = (typeof roles)[number];
 
+export const adminRoles = ["ADMIN", "SUPER_ADMIN"] as const;
+export const adminPermissions = [
+  "catalog:read",
+  "catalog:write",
+  "catalog:publish",
+  "catalog:inventory",
+  "content:write",
+  "orders:read",
+  "orders:refund",
+  "fulfillment:read",
+  "fulfillment:write",
+  "users:invite",
+  "users:assign-role",
+  "settings:write"
+] as const;
+export const adminInviteStatuses = ["pending", "accepted", "revoked", "expired"] as const;
+
+export const adminRolePermissions = {
+  ADMIN: [
+    "catalog:read",
+    "catalog:write",
+    "catalog:publish",
+    "catalog:inventory",
+    "content:write",
+    "orders:read",
+    "fulfillment:read",
+    "fulfillment:write"
+  ],
+  SUPER_ADMIN: [...adminPermissions]
+} as const;
+
 export const productStatuses = ["draft", "active", "archived"] as const;
+export const productFits = ["regular", "oversized", "boxy", "relaxed"] as const;
 export const orderStatuses = [
   "draft",
   "pending_payment",

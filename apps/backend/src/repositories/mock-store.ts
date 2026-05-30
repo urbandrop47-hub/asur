@@ -1,5 +1,5 @@
 import { APP_NAME } from "@asur/constants";
-import type { Order, Product, UserProfile, VendorTask, Payment } from "@asur/types";
+import type { AdminInvite, Order, Product, UserProfile, VendorTask, Payment } from "@asur/types";
 import { createId } from "../lib/id";
 
 const now = () => new Date().toISOString();
@@ -33,6 +33,13 @@ const products: Product[] = [
         alt: "Overshirt product mockup"
       }
     ],
+    collectionSlugs: ["core-collection"],
+    drop: {
+      slug: "launch-01",
+      name: "Launch 01",
+      season: "SS26"
+    },
+    fit: "oversized",
     variants: [
       { size: "M", color: "Obsidian", sku: "EMB-M-OBS", stock: 42, price: 8900 },
       { size: "L", color: "Obsidian", sku: "EMB-L-OBS", stock: 18, price: 8900 }
@@ -48,6 +55,7 @@ const products: Product[] = [
 export const mockStore = {
   users,
   products,
+  adminInvites: [] as AdminInvite[],
   orders: [] as Order[],
   vendorTasks: [] as VendorTask[],
   payments: [] as Payment[]
