@@ -1,0 +1,60 @@
+:root {
+  color-scheme: dark;
+  --bg: #060a12;
+  --text: #f6f1ea;
+  --text-muted: rgba(246, 241, 234, 0.7);
+  --border: rgba(255, 255, 255, 0.1);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: Inter, "SF Pro Display", system-ui, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.22), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.18), transparent 28%),
+    linear-gradient(180deg, #0b1020 0%, #060a12 100%);
+}
+a { color: inherit; }
+main {
+  width: min(1120px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 4rem;
+}
+header.admin-header {
+  width: min(1120px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 1.25rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.brand { display: flex; align-items: center; gap: .8rem; }
+.brand-mark {
+  width: 2.5rem; height: 2.5rem; border-radius: .9rem;
+  background: linear-gradient(135deg, #38bdf8, #8b5cf6);
+  box-shadow: 0 20px 40px rgba(59,130,246,.22);
+}
+.card-surface, .summary-card, .table-card {
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  background: rgba(255,255,255,0.05);
+  box-shadow: 0 30px 80px rgba(0,0,0,.35);
+}
+.stack { display: grid; gap: 1rem; }
+.grid-3 { display:grid; gap:1rem; grid-template-columns: repeat(3, minmax(0,1fr)); }
+.grid-2 { display:grid; gap:1rem; grid-template-columns: repeat(2, minmax(0,1fr)); }
+.section-title { display:flex; justify-content:space-between; gap:1rem; align-items:end; margin: 1rem 0; }
+.section-title h1,.section-title h2{ margin:0; }
+.section-title p{ margin:.35rem 0 0; color:var(--text-muted); }
+.panel{ padding:1rem; }
+.badge{ display:inline-flex; padding:.45rem .75rem; border-radius:999px; background:rgba(255,255,255,.07); text-transform:uppercase; letter-spacing:.08em; font-size:.75rem; }
+.metric-grid { display:grid; gap:1rem; grid-template-columns: repeat(4, minmax(0,1fr)); }
+.card-body { padding: 1rem; }
+.list { margin: 0; padding-left: 18px; color: var(--text-muted); }
+.footer { width:min(1120px, calc(100vw - 2rem)); margin: 2rem auto 3rem; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,.08); padding-top:1rem; display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+@media (max-width: 960px){ .grid-3,.grid-2,.metric-grid { grid-template-columns:1fr; } .section-title,.footer,header.admin-header { align-items:start; flex-direction:column; } }

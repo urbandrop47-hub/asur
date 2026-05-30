@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"],
+    "target": "ES2022",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "paths": {
+      "@asur/constants": ["src/shared/constants.ts"],
+      "@asur/types": ["src/shared/types.ts"],
+      "@asur/validations": ["src/shared/validations.ts"]
+    }
+  },
+  "include": ["src"]
+}

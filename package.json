@@ -1,0 +1,25 @@
+{
+  "name": "asur-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "rm -rf .turbo apps/*/.next apps/*/dist packages/*/dist"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "next": "^15.5.18",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "turbo": "^1.13.4",
+    "typescript": "^5.8.3"
+  }
+}

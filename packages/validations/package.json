@@ -1,0 +1,16 @@
+{
+  "name": "@asur/validations",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@asur/constants": "workspace:*",
+    "zod": "^3.24.4"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "echo 'lint skipped for @asur/validations'",
+    "test": "echo 'test skipped for @asur/validations'"
+  }
+}
