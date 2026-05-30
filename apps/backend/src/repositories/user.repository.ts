@@ -1,4 +1,4 @@
-import type { UserProfile } from "@asur/types";
+import type { UserProfile, UserRole } from "@asur/types";
 import { hasMongoConnection } from "../config/env";
 import { UserModel } from "../models/user.model";
 import { mockStore } from "./mock-store";
@@ -12,9 +12,15 @@ export type UpsertUserInput = {
   avatarUrl?: string;
 };
 
-function touchProfile(profile: UserProfile): UserProfile {
+export type UpdateUserRoleInput = {
+  firebaseUid: string;
+  role: UserRole;
+};
+
+function applyRole(profile: UserProfile, role: UserRole): UserProfile {
   return {
     ...profile,
+    role,
     updatedAt: new Date().toISOString()
   };
 }
@@ -26,6 +32,14 @@ export const userRepository = {
     }
 
     return mockStore.users.find((user) => user.firebaseUid === firebaseUid) ?? null;
+  },
+
+  async findByEmail(email: string) {
+    if (hasMongoConnection) {
+      return UserModel.findOne({ email }).lean<UserProfile>().exec();
+    }
+
+    return mockStore.users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
   },
 
   async upsertFromAuth(input: UpsertUserInput) {
@@ -88,5 +102,28 @@ export const userRepository = {
     };
     mockStore.users.push(profile);
     return profile;
+  },
+
+  async setRole(input: UpdateUserRoleInput) {
+    if (hasMongoConnection) {
+      const user = await UserModel.findOne({ firebaseUid: input.firebaseUid }).exec();
+      if (!user) {
+        return null;
+      }
+
+      user.role = input.role;
+      user.updatedAt = new Date().toISOString();
+      await user.save();
+      return user.toObject();
+    }
+
+    const existing = mockStore.users.find((user) => user.firebaseUid === input.firebaseUid);
+    if (!existing) {
+      return null;
+    }
+
+    const updated = applyRole(existing, input.role);
+    Object.assign(existing, updated);
+    return existing;
   }
 };

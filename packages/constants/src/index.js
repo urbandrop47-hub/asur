@@ -1,13 +1,40 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.routePaths = exports.collectionNames = exports.storageProviders = exports.paymentProviders = exports.paymentStatuses = exports.fulfillmentStatuses = exports.orderStatuses = exports.productStatuses = exports.roles = exports.API_BASE_PATH = exports.API_VERSION = exports.APP_TAGLINE = exports.APP_NAME = void 0;
-exports.APP_NAME = "ASUR";
-exports.APP_TAGLINE = "Premium streetwear commerce, built to scale.";
-exports.API_VERSION = "v1";
-exports.API_BASE_PATH = `/api/${exports.API_VERSION}`;
-exports.roles = ["CUSTOMER", "ADMIN", "VENDOR", "SUPER_ADMIN"];
-exports.productStatuses = ["draft", "active", "archived"];
-exports.orderStatuses = [
+export const APP_NAME = "ASUR";
+export const APP_TAGLINE = "Premium streetwear commerce, built to scale.";
+export const API_VERSION = "v1";
+export const API_BASE_PATH = `/api/${API_VERSION}`;
+export const roles = ["CUSTOMER", "ADMIN", "VENDOR", "SUPER_ADMIN"];
+export const adminRoles = ["ADMIN", "SUPER_ADMIN"];
+export const adminPermissions = [
+    "catalog:read",
+    "catalog:write",
+    "catalog:publish",
+    "catalog:inventory",
+    "content:write",
+    "orders:read",
+    "orders:refund",
+    "fulfillment:read",
+    "fulfillment:write",
+    "users:invite",
+    "users:assign-role",
+    "settings:write"
+];
+export const adminInviteStatuses = ["pending", "accepted", "revoked", "expired"];
+export const adminRolePermissions = {
+    ADMIN: [
+        "catalog:read",
+        "catalog:write",
+        "catalog:publish",
+        "catalog:inventory",
+        "content:write",
+        "orders:read",
+        "fulfillment:read",
+        "fulfillment:write"
+    ],
+    SUPER_ADMIN: [...adminPermissions]
+};
+export const productStatuses = ["draft", "active", "archived"];
+export const productFits = ["regular", "oversized", "boxy", "relaxed"];
+export const orderStatuses = [
     "draft",
     "pending_payment",
     "paid",
@@ -17,7 +44,7 @@ exports.orderStatuses = [
     "delivered",
     "cancelled"
 ];
-exports.fulfillmentStatuses = [
+export const fulfillmentStatuses = [
     "unassigned",
     "assigned",
     "in_progress",
@@ -25,10 +52,10 @@ exports.fulfillmentStatuses = [
     "shipped",
     "delivered"
 ];
-exports.paymentStatuses = ["pending", "authorized", "captured", "failed", "refunded"];
-exports.paymentProviders = ["razorpay"];
-exports.storageProviders = ["cloudflare-r2"];
-exports.collectionNames = {
+export const paymentStatuses = ["pending", "authorized", "captured", "failed", "refunded"];
+export const paymentProviders = ["razorpay"];
+export const storageProviders = ["cloudflare-r2"];
+export const collectionNames = {
     users: "users",
     products: "products",
     categories: "categories",
@@ -40,12 +67,12 @@ exports.collectionNames = {
     reviews: "reviews",
     wishlists: "wishlists"
 };
-exports.routePaths = {
+export const routePaths = {
     health: "/health",
-    auth: `${exports.API_BASE_PATH}/auth`,
-    products: `${exports.API_BASE_PATH}/products`,
-    orders: `${exports.API_BASE_PATH}/orders`,
-    payments: `${exports.API_BASE_PATH}/payments`,
-    uploads: `${exports.API_BASE_PATH}/uploads`,
-    vendors: `${exports.API_BASE_PATH}/vendors`
+    auth: `${API_BASE_PATH}/auth`,
+    products: `${API_BASE_PATH}/products`,
+    orders: `${API_BASE_PATH}/orders`,
+    payments: `${API_BASE_PATH}/payments`,
+    uploads: `${API_BASE_PATH}/uploads`,
+    vendors: `${API_BASE_PATH}/vendors`
 };

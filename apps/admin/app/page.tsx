@@ -1,5 +1,6 @@
 import { AdminShell } from "../components/admin-shell";
 import { adminMetrics, adminQueues } from "../lib/dashboard";
+import { adminAccessChecklist, adminAccessSummary } from "../lib/access";
 import { AppShell, MetricCard, Pill, Timeline } from "@asur/ui";
 
 export default function AdminHomePage() {
@@ -36,6 +37,37 @@ export default function AdminHomePage() {
           ))}
         </div>
       </AppShell>
+
+      <AppShell title="Access model" subtitle="Invite-only onboarding keeps store control in the right hands while still allowing flexible admin expansion.">
+        <div className="grid-2">
+          {adminAccessSummary.map((item) => (
+            <article key={item.role} className="summary-card">
+              <div className="card-body stack">
+                <strong>{item.role}</strong>
+                <p className="muted" style={{ margin: 0 }}>
+                  {item.permissions.length} permissions
+                </p>
+                <ul className="list">
+                  {item.permissions.map((permission) => (
+                    <li key={permission}>{permission}</li>
+                  ))}
+                </ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      </AppShell>
+
+      <article className="table-card">
+        <div className="card-body stack">
+          <strong>Admin access checklist</strong>
+          <ul className="list">
+            {adminAccessChecklist.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      </article>
 
       <div className="grid-2">
         <article className="table-card">

@@ -221,6 +221,31 @@ header.site-header {
   flex-wrap: wrap;
 }
 
+.input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  padding: 0.95rem 1rem;
+  font: inherit;
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.input::placeholder {
+  color: rgba(246, 241, 234, 0.45);
+}
+
+.input:focus {
+  border-color: rgba(249, 115, 22, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
+}
+
 .metrics {
   display: grid;
   gap: 1rem;
