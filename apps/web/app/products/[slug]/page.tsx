@@ -341,6 +341,7 @@ export default function ProductDetailPage() {
                 productId: product.id,
                 productTitle: product.title,
                 productSlug: product.slug,
+                imageUrl: product.media?.[0]?.url,
                 variantSku: selectedVariant.sku,
                 unitPrice: selectedVariant.price,
                 quantity: 1,

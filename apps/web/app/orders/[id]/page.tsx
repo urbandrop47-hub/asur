@@ -96,12 +96,13 @@ function OrderTimeline({ status }: { status: Order["status"] }) {
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { session } = useAuthStore();
+  const { session, hydrated } = useAuthStore();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!session) {
       router.replace(`/auth?next=/orders/${id}`);
       return;
@@ -109,15 +110,18 @@ export default function OrderDetailPage() {
     if (!id) return;
     api
       .get<{ data: Order }>(`/api/v1/orders/${id}`)
-      .then((r) => setOrder(r.data))
+      .then((r) => {
+        if (r.data) setOrder(r.data);
+        else setNotFound(true);
+      })
       .catch((e) => {
         if (e?.status === 404) setNotFound(true);
         else setNotFound(true);
       })
       .finally(() => setLoading(false));
-  }, [session, id, router]);
+  }, [session, hydrated, id, router]);
 
-  if (!session) return null;
+  if (!hydrated || !session) return null;
 
   if (loading) {
     return (

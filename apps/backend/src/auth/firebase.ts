@@ -31,6 +31,11 @@ export async function verifyFirebaseIdToken(idToken: string): Promise<VerifiedId
   ensureFirebase();
 
   if (!firebaseReady) {
+    if (env.NODE_ENV === "production") {
+      throw new Error("Firebase credentials are not configured. Cannot verify identity token.");
+    }
+    // Dev/test only: synthetic identity keyed to the token so different tokens
+    // produce distinct users. Never reaches this branch in production.
     return {
       firebaseUid: `dev_${idToken.slice(-12)}`,
       phoneNumber: "+91 99999 00000",

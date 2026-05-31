@@ -11,6 +11,6 @@ import { requireSession } from "../middlewares/require-session";
 export const authRouter: ExpressRouter = Router();
 
 authRouter.post("/session", createSessionController);
-authRouter.get("/me", meController);
+authRouter.get("/me", requireSession, meController);
 authRouter.get("/addresses", requireSession, listAddressesController);
 authRouter.post("/addresses", requireSession, saveAddressController);

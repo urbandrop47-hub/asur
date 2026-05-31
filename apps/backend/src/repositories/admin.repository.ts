@@ -89,11 +89,6 @@ export const adminRepository = {
       avatarUrl: input.avatarUrl
     });
 
-    const updatedUser = await userRepository.setRole({
-      firebaseUid: input.firebaseUid,
-      role: invite.role
-    });
-
     const now = new Date().toISOString();
     const acceptedInvite: AdminInvite = {
       ...invite,
@@ -103,9 +98,12 @@ export const adminRepository = {
       updatedAt: now
     };
 
+    // Mark accepted BEFORE setRole so that a concurrent retry on the same token
+    // hits status !== "pending" and is rejected rather than re-granting the role
+    // to a different firebaseUid.
     if (hasMongoConnection) {
-      await AdminInviteModel.updateOne(
-        { token: input.token },
+      const result = await AdminInviteModel.updateOne(
+        { token: input.token, status: "pending" },
         {
           $set: {
             status: acceptedInvite.status,
@@ -115,12 +113,20 @@ export const adminRepository = {
           }
         }
       ).exec();
-    } else {
-      const index = mockStore.adminInvites.findIndex((item) => item.token === input.token);
-      if (index >= 0) {
-        mockStore.adminInvites[index] = acceptedInvite;
+      if (result.modifiedCount === 0) {
+        // Another concurrent request already claimed this invite
+        return null;
       }
+    } else {
+      const index = mockStore.adminInvites.findIndex((item) => item.token === input.token && item.status === "pending");
+      if (index < 0) return null;
+      mockStore.adminInvites[index] = acceptedInvite;
     }
+
+    const updatedUser = await userRepository.setRole({
+      firebaseUid: input.firebaseUid,
+      role: invite.role
+    });
 
     return {
       invite: acceptedInvite,

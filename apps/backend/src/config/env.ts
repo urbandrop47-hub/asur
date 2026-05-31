@@ -40,6 +40,15 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse(process.env);
+
+// Refuse to start in production with the bootstrap bypass active
+if (env.NODE_ENV === "production" && env.SUPER_ADMIN_BOOTSTRAP_ENABLED === "true") {
+  throw new Error(
+    "SUPER_ADMIN_BOOTSTRAP_ENABLED must not be 'true' in production. " +
+    "Promote the admin account and set it to 'false' before deploying."
+  );
+}
+
 export const hasMongoConnection = env.MONGODB_URI.length > 0;
 export const shouldBootstrapSuperAdmin = env.SUPER_ADMIN_BOOTSTRAP_ENABLED === "true";
 export const hasFirebaseCredentials =

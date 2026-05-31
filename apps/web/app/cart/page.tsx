@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { formatCurrency } from "@asur/utils";
 import { useCartStore } from "../../store/cart-store";
@@ -98,8 +99,20 @@ export default function CartPage() {
         >
           {items.map((item) => (
             <div key={item.variantSku} className="cart-row">
-              {/* Thumbnail placeholder */}
-              <div className="cart-thumb" />
+              {/* Thumbnail */}
+              <div className="cart-thumb" style={{ position: "relative", overflow: "hidden", flexShrink: 0 }}>
+                {item.imageUrl ? (
+                  <Image
+                    src={item.imageUrl}
+                    alt={item.productTitle}
+                    fill
+                    sizes="72px"
+                    style={{ objectFit: "cover" }}
+                  />
+                ) : (
+                  <div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.05)" }} />
+                )}
+              </div>
 
               {/* Info */}
               <div className="cart-info">

@@ -2,6 +2,25 @@
    ASUR · Storefront design tokens & base
    ───────────────────────────────────────────────────────────────────── */
 
+/* Accessibility: skip navigation link for keyboard users */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: #130f0b;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 0 0 8px 8px;
+  text-decoration: none;
+  z-index: 9999;
+  transition: top 0.1s;
+}
+.skip-link:focus {
+  top: 0;
+}
+
 :root {
   /* ── Brand design tokens (ASUR identity) ─────────────────────────── */
   --void:   #0A0A0A;
@@ -377,8 +396,8 @@ header.site-header {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
-  min-height: 36px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .nav-drawer-link {

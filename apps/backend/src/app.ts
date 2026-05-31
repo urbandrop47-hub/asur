@@ -6,12 +6,38 @@ import { apiRouter } from "./routes";
 import { swaggerSpec } from "./config/swagger";
 import { errorHandlerMiddleware } from "./middlewares/error-handler";
 import { notFoundMiddleware } from "./middlewares/not-found";
-import { hasMongoConnection } from "./config/env";
+import { env, hasMongoConnection } from "./config/env";
+
+const ALLOWED_ORIGINS =
+  env.NODE_ENV === "production"
+    ? [
+        "https://asur.in",
+        "https://www.asur.in",
+        "https://admin.asur.in",
+        "https://vendor.asur.in"
+      ]
+    : [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002"
+      ];
 
 export function createApp(): Express {
   const app = express();
 
-  app.use(cors({ origin: true, credentials: true }));
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        // Allow server-to-server requests (no Origin header) and listed origins
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+          cb(null, true);
+        } else {
+          cb(new Error(`CORS: origin ${origin} not allowed`));
+        }
+      },
+      credentials: true
+    })
+  );
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true }));
 

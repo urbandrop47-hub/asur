@@ -1,5 +1,5 @@
 import type { Address, FulfillmentStatus, Order, Payment, PaymentStatus, VendorTask } from "@asur/types";
-import type { CreateOrderInput } from "@asur/validations";
+import type { CreateOrderInput } from "../shared/validations";
 import { hasMongoConnection } from "../config/env";
 import { createId } from "../lib/id";
 import { OrderModel } from "../models/order.model";
@@ -8,7 +8,11 @@ import { VendorTaskModel } from "../models/vendor-task.model";
 import { mockStore } from "./mock-store";
 
 function toOrderNumber() {
-  return `ASUR-${Date.now().toString(36).toUpperCase()}`;
+  // Combine timestamp with 4 random chars so same-millisecond orders are unique
+  // and the sequence is not trivially guessable from the number alone.
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `ASUR-${ts}${rand}`;
 }
 
 function createLineItems(items: CreateOrderInput["items"]) {
@@ -34,7 +38,7 @@ export const orderRepository = {
     const now = new Date().toISOString();
     const items = createLineItems(input.items);
     const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-    const shipping = subtotal >= 150000 ? 0 : 25000;
+    const shipping = subtotal >= 1500 ? 0 : 250; // free above ₹1,500; else ₹250 flat
     const tax = Math.round(subtotal * 0.18);
     const total = subtotal + shipping + tax;
 
@@ -123,6 +127,26 @@ export const orderRepository = {
     const order = mockStore.orders.find((o) => o.id === id);
     if (order) {
       order.paymentStatus = paymentStatus;
+      order.updatedAt = new Date().toISOString();
+    }
+    return order ?? null;
+  },
+
+  async updateFulfillmentStatus(id: string, fulfillmentStatus: FulfillmentStatus) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOneAndUpdate(
+        { id },
+        { fulfillmentStatus, updatedAt: new Date().toISOString() },
+        { new: true }
+      ).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order;
+    }
+    const order = mockStore.orders.find((o) => o.id === id);
+    if (order) {
+      order.fulfillmentStatus = fulfillmentStatus;
       order.updatedAt = new Date().toISOString();
     }
     return order ?? null;

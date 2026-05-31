@@ -92,7 +92,7 @@ type AddressErrors = Partial<Record<keyof AddressFormState, string>>;
 function validateAddress(form: AddressFormState): AddressErrors {
   const errs: AddressErrors = {};
   if (form.fullName.trim().length < 2) errs.fullName = "Enter your full name";
-  if (form.phone.trim().length < 8) errs.phone = "Enter a valid phone number";
+  if (!/^\+?[\d\s\-]{10,15}$/.test(form.phone.trim())) errs.phone = "Enter a valid 10-digit phone number";
   if (form.line1.trim().length < 3) errs.line1 = "Enter your street address";
   if (form.city.trim().length < 2) errs.city = "Enter your city";
   if (form.state.trim().length < 2) errs.state = "Select a state";
@@ -271,14 +271,16 @@ function ReviewStep({
   address,
   onBack,
   onConfirm,
+  confirming,
 }: {
   address: Address;
   onBack: () => void;
   onConfirm: () => void;
+  confirming?: boolean;
 }) {
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal());
-  const shipping = subtotal >= 150000 ? 0 : 25000;
+  const shipping = subtotal >= 1500 ? 0 : 250;
   const tax = Math.round(subtotal * 0.18);
   const total = subtotal + shipping + tax;
 
@@ -334,13 +336,16 @@ function ReviewStep({
 
       <button
         onClick={onConfirm}
+        disabled={confirming}
         style={{
           width: "100%", borderRadius: 999, padding: "0.95rem", fontSize: "1rem", fontWeight: 700,
-          background: "linear-gradient(135deg, #f97316, #fb7185)", color: "#130f0b",
-          border: "none", cursor: "pointer", minHeight: 52,
+          background: confirming ? "rgba(249,115,22,0.5)" : "linear-gradient(135deg, #f97316, #fb7185)",
+          color: "#130f0b", border: "none",
+          cursor: confirming ? "not-allowed" : "pointer", minHeight: 52,
+          opacity: confirming ? 0.7 : 1, transition: "opacity 0.15s"
         }}
       >
-        Confirm & Pay {formatCurrency(total)}
+        {confirming ? "Processing…" : `Confirm & Pay ${formatCurrency(total)}`}
       </button>
     </div>
   );
@@ -418,12 +423,15 @@ export default function CheckoutPage() {
       });
 
       const order = orderRes.data.order;
-      const total = subtotal + (subtotal >= 150000 ? 0 : 25000) + Math.round(subtotal * 0.18);
+      // Shipping uses rupee-unit thresholds (matching backend repository)
+      const shippingRupees = subtotal >= 1500 ? 0 : 250;
+      const totalRupees = subtotal + shippingRupees + Math.round(subtotal * 0.18);
+      const totalPaise = totalRupees * 100;
 
-      // 2. Create Razorpay payment order
+      // 2. Create Razorpay payment order (amount in paise)
       const payRes = await api.post<{ data: { providerOrderId?: string; id?: string; amount: number } }>(
         "/api/v1/payments/razorpay/order",
-        { orderId: order.id, amount: total }
+        { orderId: order.id, amount: totalPaise }
       );
 
       const providerOrderId = payRes.data.providerOrderId ?? payRes.data.id ?? `rzp_mock_${Date.now()}`;
@@ -436,7 +444,7 @@ export default function CheckoutPage() {
 
       openPayment({
         key: razorpayKey,
-        amount: total * 100, // paise
+        amount: totalPaise,
         currency: "INR",
         providerOrderId,
         orderId: order.id,
@@ -445,6 +453,7 @@ export default function CheckoutPage() {
         contact: confirmedAddress.phone,
         onDismiss: () => {
           setProcessing(false);
+          setStep(2); // return to review step so user can retry
           setError("Payment was cancelled. You can try again.");
         },
         onSuccess: async (payload) => {
@@ -512,7 +521,9 @@ export default function CheckoutPage() {
         <ReviewStep
           address={address}
           onBack={() => setStep(1)}
+          confirming={processing}
           onConfirm={() => {
+            if (processing) return; // guard against double-click
             track("checkout_review_complete");
             setStep(3);
             handlePayment(address);

@@ -1,9 +1,11 @@
 import type { RequestHandler } from "express";
+import type { Order } from "@asur/types";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
 import { capturePayment, createRazorpayOrder, verifyPaymentSignature } from "../services/payment.service";
 import { paymentCreateOrderSchema, paymentVerificationSchema } from "../validators/payment.validators";
 import { markOrderPaid } from "../services/order.service";
+import { orderRepository } from "../repositories/order.repository";
 
 /**
  * @swagger
@@ -45,6 +47,19 @@ import { markOrderPaid } from "../services/order.service";
  */
 export const createPaymentOrderController: RequestHandler = asyncHandler(async (req, res) => {
   const { orderId, amount } = paymentCreateOrderSchema.parse(req.body);
+  const requestingUserId = res.locals.user?.id as string | undefined;
+
+  // Ownership: only the order's owner may create a Razorpay payment intent for it
+  const existingOrder = await orderRepository.findByIdAdmin(orderId) as (Order & { providerOrderId?: string }) | null;
+  if (!existingOrder) {
+    res.status(404).json({ success: false, message: "Order not found" });
+    return;
+  }
+  if (requestingUserId && existingOrder.customerId !== requestingUserId) {
+    res.status(403).json({ success: false, message: "Access denied" });
+    return;
+  }
+
   const providerOrder = await createRazorpayOrder({ orderId, amount, currency: "INR" });
   sendSuccess(res, providerOrder, "Payment order created");
 });
@@ -81,21 +96,52 @@ export const createPaymentOrderController: RequestHandler = asyncHandler(async (
  */
 export const verifyPaymentController: RequestHandler = asyncHandler(async (req, res) => {
   const payload = paymentVerificationSchema.parse(req.body);
-  const isValid = verifyPaymentSignature(payload);
 
+  // Look up the order and verify the razorpayOrderId matches what we stored.
+  // This prevents a replay attack where an attacker reuses a valid signature
+  // from their own paid order to mark a different order as paid.
+  const requestingUserId = res.locals.user?.id as string | undefined;
+
+  const order = await orderRepository.findByIdAdmin(payload.orderId) as (Order & { providerOrderId?: string }) | null;
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found" });
+    return;
+  }
+
+  // Ownership: only the customer who placed this order may verify its payment
+  if (requestingUserId && order.customerId !== requestingUserId) {
+    res.status(403).json({ success: false, message: "Access denied" });
+    return;
+  }
+
+  if (order.providerOrderId && order.providerOrderId !== payload.razorpayOrderId) {
+    res.status(400).json({ success: false, message: "Payment order ID mismatch" });
+    return;
+  }
+
+  // Idempotent: already verified
+  if (order.status === "paid") {
+    sendSuccess(res, { order }, "Payment already verified");
+    return;
+  }
+
+  const isValid = verifyPaymentSignature(payload);
   if (!isValid) {
     res.status(400).json({ success: false, message: "Invalid payment signature" });
     return;
   }
 
-  const order = await markOrderPaid(payload.orderId);
+  // markOrderPaid first — it can throw (404, 409). Only write the Payment
+  // row after the order transition succeeds, so we never have a captured
+  // payment record pointing at an order that is still in pending_payment.
+  const paidOrder = await markOrderPaid(payload.orderId);
 
   const captured = await capturePayment({
     orderId: payload.orderId,
-    amount: order?.total ?? 0,
+    amount: order.total ?? 0,
     providerOrderId: payload.razorpayOrderId,
     providerPaymentId: payload.razorpayPaymentId
   });
 
-  sendSuccess(res, { order, payment: captured.payment }, "Payment verified");
+  sendSuccess(res, { order: paidOrder, payment: captured.payment }, "Payment verified");
 });

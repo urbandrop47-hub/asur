@@ -89,14 +89,14 @@ export const productSchema = z.object({
 
 export const addressSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
-  phone: z.string().min(8, "Valid phone number required"),
+  phone: z.string().regex(/^\+?[\d\s\-]{10,15}$/, "Enter a valid phone number (10–15 digits)"),
   line1: z.string().min(2, "Address line 1 is required"),
-  line2: z.string().optional(),
+  line2: z.string().min(1).optional(),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
   postalCode: z.string().min(4, "Valid pincode required").max(10),
   country: z.string().min(2),
-  label: z.string().optional(),
+  label: z.string().min(1).optional(),
   isDefault: z.boolean().optional()
 });
 
@@ -145,6 +145,7 @@ export const cartItemSchema = z.object({
   unitPrice: z.number().nonnegative()
 });
 
+// Server-side schema — includes customerId (injected from session, never trusted from request body).
 export const createOrderSchema = z.object({
   customerId: z.string().min(1),
   items: z.array(cartItemSchema).min(1),

@@ -30,9 +30,15 @@ export const listVendorTasksController: RequestHandler = asyncHandler(async (_re
 
 export const getVendorTaskController: RequestHandler = asyncHandler(async (req, res) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const user = res.locals.user;
   const task = await orderRepository.findVendorTaskById(id);
   if (!task) {
     res.status(404).json({ success: false, message: "Task not found" });
+    return;
+  }
+  // Vendors may only view their own tasks; admins/super-admins see all
+  if (user.role === "VENDOR" && task.vendorId && task.vendorId !== user.id) {
+    res.status(403).json({ success: false, message: "Access denied" });
     return;
   }
   sendSuccess(res, task, "Task fetched");
@@ -40,6 +46,7 @@ export const getVendorTaskController: RequestHandler = asyncHandler(async (req, 
 
 export const updateVendorTaskController: RequestHandler = asyncHandler(async (req, res) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const user = res.locals.user;
   const body = updateTaskSchema.parse(req.body);
 
   const task = await orderRepository.findVendorTaskById(id);
@@ -48,8 +55,21 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
     return;
   }
 
-  // Validate status transition
-  if (body.status && body.status !== task.status) {
+  // Vendors may only update tasks assigned to them; admins/super-admins may update any
+  if (user.role === "VENDOR" && task.vendorId && task.vendorId !== user.id) {
+    res.status(403).json({ success: false, message: "Access denied" });
+    return;
+  }
+
+  // Validate status transition (including same-status re-send, which is always invalid)
+  if (body.status) {
+    if (body.status === task.status) {
+      res.status(400).json({
+        success: false,
+        message: `Task is already in status "${task.status}"`
+      });
+      return;
+    }
     const allowed = TRANSITIONS[task.status];
     if (!allowed.includes(body.status)) {
       res.status(400).json({
@@ -59,12 +79,16 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
       return;
     }
     // Marking completed (shipped) requires tracking details
-    if (body.status === "completed" && (!body.trackingId || !body.courierName)) {
-      res.status(400).json({
-        success: false,
-        message: "trackingId and courierName are required before marking as completed"
-      });
-      return;
+    if (body.status === "completed") {
+      const trackingId = body.trackingId ?? task.trackingId;
+      const courierName = body.courierName ?? task.courierName;
+      if (!trackingId || !courierName) {
+        res.status(400).json({
+          success: false,
+          message: "trackingId and courierName are required before marking as completed"
+        });
+        return;
+      }
     }
   }
 
@@ -76,9 +100,9 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
 
   const updated = await orderRepository.updateVendorTask(id, updates);
 
-  // When completed, update the parent order's fulfillmentStatus to "shipped"
+  // When completed, update the parent order's fulfillmentStatus (not order status)
   if (body.status === "completed" && updated) {
-    await orderRepository.updateStatus(updated.orderId, "shipped");
+    await orderRepository.updateFulfillmentStatus(updated.orderId, "shipped");
   }
 
   sendSuccess(res, updated, "Task updated");

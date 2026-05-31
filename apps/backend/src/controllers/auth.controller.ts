@@ -67,17 +67,9 @@ export const createSessionController: RequestHandler = asyncHandler(async (req, 
  *       401:
  *         description: Missing or invalid token
  */
-export const meController: RequestHandler = asyncHandler(async (req, res) => {
-  const authorization = req.headers.authorization;
-  const token = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-
-  if (!token) {
-    res.status(401).json({ success: false, message: "Missing auth token" });
-    return;
-  }
-
-  const user = await resolveUserFromIdToken(token);
-  sendSuccess(res, user, "Authenticated user fetched");
+export const meController: RequestHandler = asyncHandler(async (_req, res) => {
+  // requireSession has already resolved and attached the user
+  sendSuccess(res, res.locals.user, "Authenticated user fetched");
 });
 
 /**

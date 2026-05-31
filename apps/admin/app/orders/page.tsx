@@ -22,14 +22,22 @@ type Tab = "all" | "paid" | "processing" | "shipped";
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [tab, setTab] = useState<Tab>("all");
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(false);
     api
       .get<{ data: Order[] }>("/api/v1/admin/orders")
-      .then((r) => setOrders(r.data))
-      .catch(() => {})
+      .then((r) => setOrders(r.data ?? []))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered =
@@ -72,6 +80,12 @@ export default function AdminOrdersPage() {
       {loading ? (
         <div style={{ display: "grid", gap: "0.6rem" }}>
           {[1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 52 }} />)}
+        </div>
+      ) : error ? (
+        <div className="empty-state">
+          <h2>Failed to load orders</h2>
+          <p>Could not reach the server. Check your connection and try again.</p>
+          <button className="badge" onClick={load}>Retry</button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty-state">

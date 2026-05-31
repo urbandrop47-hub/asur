@@ -10,6 +10,7 @@ import { track } from "../lib/analytics";
 export type CartLineItem = CartItem & {
   productTitle: string;
   productSlug: string;
+  imageUrl?: string;
   size: string;
   color: string;
 };

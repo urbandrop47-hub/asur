@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
+import { env } from "../config/env";
 import { isAppError } from "../lib/errors";
 
 export function errorHandlerMiddleware(error: unknown, _req: Request, res: Response, _next: NextFunction) {
@@ -15,7 +16,8 @@ export function errorHandlerMiddleware(error: unknown, _req: Request, res: Respo
     return res.status(error.statusCode).json({
       success: false,
       message: error.message,
-      details: error.details
+      // Never leak internal details (query info, stack traces) in production
+      ...(env.NODE_ENV !== "production" && error.details !== undefined ? { details: error.details } : {})
     });
   }
 
