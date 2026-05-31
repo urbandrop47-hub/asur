@@ -1,4 +1,4 @@
-import type { CreateOrderInput } from "@asur/validations";
+import type { CreateOrderInput } from "../shared/validations";
 import { AppError } from "../lib/errors";
 import { orderRepository } from "../repositories/order.repository";
 import { productRepository } from "../repositories/product.repository";

@@ -22,7 +22,7 @@ export async function createRazorpayOrder(input: { orderId: string; amount: numb
   });
 
   const order = await client.orders.create({
-    amount: input.amount * 100,
+    amount: input.amount, // already in paise
     currency: input.currency,
     receipt: input.orderId,
     payment_capture: true
@@ -56,7 +56,10 @@ export function verifyPaymentSignature(input: {
     .update(`${input.razorpayOrderId}|${input.razorpayPaymentId}`)
     .digest("hex");
 
-  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(input.razorpaySignature));
+  const digestBuf = Buffer.from(digest);
+  const sigBuf = Buffer.from(input.razorpaySignature);
+  if (digestBuf.length !== sigBuf.length) return false;
+  return crypto.timingSafeEqual(digestBuf, sigBuf);
 }
 
 export async function capturePayment(input: {

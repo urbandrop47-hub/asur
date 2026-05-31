@@ -150,8 +150,9 @@ export const cartItemSchema = z.object({
   unitPrice: z.number().nonnegative()
 });
 
+// customerId is injected server-side from the authenticated session —
+// clients must not send it in the body.
 export const createOrderSchema = z.object({
-  customerId: z.string().min(1),
   items: z.array(cartItemSchema).min(1),
   shippingAddress: addressSchema
 });

@@ -44,12 +44,14 @@ export const productRepository = {
     return product;
   },
 
-  async deleteById(id: string) {
+  async deleteById(id: string): Promise<boolean> {
     if (hasMongoConnection) {
-      await ProductModel.deleteOne({ id });
-      return;
+      const result = await ProductModel.deleteOne({ id });
+      return result.deletedCount > 0;
     }
     const idx = mockStore.products.findIndex((p) => p.id === id);
-    if (idx !== -1) mockStore.products.splice(idx, 1);
+    if (idx === -1) return false;
+    mockStore.products.splice(idx, 1);
+    return true;
   }
 };

@@ -145,6 +145,7 @@ export const cartItemSchema = z.object({
   unitPrice: z.number().nonnegative()
 });
 
+// Server-side schema — includes customerId (injected from session, never trusted from request body).
 export const createOrderSchema = z.object({
   customerId: z.string().min(1),
   items: z.array(cartItemSchema).min(1),

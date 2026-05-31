@@ -34,9 +34,9 @@ export const adminOnlyMiddleware: RequestHandler = asyncHandler(async (req, res,
         user = await userRepository.findByEmail(bootstrapEmail);
       }
 
-      if (!user) {
+      if (!user && bootstrapUid.length > 0) {
         user = await userRepository.upsertFromAuth({
-          firebaseUid: bootstrapUid || token,
+          firebaseUid: bootstrapUid,
           email: bootstrapEmail || undefined,
           name: env.SUPER_ADMIN_BOOTSTRAP_NAME.trim() || undefined,
           phoneNumber: env.SUPER_ADMIN_BOOTSTRAP_PHONE.trim() || undefined,

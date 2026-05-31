@@ -100,9 +100,9 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
 
   const updated = await orderRepository.updateVendorTask(id, updates);
 
-  // When completed, update the parent order's fulfillmentStatus to "shipped"
+  // When completed, update the parent order's fulfillmentStatus (not order status)
   if (body.status === "completed" && updated) {
-    await orderRepository.updateStatus(updated.orderId, "shipped");
+    await orderRepository.updateFulfillmentStatus(updated.orderId, "shipped");
   }
 
   sendSuccess(res, updated, "Task updated");

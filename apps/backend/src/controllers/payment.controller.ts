@@ -131,16 +131,17 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
     return;
   }
 
-  // Capture the payment record FIRST. If this fails we have no partial state.
-  // If markOrderPaid subsequently fails, the payment row exists for reconciliation.
+  // markOrderPaid first — it can throw (404, 409). Only write the Payment
+  // row after the order transition succeeds, so we never have a captured
+  // payment record pointing at an order that is still in pending_payment.
+  const paidOrder = await markOrderPaid(payload.orderId);
+
   const captured = await capturePayment({
     orderId: payload.orderId,
     amount: order.total ?? 0,
     providerOrderId: payload.razorpayOrderId,
     providerPaymentId: payload.razorpayPaymentId
   });
-
-  const paidOrder = await markOrderPaid(payload.orderId);
 
   sendSuccess(res, { order: paidOrder, payment: captured.payment }, "Payment verified");
 });

@@ -1,5 +1,5 @@
 import type { Address, FulfillmentStatus, Order, Payment, PaymentStatus, VendorTask } from "@asur/types";
-import type { CreateOrderInput } from "@asur/validations";
+import type { CreateOrderInput } from "../shared/validations";
 import { hasMongoConnection } from "../config/env";
 import { createId } from "../lib/id";
 import { OrderModel } from "../models/order.model";
@@ -127,6 +127,26 @@ export const orderRepository = {
     const order = mockStore.orders.find((o) => o.id === id);
     if (order) {
       order.paymentStatus = paymentStatus;
+      order.updatedAt = new Date().toISOString();
+    }
+    return order ?? null;
+  },
+
+  async updateFulfillmentStatus(id: string, fulfillmentStatus: FulfillmentStatus) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOneAndUpdate(
+        { id },
+        { fulfillmentStatus, updatedAt: new Date().toISOString() },
+        { new: true }
+      ).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order;
+    }
+    const order = mockStore.orders.find((o) => o.id === id);
+    if (order) {
+      order.fulfillmentStatus = fulfillmentStatus;
       order.updatedAt = new Date().toISOString();
     }
     return order ?? null;

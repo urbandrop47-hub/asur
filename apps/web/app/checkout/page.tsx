@@ -423,12 +423,15 @@ export default function CheckoutPage() {
       });
 
       const order = orderRes.data.order;
-      const total = subtotal + (subtotal >= 150000 ? 0 : 25000) + Math.round(subtotal * 0.18);
+      // Shipping uses rupee-unit thresholds (matching backend repository)
+      const shippingRupees = subtotal >= 1500 ? 0 : 250;
+      const totalRupees = subtotal + shippingRupees + Math.round(subtotal * 0.18);
+      const totalPaise = totalRupees * 100;
 
-      // 2. Create Razorpay payment order
+      // 2. Create Razorpay payment order (amount in paise)
       const payRes = await api.post<{ data: { providerOrderId?: string; id?: string; amount: number } }>(
         "/api/v1/payments/razorpay/order",
-        { orderId: order.id, amount: total }
+        { orderId: order.id, amount: totalPaise }
       );
 
       const providerOrderId = payRes.data.providerOrderId ?? payRes.data.id ?? `rzp_mock_${Date.now()}`;
@@ -441,7 +444,7 @@ export default function CheckoutPage() {
 
       openPayment({
         key: razorpayKey,
-        amount: total * 100, // paise
+        amount: totalPaise,
         currency: "INR",
         providerOrderId,
         orderId: order.id,

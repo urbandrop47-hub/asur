@@ -168,7 +168,11 @@ export const updateAdminProductController: RequestHandler = asyncHandler(async (
 
 export const deleteAdminProductController: RequestHandler = asyncHandler(async (req, res) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  await productRepository.deleteById(id);
+  const deleted = await productRepository.deleteById(id);
+  if (!deleted) {
+    res.status(404).json({ success: false, message: "Product not found" });
+    return;
+  }
   sendSuccess(res, null, "Product deleted");
 });
 

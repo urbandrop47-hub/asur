@@ -1,11 +1,13 @@
 import type { RequestHandler } from "express";
 import { asyncHandler } from "../lib/async-handler";
-import { resolveUserFromIdToken } from "../services/auth.service";
+import { verifyFirebaseIdToken } from "../auth/firebase";
+import { userRepository } from "../repositories/user.repository";
 
 const VENDOR_ROLES = new Set(["VENDOR", "ADMIN", "SUPER_ADMIN"]);
 
 /**
  * Verifies the Bearer token and ensures the caller is VENDOR, ADMIN, or SUPER_ADMIN.
+ * Does NOT upsert new users — an unregistered UID gets 403, not a CUSTOMER record.
  * Sets res.locals.user on success.
  */
 export const requireVendor: RequestHandler = asyncHandler(async (req, res, next) => {
@@ -17,15 +19,17 @@ export const requireVendor: RequestHandler = asyncHandler(async (req, res, next)
     return;
   }
 
-  let user: Awaited<ReturnType<typeof resolveUserFromIdToken>>;
+  let firebaseUid: string;
   try {
-    user = await resolveUserFromIdToken(token);
+    const identity = await verifyFirebaseIdToken(token);
+    firebaseUid = identity.firebaseUid;
   } catch {
     res.status(401).json({ success: false, message: "Invalid or expired session token" });
     return;
   }
 
-  if (!VENDOR_ROLES.has(user.role)) {
+  const user = await userRepository.findByFirebaseUid(firebaseUid);
+  if (!user || !VENDOR_ROLES.has(user.role)) {
     res.status(403).json({ success: false, message: "Vendor access required" });
     return;
   }
