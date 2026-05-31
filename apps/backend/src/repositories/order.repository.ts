@@ -24,9 +24,10 @@ export const orderRepository = {
     const now = new Date().toISOString();
     const items = createLineItems(input.items);
     const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-    const shipping = subtotal > 15000 ? 0 : 250;
-    const tax = Math.round(subtotal * 0.05);
+    const shipping = subtotal >= 150000 ? 0 : 25000; // free above ₹1500
+    const tax = Math.round(subtotal * 0.18);          // 18% GST
     const total = subtotal + shipping + tax;
+
     const order: Order = {
       id: createId("ord"),
       orderNumber: toOrderNumber(),
@@ -37,7 +38,7 @@ export const orderRepository = {
       tax,
       total,
       currency: "INR",
-      status: input.paymentStatus === "captured" ? "paid" : "pending_payment",
+      status: "pending_payment",
       paymentStatus: input.paymentStatus ?? "pending",
       fulfillmentStatus: input.fulfillmentStatus ?? "unassigned",
       shippingAddress: input.shippingAddress as Address,
@@ -48,12 +49,42 @@ export const orderRepository = {
     if (!hasMongoConnection) {
       mockStore.orders.push(order);
     }
-
+    // MongoDB persistence will be added in S4-T1 when OrderModel is wired up
     return order;
   },
 
-  async list() {
-    return mockStore.orders;
+  async listByCustomer(customerId: string) {
+    return mockStore.orders.filter((o) => o.customerId === customerId);
+  },
+
+  async findById(id: string, customerId: string) {
+    return mockStore.orders.find((o) => o.id === id && o.customerId === customerId) ?? null;
+  },
+
+  async updateStatus(id: string, status: Order["status"]) {
+    const order = mockStore.orders.find((o) => o.id === id);
+    if (order) {
+      order.status = status;
+      order.updatedAt = new Date().toISOString();
+    }
+    return order ?? null;
+  },
+
+  async updatePaymentStatus(id: string, paymentStatus: PaymentStatus) {
+    const order = mockStore.orders.find((o) => o.id === id);
+    if (order) {
+      order.paymentStatus = paymentStatus;
+      order.updatedAt = new Date().toISOString();
+    }
+    return order ?? null;
+  },
+
+  async updateProviderOrderId(id: string, providerOrderId: string) {
+    const order = mockStore.orders.find((o) => o.id === id) as (Order & { providerOrderId?: string }) | undefined;
+    if (order) {
+      order.providerOrderId = providerOrderId;
+    }
+    return order ?? null;
   },
 
   async createVendorTask(orderId: string) {
@@ -63,9 +94,14 @@ export const orderRepository = {
       status: "pending",
       updatedAt: new Date().toISOString()
     };
-
     mockStore.vendorTasks.push(task);
     return task;
+  },
+
+  async ensureVendorTask(orderId: string) {
+    const existing = mockStore.vendorTasks.find((t) => t.orderId === orderId);
+    if (!existing) return this.createVendorTask(orderId);
+    return existing;
   },
 
   async createPayment(input: { orderId: string; amount: number; currency: "INR"; providerOrderId?: string }) {
@@ -80,7 +116,6 @@ export const orderRepository = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-
     mockStore.payments.push(payment);
     return payment;
   }

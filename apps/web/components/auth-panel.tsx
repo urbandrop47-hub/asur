@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   EmailAuthProvider,
   GoogleAuthProvider,
@@ -35,7 +36,13 @@ type PendingLink =
       email?: string;
     };
 
-export function AuthPanel() {
+type AuthPanelProps = {
+  /** Where to send the user after a successful customer sign-in. Defaults to "/". */
+  redirectTo?: string;
+};
+
+export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
+  const router = useRouter();
   const session = useAuthStore((state) => state.session);
   const setSession = useAuthStore((state) => state.setSession);
   const clearSession = useAuthStore((state) => state.clearSession);
@@ -65,6 +72,12 @@ export function AuthPanel() {
       const response = await api.post<{ data: AuthSession }>("/api/v1/auth/session", { idToken });
       setSession(response.data);
       setMessage(`Signed in as ${response.data.user.email ?? response.data.user.name ?? "user"}`);
+
+      // Redirect non-admin users to the requested destination
+      const role = response.data.user.role;
+      if (role !== "ADMIN" && role !== "SUPER_ADMIN" && redirectTo !== "/") {
+        router.push(redirectTo);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Session sync failed");
     }

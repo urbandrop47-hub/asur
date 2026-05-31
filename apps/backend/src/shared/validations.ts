@@ -88,11 +88,13 @@ export const productSchema = z.object({
 });
 
 export const addressSchema = z.object({
-  line1: z.string().min(2),
+  fullName: z.string().min(2, "Full name is required"),
+  phone: z.string().min(8, "Valid phone number required"),
+  line1: z.string().min(2, "Address line 1 is required"),
   line2: z.string().optional(),
-  city: z.string().min(2),
-  state: z.string().min(2),
-  postalCode: z.string().min(3),
+  city: z.string().min(2, "City is required"),
+  state: z.string().min(2, "State is required"),
+  postalCode: z.string().min(4, "Valid pincode required").max(10),
   country: z.string().min(2),
   label: z.string().optional(),
   isDefault: z.boolean().optional()

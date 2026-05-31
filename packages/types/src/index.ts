@@ -79,6 +79,8 @@ export type Cart = {
 };
 
 export type Address = {
+  fullName: string;
+  phone: string;
   line1: string;
   line2?: string;
   city: string;

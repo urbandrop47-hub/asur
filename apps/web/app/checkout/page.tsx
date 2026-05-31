@@ -1,51 +1,520 @@
-import { AppShell, Button, Pill, Timeline } from "@asur/ui";
+"use client";
 
-const checkoutSteps = [
-  { title: "Address", description: "Collect shipping and billing details, then persist them in MongoDB.", tone: "info" as const },
-  { title: "Payment", description: "Create a Razorpay order before redirecting the user into a secure payment experience.", tone: "warning" as const },
-  { title: "Confirmation", description: "Verify the signature, create the order, and assign a vendor task.", tone: "success" as const }
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { Address, Order } from "@asur/types";
+import { formatCurrency } from "@asur/utils";
+import { useAuthStore } from "../../store/auth-store";
+import { useCartStore } from "../../store/cart-store";
+import { api } from "../../lib/api";
+import { openRazorpayCheckout, mockRazorpayCheckout } from "../../lib/razorpay";
+
+// ─── Step indicator ──────────────────────────────────────────
+
+function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
+  const steps = ["Address", "Review", "Payment"];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: "2rem" }}>
+      {steps.map((label, i) => {
+        const num = (i + 1) as 1 | 2 | 3;
+        const done = num < current;
+        const active = num === current;
+        return (
+          <div key={label} style={{ display: "flex", alignItems: "center", flex: i < 2 ? 1 : "none" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: done
+                    ? "var(--success)"
+                    : active
+                      ? "linear-gradient(135deg, #f97316, #fb7185)"
+                      : "rgba(255,255,255,0.08)",
+                  border: active ? "none" : done ? "none" : "1px solid rgba(255,255,255,0.18)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  color: done || active ? (done ? "#0a0a0f" : "#130f0b") : "var(--text-muted)",
+                  flexShrink: 0,
+                }}
+              >
+                {done ? "✓" : num}
+              </div>
+              <span
+                style={{
+                  fontSize: "0.82rem",
+                  fontWeight: active ? 600 : 400,
+                  color: active ? "var(--text)" : done ? "var(--text-muted)" : "rgba(255,255,255,0.35)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {label}
+              </span>
+            </div>
+            {i < 2 && (
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background: done ? "var(--success)" : "rgba(255,255,255,0.1)",
+                  margin: "0 0.75rem",
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Step 1: Address form ────────────────────────────────────
+
+type AddressFormState = {
+  fullName: string;
+  phone: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+};
+
+type AddressErrors = Partial<Record<keyof AddressFormState, string>>;
+
+function validateAddress(form: AddressFormState): AddressErrors {
+  const errs: AddressErrors = {};
+  if (form.fullName.trim().length < 2) errs.fullName = "Enter your full name";
+  if (form.phone.trim().length < 8) errs.phone = "Enter a valid phone number";
+  if (form.line1.trim().length < 3) errs.line1 = "Enter your street address";
+  if (form.city.trim().length < 2) errs.city = "Enter your city";
+  if (form.state.trim().length < 2) errs.state = "Select a state";
+  if (!/^\d{4,10}$/.test(form.postalCode.trim())) errs.postalCode = "Enter a valid pincode";
+  return errs;
+}
+
+const INDIA_STATES = [
+  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana",
+  "Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
+  "Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana",
+  "Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu and Kashmir","Ladakh",
+  "Chandigarh","Puducherry"
 ];
 
-export default function CheckoutPage() {
+function AddressStep({
+  savedAddresses,
+  onConfirm
+}: {
+  savedAddresses: Address[];
+  onConfirm: (address: Address) => void;
+}) {
+  const [form, setForm] = useState<AddressFormState>({
+    fullName: "", phone: "", line1: "", line2: "", city: "", state: "", postalCode: "", country: "India"
+  });
+  const [errors, setErrors] = useState<AddressErrors>({});
+  const [saving, setSaving] = useState(false);
+
+  function set(field: keyof AddressFormState, value: string) {
+    setForm((f) => ({ ...f, [field]: value }));
+    setErrors((e) => ({ ...e, [field]: undefined }));
+  }
+
+  function useSaved(addr: Address) {
+    setForm({
+      fullName: addr.fullName,
+      phone: addr.phone,
+      line1: addr.line1,
+      line2: addr.line2 ?? "",
+      city: addr.city,
+      state: addr.state,
+      postalCode: addr.postalCode,
+      country: addr.country
+    });
+    setErrors({});
+  }
+
+  async function handleSubmit() {
+    const errs = validateAddress(form);
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+
+    setSaving(true);
+    const address: Address = {
+      fullName: form.fullName.trim(),
+      phone: form.phone.trim(),
+      line1: form.line1.trim(),
+      line2: form.line2.trim() || undefined,
+      city: form.city.trim(),
+      state: form.state.trim(),
+      postalCode: form.postalCode.trim(),
+      country: form.country
+    };
+
+    try {
+      await api.post("/api/v1/auth/addresses", address);
+    } catch { /* non-fatal — address still used for this order */ }
+
+    setSaving(false);
+    onConfirm(address);
+  }
+
+  const inputStyle = {
+    width: "100%", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12,
+    background: "rgba(255,255,255,0.05)", color: "var(--text)", padding: "0.85rem 1rem",
+    font: "inherit", fontSize: "1rem", outline: "none", minHeight: 48,
+    WebkitAppearance: "none" as const,
+  };
+
+  const labelStyle = { display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "0.4rem" };
+
   return (
-    <div className="stack">
-      <div className="section-title">
+    <div style={{ display: "grid", gap: "1.5rem" }}>
+      {savedAddresses.length > 0 && (
         <div>
-          <h1>Checkout</h1>
-          <p>The checkout flow is split into identity, payment, and order orchestration so each concern stays separate.</p>
+          <p style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Saved addresses</p>
+          <div style={{ display: "grid", gap: "0.6rem" }}>
+            {savedAddresses.map((addr, i) => (
+              <button
+                key={i}
+                onClick={() => useSaved(addr)}
+                style={{
+                  width: "100%", textAlign: "left", background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "0.85rem 1rem",
+                  color: "var(--text)", cursor: "pointer", fontSize: "0.88rem", lineHeight: 1.5,
+                }}
+              >
+                <strong>{addr.fullName}</strong> · {addr.phone}<br />
+                {addr.line1}, {addr.city}, {addr.state} {addr.postalCode}
+              </button>
+            ))}
+          </div>
         </div>
-        <Button href="/orders">Review orders</Button>
+      )}
+
+      <div style={{ display: "grid", gap: "1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+          <div>
+            <label style={labelStyle}>Full name *</label>
+            <input style={inputStyle} type="text" autoComplete="name" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} placeholder="Rahul Sharma" />
+            {errors.fullName && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.fullName}</p>}
+          </div>
+          <div>
+            <label style={labelStyle}>Phone *</label>
+            <input style={inputStyle} type="tel" autoComplete="tel" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+91 98765 43210" />
+            {errors.phone && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.phone}</p>}
+          </div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>Address line 1 *</label>
+          <input style={inputStyle} type="text" autoComplete="address-line1" value={form.line1} onChange={(e) => set("line1", e.target.value)} placeholder="42 MG Road" />
+          {errors.line1 && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.line1}</p>}
+        </div>
+
+        <div>
+          <label style={labelStyle}>Address line 2 <span style={{ color: "rgba(246,241,234,0.4)" }}>(optional)</span></label>
+          <input style={inputStyle} type="text" autoComplete="address-line2" value={form.line2} onChange={(e) => set("line2", e.target.value)} placeholder="Apartment, suite, floor…" />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+          <div>
+            <label style={labelStyle}>City *</label>
+            <input style={inputStyle} type="text" autoComplete="address-level2" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Bengaluru" />
+            {errors.city && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.city}</p>}
+          </div>
+          <div>
+            <label style={labelStyle}>Pincode *</label>
+            <input style={inputStyle} type="text" inputMode="numeric" autoComplete="postal-code" value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} placeholder="560001" maxLength={6} />
+            {errors.postalCode && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.postalCode}</p>}
+          </div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>State *</label>
+          <select
+            style={{ ...inputStyle, appearance: "none" as const }}
+            value={form.state}
+            onChange={(e) => set("state", e.target.value)}
+          >
+            <option value="">Select state</option>
+            {INDIA_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {errors.state && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.state}</p>}
+        </div>
       </div>
 
-      <AppShell
-        title="Checkout orchestration"
-        subtitle="Frontend collects the minimum information it needs; backend does payment creation and verification."
+      <button
+        onClick={handleSubmit}
+        disabled={saving}
+        style={{
+          width: "100%", borderRadius: 999, padding: "0.95rem", fontSize: "1rem", fontWeight: 700,
+          background: "linear-gradient(135deg, #f97316, #fb7185)", color: "#130f0b",
+          border: "none", cursor: saving ? "not-allowed" : "pointer", minHeight: 52,
+          opacity: saving ? 0.7 : 1,
+        }}
       >
-        <div className="actions">
-          <Pill tone="info">Firebase session</Pill>
-          <Pill tone="warning">Razorpay order</Pill>
-          <Pill tone="success">Vendor task</Pill>
-        </div>
-      </AppShell>
+        {saving ? "Saving…" : "Continue to review →"}
+      </button>
+    </div>
+  );
+}
 
-      <div className="grid-2">
-        <article className="summary-card">
-          <div className="body stack">
-            <strong>Why this split works</strong>
-            <p>
-              Controllers only parse requests, services own business logic, and repositories own persistence. That keeps the flow easy to evolve as ASUR adds more drops and more fulfillment partners.
-            </p>
+// ─── Step 2: Order review ────────────────────────────────────
+
+function ReviewStep({
+  address,
+  onBack,
+  onConfirm,
+}: {
+  address: Address;
+  onBack: () => void;
+  onConfirm: () => void;
+}) {
+  const items = useCartStore((s) => s.items);
+  const subtotal = useCartStore((s) => s.subtotal());
+  const shipping = subtotal >= 150000 ? 0 : 25000;
+  const tax = Math.round(subtotal * 0.18);
+  const total = subtotal + shipping + tax;
+
+  return (
+    <div style={{ display: "grid", gap: "1.5rem" }}>
+      {/* Cart items */}
+      <div style={{ border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
+        {items.map((item) => (
+          <div key={item.variantSku} style={{ display: "flex", gap: "1rem", padding: "1rem", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
+            <div style={{ width: 52, height: 64, borderRadius: 10, flexShrink: 0, background: "radial-gradient(circle at top left, rgba(251,113,133,0.4), transparent 60%), linear-gradient(135deg, rgba(15,23,42,0.95), rgba(2,6,23,0.8))" }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: "0.9rem" }}>{item.productTitle}</p>
+              <p style={{ margin: "0.15rem 0 0", fontSize: "0.78rem", color: "var(--text-muted)" }}>{item.size} · {item.color} · ×{item.quantity}</p>
+            </div>
+            <strong style={{ fontSize: "0.9rem", flexShrink: 0 }}>{formatCurrency(item.unitPrice * item.quantity)}</strong>
           </div>
-        </article>
-        <article className="summary-card">
-          <div className="body stack">
-            <strong>Primary dependencies</strong>
-            <p>Firebase Authentication, Razorpay, MongoDB Atlas, Cloudflare R2, and a server-generated session layer.</p>
-          </div>
-        </article>
+        ))}
       </div>
 
-      <Timeline steps={checkoutSteps} />
+      {/* Shipping address */}
+      <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: "1rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+          <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Shipping to</p>
+          <button onClick={onBack} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "0.8rem", cursor: "pointer", padding: 0 }}>Edit</button>
+        </div>
+        <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.6 }}>
+          <strong>{address.fullName}</strong> · {address.phone}<br />
+          {address.line1}{address.line2 ? `, ${address.line2}` : ""}<br />
+          {address.city}, {address.state} {address.postalCode}
+        </p>
+      </div>
+
+      {/* Price breakdown */}
+      <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: "1rem", display: "grid", gap: "0.6rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+          <span style={{ color: "var(--text-muted)" }}>Subtotal</span>
+          <span>{formatCurrency(subtotal)}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+          <span style={{ color: "var(--text-muted)" }}>Shipping</span>
+          <span style={{ color: shipping === 0 ? "var(--success)" : "var(--text)" }}>{shipping === 0 ? "Free" : formatCurrency(shipping)}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+          <span style={{ color: "var(--text-muted)" }}>GST (18%)</span>
+          <span>{formatCurrency(tax)}</span>
+        </div>
+        <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "0.2rem 0" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "1.05rem" }}>
+          <span>Total</span>
+          <span>{formatCurrency(total)}</span>
+        </div>
+      </div>
+
+      <button
+        onClick={onConfirm}
+        style={{
+          width: "100%", borderRadius: 999, padding: "0.95rem", fontSize: "1rem", fontWeight: 700,
+          background: "linear-gradient(135deg, #f97316, #fb7185)", color: "#130f0b",
+          border: "none", cursor: "pointer", minHeight: 52,
+        }}
+      >
+        Confirm & Pay {formatCurrency(total)}
+      </button>
+    </div>
+  );
+}
+
+// ─── Main checkout page ──────────────────────────────────────
+
+export default function CheckoutPage() {
+  const router = useRouter();
+  const session = useAuthStore((s) => s.session);
+  const cartItems = useCartStore((s) => s.items);
+  const clearCart = useCartStore((s) => s.clear);
+  const subtotal = useCartStore((s) => s.subtotal());
+
+  const [mounted, setMounted] = useState(false);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [address, setAddress] = useState<Address | null>(null);
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // Auth guard
+  useEffect(() => {
+    if (!mounted) return;
+    if (!session) router.replace("/auth?next=/checkout");
+  }, [mounted, session, router]);
+
+  // Load saved addresses
+  useEffect(() => {
+    if (!session) return;
+    api.get<{ data: Address[] }>("/api/v1/auth/addresses")
+      .then((r) => setSavedAddresses(r.data ?? []))
+      .catch(() => {});
+  }, [session]);
+
+  if (!mounted || !session) {
+    return (
+      <div style={{ paddingTop: "3rem", display: "grid", gap: "1.25rem", maxWidth: 560, margin: "0 auto" }}>
+        <div className="skeleton skeleton-line" style={{ height: 36, width: "30%" }} />
+        <div className="skeleton skeleton-line" style={{ height: 300, borderRadius: 20 }} />
+      </div>
+    );
+  }
+
+  if (cartItems.length === 0) {
+    return (
+      <div className="empty-state" style={{ marginTop: "4rem" }}>
+        <h2>Your cart is empty</h2>
+        <p>Add some items before checking out.</p>
+        <Link href="/products" style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 999, padding: "0.85rem 1.5rem", background: "linear-gradient(135deg, #f97316, #fb7185)", color: "#130f0b", fontWeight: 700, fontSize: "0.92rem", textDecoration: "none" }}>
+          Browse products
+        </Link>
+      </div>
+    );
+  }
+
+  async function handlePayment(confirmedAddress: Address) {
+    if (!session) return;
+    setProcessing(true);
+    setError(null);
+
+    try {
+      // 1. Create backend order
+      const orderRes = await api.post<{ data: { order: Order } }>("/api/v1/orders", {
+        items: cartItems.map((i) => ({
+          productId: i.productId,
+          variantSku: i.variantSku,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice
+        })),
+        shippingAddress: confirmedAddress
+      });
+
+      const order = orderRes.data.order;
+      const total = subtotal + (subtotal >= 150000 ? 0 : 25000) + Math.round(subtotal * 0.18);
+
+      // 2. Create Razorpay payment order
+      const payRes = await api.post<{ data: { providerOrderId?: string; id?: string; amount: number } }>(
+        "/api/v1/payments/razorpay/order",
+        { orderId: order.id, amount: total }
+      );
+
+      const providerOrderId = payRes.data.providerOrderId ?? payRes.data.id ?? `rzp_mock_${Date.now()}`;
+      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY ?? "";
+
+      // 3. Open Razorpay modal (or mock it in dev)
+      const openPayment = razorpayKey && typeof window !== "undefined" && window.Razorpay
+        ? openRazorpayCheckout
+        : (_opts: Parameters<typeof openRazorpayCheckout>[0]) => mockRazorpayCheckout(_opts);
+
+      openPayment({
+        key: razorpayKey,
+        amount: total * 100, // paise
+        currency: "INR",
+        providerOrderId,
+        orderId: order.id,
+        name: "ASUR",
+        email: session.user.email ?? undefined,
+        contact: confirmedAddress.phone,
+        onDismiss: () => {
+          setProcessing(false);
+          setError("Payment was cancelled. You can try again.");
+        },
+        onSuccess: async (payload) => {
+          try {
+            await api.post("/api/v1/payments/razorpay/verify", {
+              orderId: order.id,
+              razorpayOrderId: payload.razorpay_order_id,
+              razorpayPaymentId: payload.razorpay_payment_id,
+              razorpaySignature: payload.razorpay_signature
+            });
+            clearCart();
+            router.push(`/orders/${order.id}/confirmation`);
+          } catch {
+            setError("Payment succeeded but verification failed. Please contact support with your order ID: " + order.id);
+            setProcessing(false);
+          }
+        }
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setProcessing(false);
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 560, margin: "0 auto", paddingTop: "1.5rem" }}>
+      <div style={{ marginBottom: "1.5rem" }}>
+        <h1 style={{ margin: "0 0 0.35rem", fontSize: "clamp(1.4rem, 3vw, 1.8rem)", fontWeight: 800 }}>Checkout</h1>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.88rem" }}>
+          {cartItems.length} item{cartItems.length !== 1 ? "s" : ""} · {session.user.email ?? session.user.name ?? ""}
+        </p>
+      </div>
+
+      <StepIndicator current={step} />
+
+      {error && (
+        <div className="error-banner" style={{ marginBottom: "1.5rem" }}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <circle cx="9" cy="9" r="8" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M9 5v5M9 13h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          {error}
+        </div>
+      )}
+
+      {processing && (
+        <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "0.75rem", animation: "spin 1s linear infinite" }}>⟳</div>
+          Processing payment…
+        </div>
+      )}
+
+      {!processing && step === 1 && (
+        <AddressStep
+          savedAddresses={savedAddresses}
+          onConfirm={(addr) => {
+            setAddress(addr);
+            setStep(2);
+          }}
+        />
+      )}
+
+      {!processing && step === 2 && address && (
+        <ReviewStep
+          address={address}
+          onBack={() => setStep(1)}
+          onConfirm={() => {
+            setStep(3);
+            handlePayment(address);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { UserProfile, UserRole } from "@asur/types";
+import type { Address, UserProfile, UserRole } from "@asur/types";
 import { hasMongoConnection } from "../config/env";
 import { UserModel } from "../models/user.model";
 import { mockStore } from "./mock-store";
@@ -102,6 +102,25 @@ export const userRepository = {
     };
     mockStore.users.push(profile);
     return profile;
+  },
+
+  async saveAddress(firebaseUid: string, address: Address) {
+    if (hasMongoConnection) {
+      const user = await UserModel.findOneAndUpdate(
+        { firebaseUid },
+        { $push: { addresses: address }, $set: { updatedAt: new Date().toISOString() } },
+        { new: true }
+      ).lean<UserProfile>().exec();
+      return user?.addresses ?? [];
+    }
+
+    const existing = mockStore.users.find((u) => u.firebaseUid === firebaseUid);
+    if (existing) {
+      existing.addresses = [...(existing.addresses ?? []), address];
+      existing.updatedAt = new Date().toISOString();
+      return existing.addresses;
+    }
+    return [];
   },
 
   async setRole(input: UpdateUserRoleInput) {

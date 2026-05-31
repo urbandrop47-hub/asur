@@ -1,36 +1,40 @@
-import { AppShell, Pill, Timeline } from "@asur/ui";
+"use client";
+
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { AuthPanel } from "../../components/auth-panel";
 
-const authFlow = [
-  { title: "Email or Google login", description: "Users can sign in with email/password or a Google credential without changing the session model.", tone: "success" as const },
-  { title: "Provider linking", description: "A signed-in user can attach Google and email/password to the same Firebase account.", tone: "info" as const },
-  { title: "Backend session", description: "The frontend forwards the token to the backend so the app can create or fetch a user profile.", tone: "warning" as const },
-  { title: "Admin routing", description: "Users with an admin role in Mongo go straight into the admin panel after sign-in.", tone: "info" as const }
-];
+function AuthPageInner() {
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("next") ?? "/";
 
-export default function AuthPage() {
   return (
-    <div className="stack">
-      <div className="section-title">
+    <div className="stack" style={{ maxWidth: 520, margin: "2rem auto 0" }}>
+      <div className="section-title" style={{ marginTop: "1rem" }}>
         <div>
-          <h1>Authentication</h1>
-          <p>Firebase manages identity, while MongoDB stores the user profile, addresses, and roles.</p>
+          <h1>Sign in</h1>
+          <p style={{ margin: "0.35rem 0 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+            {redirectTo !== "/" ? "Sign in to continue to checkout." : "Welcome back to ASUR."}
+          </p>
         </div>
       </div>
 
-      <AppShell title="Identity flow" subtitle="Email/password and Google auth are routed through the same backend session contract, and the same Firebase user can link both providers.">
-        <div className="actions">
-          <Pill tone="info">Email/password</Pill>
-          <Pill tone="success">Google sign-in</Pill>
-          <Pill tone="info">Provider linking</Pill>
-          <Pill tone="warning">Backend verification</Pill>
-          <Pill tone="info">Admin redirect</Pill>
-        </div>
-      </AppShell>
-
-      <AuthPanel />
-
-      <Timeline steps={authFlow} />
+      <AuthPanel redirectTo={redirectTo} />
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ paddingTop: "3rem", display: "grid", gap: "1rem", maxWidth: 520, margin: "0 auto" }}>
+          <div className="skeleton skeleton-line" style={{ height: 36, width: "40%" }} />
+          <div className="skeleton skeleton-line" style={{ height: 300, borderRadius: 20 }} />
+        </div>
+      }
+    >
+      <AuthPageInner />
+    </Suspense>
   );
 }

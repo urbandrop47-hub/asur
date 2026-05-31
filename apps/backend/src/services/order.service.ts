@@ -12,6 +12,16 @@ export async function createOrder(input: CreateOrderInput) {
   return { order, vendorTask };
 }
 
-export async function listOrders() {
-  return orderRepository.list();
+export async function listOrdersByCustomer(customerId: string) {
+  return orderRepository.listByCustomer(customerId);
+}
+
+export async function getOrderById(id: string, customerId: string) {
+  return orderRepository.findById(id, customerId);
+}
+
+export async function markOrderPaid(orderId: string) {
+  await orderRepository.updateStatus(orderId, "paid");
+  await orderRepository.updatePaymentStatus(orderId, "captured");
+  await orderRepository.ensureVendorTask(orderId);
 }
