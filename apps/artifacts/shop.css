@@ -311,15 +311,15 @@
 .s-totop.show { opacity: 1; transform: none; pointer-events: auto; }
 .s-totop:active { background: var(--accent); }
 
-/* ─── tablet / desktop scale-up ────────────────────────────────────── */
-@media (min-width: 680px) {
+/* ─── tablet scale-up (no frame; real ≤767 tablets only) ───────────── */
+@media (min-width: 680px) and (max-width: 767px) {
   .s-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; }
   .s-hero-card { aspect-ratio: 21 / 9; }
   .s-hero { padding: 18px 28px 6px; }
   .s-grid, .s-sec, .s-chips { padding-left: 28px; padding-right: 28px; }
   .pcard-title { font-size: 13px; }
 }
-@media (min-width: 1040px) {
+@media (min-width: 1040px) and (max-width: 767px) {
   .s-grid { grid-template-columns: repeat(4, 1fr); gap: 22px; max-width: 1320px; margin: 0 auto; }
   .s-shell { max-width: 1320px; margin: 0 auto; }
   .s-sec, .s-chips, .s-hero { max-width: 1320px; margin-left: auto; margin-right: auto; }
@@ -493,7 +493,7 @@
 }
 .s-watermark .deva { font-family: var(--f-deva); font-size: 0.4em; }
 
-@media (min-width: 680px) {
+@media (min-width: 680px) and (max-width: 767px) {
   .s-social { grid-template-columns: repeat(4, 1fr); }
   .s-news, .s-social-wrap, .s-accordions, .s-legal { padding-left: 28px; padding-right: 28px; }
   .s-news-form { flex-direction: row; align-items: center; }
@@ -517,7 +517,7 @@
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .fsheet.open { transform: none; }
-@media (min-width: 680px) {
+@media (min-width: 680px) and (max-width: 767px) {
   .fsheet { left: auto; right: 0; top: 0; bottom: 0; width: min(92vw, 440px);
     border-radius: 0; border-top: none; border-left: 1px solid var(--hair-2);
     max-height: none; transform: translateX(100%); }
@@ -792,7 +792,7 @@
 .pdp-add.wait { background: var(--ash-3); color: var(--bone-d); }
 .pdp-add.added { background: var(--bone); color: var(--void); }
 
-@media (min-width: 680px) {
+@media (min-width: 680px) and (max-width: 767px) {
   .pdp-scroll { max-width: 620px; margin: 0 auto; width: 100%; }
   .pdp-addbar { max-width: 620px; left: 50%; transform: translateX(-50%); }
 }
@@ -930,3 +930,60 @@
 .co-done-row b { font-family: var(--f-mono); font-size: 13px; letter-spacing: 0.06em; color: var(--bone); }
 .co-done-track { width: 100%; padding: 16px; margin-top: 10px; font-family: var(--f-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--bone-d); border: 1px solid var(--hair-2); border-radius: 999px; }
 .co-done-track:active { color: var(--accent); border-color: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DESKTOP PREVIEW FRAME
+   ─────────────────────────────────────────────────────────────────────
+   This is a MOBILE-FIRST app. On wide screens we deliberately do NOT
+   stretch it into a desktop layout — we center it inside a phone-width
+   column so the reference reads as intended. The `transform` on `.shop`
+   turns the column into the containing block for its position:fixed chrome
+   (sticky bars, drawers, filter sheet, PDP, checkout), so all of it pins to
+   the phone frame and the column scrolls internally.
+
+   BUILD TARGET: reproduce this as a responsive mobile-first app — a single
+   ~430px column centered on desktop — NOT a wide desktop site.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+  html { background: #050505; }
+  body {
+    background:
+      radial-gradient(1100px 560px at 50% -12%, rgba(212,90,26,0.10), transparent 62%),
+      #050505;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 30px 0;
+  }
+  body::before {
+    content: "ASUR · MOBILE REFERENCE — BUILD AS A RESPONSIVE PHONE-WIDTH APP";
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.26em;
+    color: rgba(232,224,208,0.30); text-transform: uppercase;
+    white-space: nowrap; z-index: 1; pointer-events: none;
+  }
+
+  #root {
+    width: 432px; max-width: 94vw;
+    height: min(936px, calc(100vh - 60px));
+    display: flex;
+  }
+
+  .shop {
+    position: relative;
+    width: 100%; height: 100%;
+    min-height: 0;
+    overflow-y: auto; overflow-x: hidden;
+    transform: translateZ(0);                 /* containing block for fixed chrome */
+    border-radius: 40px;
+    box-shadow:
+      0 0 0 2px #000,
+      0 0 0 12px #101010,
+      0 0 0 13px #2a2a2a,
+      0 50px 130px rgba(0,0,0,0.75);
+    scrollbar-width: none;
+  }
+  .shop::-webkit-scrollbar { width: 0; height: 0; }
+
+  /* keep the bottom sheet bounded to the frame, not the viewport */
+  .fsheet { max-height: 88%; }
+}
