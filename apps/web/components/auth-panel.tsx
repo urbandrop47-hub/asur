@@ -219,24 +219,28 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
 
       if (mode === "create-account" && authError.code === "auth/email-already-in-use") {
         const emailForAccount = email.trim();
-        const methods = await fetchSignInMethodsForEmail(firebaseAuth, emailForAccount);
-
-        if (methods.includes("google.com")) {
-          setPendingLink({
-            provider: "password",
-            credential: EmailAuthProvider.credential(emailForAccount, password),
-            email: emailForAccount
-          });
-          setMessage("This email already has Google linked. Sign in with Google and we’ll attach your email/password automatically.");
-          return;
+        // Check quietly whether Google is linked so we can offer account-linking,
+        // but don’t disclose which method(s) the account uses to prevent enumeration.
+        try {
+          const methods = await fetchSignInMethodsForEmail(firebaseAuth, emailForAccount);
+          if (methods.includes("google.com")) {
+            setPendingLink({
+              provider: "password",
+              credential: EmailAuthProvider.credential(emailForAccount, password),
+              email: emailForAccount
+            });
+            setMessage("An account already exists for this email. Sign in with Google and we’ll link your password automatically.");
+            return;
+          }
+        } catch {
+          // Ignore — fall through to the generic message
         }
-
-        setMessage(`This email already exists and uses: ${methods.join(", ") || "unknown method"}.`);
+        setMessage("An account already exists for this email. Try signing in instead.");
         return;
       }
 
       if (mode === "sign-in" && authError.code === "auth/wrong-password") {
-        setMessage("Wrong password. If this account started with Google, sign in with Google and link email/password from the panel.");
+        setMessage("Incorrect password. If you signed up with Google, use the Google option below.");
         return;
       }
 
@@ -277,16 +281,8 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
       };
 
       if (authError.code === "auth/credential-already-in-use" || authError.code === "auth/email-already-in-use") {
-        const methods = await fetchSignInMethodsForEmail(firebaseAuth, email.trim());
-        if (methods.includes("google.com")) {
-          setPendingLink({
-            provider: "password",
-            credential: EmailAuthProvider.credential(email.trim(), password),
-            email: email.trim()
-          });
-          setMessage("This email is already tied to Google. Sign in with Google and we’ll finish linking automatically.");
-          return;
-        }
+        setMessage("These credentials are already associated with another account. Sign in with that account and link from there.");
+        return;
       }
 
       setMessage(error instanceof Error ? error.message : "Email/password linking failed");

@@ -17,7 +17,13 @@ export const requireVendor: RequestHandler = asyncHandler(async (req, res, next)
     return;
   }
 
-  const user = await resolveUserFromIdToken(token);
+  let user: Awaited<ReturnType<typeof resolveUserFromIdToken>>;
+  try {
+    user = await resolveUserFromIdToken(token);
+  } catch {
+    res.status(401).json({ success: false, message: "Invalid or expired session token" });
+    return;
+  }
 
   if (!VENDOR_ROLES.has(user.role)) {
     res.status(403).json({ success: false, message: "Vendor access required" });

@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signOut } from "firebase/auth";
 import type { Address } from "@asur/types";
+import { firebaseAuth } from "../../lib/firebase";
 import { useAuthStore } from "../../store/auth-store";
 import { api } from "../../lib/api";
 
@@ -29,27 +31,32 @@ function AddressCard({ address }: { address: Address }) {
 
 export default function AccountPage() {
   const router = useRouter();
-  const { session, clearSession } = useAuthStore();
+  const { session, hydrated, clearSession } = useAuthStore();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressLoading, setAddressLoading] = useState(true);
+  const [addressError, setAddressError] = useState(false);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!session) {
       router.replace("/auth?next=/account");
       return;
     }
     api
       .get<{ data: Address[] }>("/api/v1/auth/addresses")
-      .then((r) => setAddresses(r.data))
-      .catch(() => {})
+      .then((r) => setAddresses(r.data ?? []))
+      .catch(() => setAddressError(true))
       .finally(() => setAddressLoading(false));
-  }, [session, router]);
+  }, [session, hydrated, router]);
 
-  if (!session) return null;
+  if (!hydrated || !session) return null;
 
   const { user } = session;
 
-  function handleSignOut() {
+  async function handleSignOut() {
+    if (firebaseAuth) {
+      await signOut(firebaseAuth).catch(() => {});
+    }
     clearSession();
     router.push("/");
   }

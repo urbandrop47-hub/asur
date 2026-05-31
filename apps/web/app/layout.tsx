@@ -23,9 +23,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         />
       </head>
       <body suppressHydrationWarning>
+        <a href="#main-content" className="skip-link">Skip to content</a>
         <AppProviders>
           <SiteHeader />
-          <main>{children}</main>
+          <main id="main-content">{children}</main>
           <SiteFooter />
         </AppProviders>
         {/* Razorpay checkout SDK — loaded lazily, only used on /checkout */}

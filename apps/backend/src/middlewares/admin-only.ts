@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import { env, hasFirebaseCredentials, shouldBootstrapSuperAdmin } from "../config/env";
+import { env, shouldBootstrapSuperAdmin } from "../config/env";
 import { userRepository } from "../repositories/user.repository";
 import { isAdminRole } from "../shared/admin-access";
 import { asyncHandler } from "../lib/async-handler";
@@ -17,7 +17,10 @@ export const adminOnlyMiddleware: RequestHandler = asyncHandler(async (req, res,
     return;
   }
 
-  if (!hasFirebaseCredentials && shouldBootstrapSuperAdmin) {
+  // Bootstrap: if enabled and the raw token matches the configured UID/email,
+  // promote and admit — regardless of whether Firebase creds are configured.
+  // This lets the first SUPER_ADMIN claim their account after Firebase is wired up.
+  if (shouldBootstrapSuperAdmin) {
     const bootstrapUid = env.SUPER_ADMIN_BOOTSTRAP_FIREBASE_UID.trim();
     const bootstrapEmail = env.SUPER_ADMIN_BOOTSTRAP_EMAIL.trim().toLowerCase();
     const isBootstrapToken =
@@ -70,7 +73,13 @@ export const adminOnlyMiddleware: RequestHandler = asyncHandler(async (req, res,
     }
   }
 
-  const user = await resolveUserFromIdToken(token);
+  let user: Awaited<ReturnType<typeof resolveUserFromIdToken>>;
+  try {
+    user = await resolveUserFromIdToken(token);
+  } catch {
+    res.status(401).json({ success: false, message: "Invalid or expired admin token" });
+    return;
+  }
 
   if (!isAdminRole(user.role)) {
     res.status(403).json({

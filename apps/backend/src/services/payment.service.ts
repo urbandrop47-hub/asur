@@ -43,7 +43,12 @@ export function verifyPaymentSignature(input: {
   razorpaySignature: string;
 }) {
   if (!hasRazorpayCredentials) {
-    return true;
+    // In production, missing Razorpay credentials must be a hard failure — never auto-accept.
+    if (env.NODE_ENV === "production") {
+      throw new Error("Razorpay credentials are not configured. Cannot verify payment signature.");
+    }
+    // Dev/test mock: the mock checkout sends a fixed sentinel; accept only that.
+    return input.razorpaySignature === "mock_signature" && input.razorpayOrderId.startsWith("rzp_mock_");
   }
 
   const digest = crypto
@@ -51,7 +56,7 @@ export function verifyPaymentSignature(input: {
     .update(`${input.razorpayOrderId}|${input.razorpayPaymentId}`)
     .digest("hex");
 
-  return digest === input.razorpaySignature;
+  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(input.razorpaySignature));
 }
 
 export async function capturePayment(input: {

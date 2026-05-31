@@ -75,24 +75,26 @@ function OrderCard({ order }: { order: Order }) {
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { session } = useAuthStore();
+  const { session, hydrated } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    // Wait for localStorage to hydrate before deciding to redirect
+    if (!hydrated) return;
     if (!session) {
       router.replace("/auth?next=/orders");
       return;
     }
     api
       .get<{ data: Order[] }>("/api/v1/orders")
-      .then((r) => setOrders(r.data))
+      .then((r) => setOrders(r.data ?? []))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [session, router]);
+  }, [session, hydrated, router]);
 
-  if (!session) return null;
+  if (!hydrated || !session) return null;
 
   if (loading) {
     return (

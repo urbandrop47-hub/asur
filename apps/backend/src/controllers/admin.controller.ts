@@ -38,7 +38,7 @@ const createProductSchema = z.object({
   fit: z.enum(productFits).optional(),
   status: z.enum(["draft", "active", "archived"]).default("draft"),
   media: z
-    .array(z.object({ url: z.string(), alt: z.string().optional(), width: z.number().optional(), height: z.number().optional() }))
+    .array(z.object({ url: z.string().url(), alt: z.string().optional(), width: z.number().optional(), height: z.number().optional() }))
     .default([])
 });
 
