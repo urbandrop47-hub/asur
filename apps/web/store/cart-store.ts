@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CartItem } from "@asur/types";
+import { track } from "../lib/analytics";
 
 /** Extended cart line: CartItem + display fields stored at add-time so the cart
  *  page never needs to re-fetch product data. */
@@ -27,7 +28,13 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
 
-      addItem: (incoming) =>
+      addItem: (incoming) => {
+        track("add_to_cart", {
+          variantSku: incoming.variantSku,
+          productTitle: incoming.productTitle,
+          quantity: incoming.quantity,
+          unitPrice: incoming.unitPrice
+        });
         set((state) => {
           const existing = state.items.find((i) => i.variantSku === incoming.variantSku);
           if (existing) {
@@ -40,7 +47,8 @@ export const useCartStore = create<CartState>()(
             };
           }
           return { items: [...state.items, incoming] };
-        }),
+        });
+      },
 
       updateQuantity: (variantSku, quantity) =>
         set((state) => ({

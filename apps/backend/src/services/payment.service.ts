@@ -6,8 +6,10 @@ import { orderRepository } from "../repositories/order.repository";
 
 export async function createRazorpayOrder(input: { orderId: string; amount: number; currency: "INR" }) {
   if (!hasRazorpayCredentials) {
+    const providerOrderId = `rzp_mock_${crypto.randomUUID()}`;
+    await orderRepository.updateProviderOrderId(input.orderId, providerOrderId);
     return {
-      providerOrderId: `rzp_${crypto.randomUUID()}`,
+      providerOrderId,
       amount: input.amount,
       currency: input.currency,
       status: "mock"
@@ -25,6 +27,12 @@ export async function createRazorpayOrder(input: { orderId: string; amount: numb
     receipt: input.orderId,
     payment_capture: true
   });
+
+  // Store the Razorpay order ID on the ASUR order so verification can reference it
+  const providerOrderId = (order as { id?: string }).id ?? "";
+  if (providerOrderId) {
+    await orderRepository.updateProviderOrderId(input.orderId, providerOrderId);
+  }
 
   return order;
 }
@@ -46,11 +54,19 @@ export function verifyPaymentSignature(input: {
   return digest === input.razorpaySignature;
 }
 
-export async function captureMockPayment(orderId: string, amount: number) {
+export async function capturePayment(input: {
+  orderId: string;
+  amount: number;
+  providerOrderId?: string;
+  providerPaymentId?: string;
+}) {
   const payment = await orderRepository.createPayment({
-    orderId,
-    amount,
-    currency: "INR"
+    orderId: input.orderId,
+    amount: input.amount,
+    currency: "INR",
+    providerOrderId: input.providerOrderId,
+    providerPaymentId: input.providerPaymentId,
+    status: "captured"
   });
 
   return {

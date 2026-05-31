@@ -170,6 +170,7 @@ export type VendorTask = {
   status: "pending" | "in_progress" | "ready_to_ship" | "completed";
   notes?: string;
   trackingId?: string;
+  courierName?: string;
   updatedAt: string;
 };
 

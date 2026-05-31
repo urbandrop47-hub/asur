@@ -29,6 +29,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@asur/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@asur/constants':
         specifier: workspace:*
         version: link:../../packages/constants
@@ -127,6 +130,9 @@ importers:
 
   apps/vendor:
     dependencies:
+      '@asur/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       '@asur/constants':
         specifier: workspace:*
         version: link:../../packages/constants

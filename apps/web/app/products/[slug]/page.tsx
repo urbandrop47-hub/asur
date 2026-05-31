@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Product } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { api } from "../../../lib/api";
+import { track } from "../../../lib/analytics";
 import { ProductImageGallery } from "../../../components/product-image-gallery";
 import { useCartStore } from "../../../store/cart-store";
 
@@ -36,6 +37,7 @@ export default function ProductDetailPage() {
           setNotFound(true);
         } else {
           setProduct(res.data);
+          track("product_viewed", { id: res.data.id, slug: res.data.slug, title: res.data.title });
         }
       })
       .catch(() => setNotFound(true))

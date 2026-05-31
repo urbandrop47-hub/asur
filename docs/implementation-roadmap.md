@@ -19,6 +19,16 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 - First release scope: functional MVP with strong mobile usability
 - Deferred from v1: reviews, wishlists, loyalty, subscriptions, personalized recommendations, CRM tooling
 
+## Cross-Platform Identity
+
+A customer is a single user regardless of the surface they log in from. Firebase Auth is the identity layer; the backend MongoDB user record (`firebaseUid` as the key) is the source of truth for profile, addresses, and order history.
+
+- Web (`apps/web`) uses Firebase Auth with email/password and Google sign-in; session token is exchanged with the backend on every login.
+- Mobile app (React Native / Expo — to be integrated) will use the same Firebase project. On sign-in it obtains the same Firebase ID token and exchanges it with `POST /api/v1/auth/session` identically to the web flow.
+- The backend never distinguishes between a web or mobile caller — it only validates the Firebase token and looks up (or creates) the user by `firebaseUid`.
+- Saved addresses, order history, and account details are therefore automatically shared across web and mobile; no migration or merge step is required.
+- Cart state is intentionally client-local (localStorage / AsyncStorage) and is not synced across devices in v1.
+
 ## Current State (as of Sprint 0 complete)
 
 **Done and verified:**
@@ -338,7 +348,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S4-T1 — Add Mongoose models for Order, Payment, and VendorTask
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/backend/src/models/order.model.ts` — create; define `orderSchema` mapping all fields in the `Order` type; include indexes on `customerId`, `orderNumber`, and `status`; export `OrderModel`
   - `apps/backend/src/models/payment.model.ts` — create; define `paymentSchema` mapping all fields in the `Payment` type; index on `orderId`; export `PaymentModel`
@@ -353,7 +363,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S4-T2 — Filter orders by customer in the backend
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/backend/src/repositories/order.repository.ts` — add `listByCustomer(customerId: string)` method; when using Mongo, query `{ customerId }`; add `findById(id: string)` method
   - `apps/backend/src/services/order.service.ts` — add `listOrdersByCustomer(customerId)` and `getOrderById(id)` service functions
@@ -367,7 +377,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S4-T3 — Build the order history page
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/web/app/orders/page.tsx` — replace placeholder; fetch `GET /api/v1/orders`; render a list of order cards showing order number, date, status badge, item count, and total; link each card to `/orders/[id]`; show empty state with "Start shopping" CTA when no orders; guard with auth redirect to `/auth?next=/orders`
   - `apps/web/components/order-card.tsx` — create; receives `Order`; renders compact card with order number, date, status (color-coded badge), and total
@@ -384,7 +394,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S4-T4 — Build the order detail and tracking page
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/web/app/orders/[id]/page.tsx` — create; fetch `GET /api/v1/orders/:id`; render full order: items, quantities, unit prices, line totals, shipping address, payment status, fulfillment status, order timeline; show tracking ID and courier if available on the linked vendor task
   - `apps/web/components/order-timeline.tsx` — create; renders a vertical timeline of order lifecycle steps: `Placed → Payment Confirmed → Processing → Packed → Shipped → Delivered`; marks the current step as active and past steps as completed; grays out future steps
@@ -401,7 +411,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S4-T5 — Build the account profile page
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/web/app/account/page.tsx` — replace placeholder; show user name, email, and linked providers from `useAuthStore` session; list saved addresses with an "Add address" link; link to `/orders` for order history; show "Sign out" button
   - `apps/web/components/address-list.tsx` — create; fetches `GET /api/v1/auth/addresses`; renders each address as a card with name, phone, city, and pincode; add "Set as default" toggle (stretch goal)
@@ -420,7 +430,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S5-T1 — Wire payment verification to order status update
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/backend/src/controllers/payment.controller.ts` — update `verifyPaymentController`: after signature verification succeeds, call `orderRepository.updateStatus(orderId, "paid")` and `orderRepository.updatePaymentStatus(orderId, "captured")`
   - `apps/backend/src/repositories/order.repository.ts` — add `updateStatus(id, status)` and `updatePaymentStatus(id, paymentStatus)` methods using Mongoose `findOneAndUpdate` when connected, or mock store mutation when not
@@ -434,7 +444,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S5-T2 — Add Razorpay order ID to the order record
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/backend/src/models/order.model.ts` — add `providerOrderId?: string` field to the schema
   - `apps/backend/src/repositories/order.repository.ts` — update `create` to accept `providerOrderId` in its input and persist it
@@ -453,7 +463,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S6-T1 — Admin navigation layout (sidebar)
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/admin/app/layout.tsx` — add a fixed sidebar with links: Dashboard, Products, Orders, Collections, Content, Settings; show user role badge; show "Sign out" button; make sidebar collapsible on tablet
   - `apps/admin/app/globals.css` — add sidebar layout styles; sidebar is 240px wide on desktop, hidden by default on tablet with a toggle button
@@ -466,7 +476,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S6-T2 — Admin product list with real API data
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/admin/app/products/page.tsx` — create; fetch `GET /api/v1/admin/products` (need to add this route); render a table with: title, SKU count, status badge, stock total, price range, last updated; add "New product" button; add filters for status (draft / active / archived)
   - `apps/backend/src/controllers/admin.controller.ts` — add `listAdminProductsController` that returns all products (including drafts) with variant summary; guard with `requireAdmin` middleware
@@ -480,7 +490,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S6-T3 — Admin product create and edit form
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/admin/app/products/new/page.tsx` — create; form fields: title, slug (auto-generated from title), description, category, fit, status, collection slugs, tags; submit calls `POST /api/v1/admin/products`
   - `apps/admin/app/products/[id]/page.tsx` — create; fetch product by ID; same form pre-filled; submit calls `PATCH /api/v1/admin/products/:id`
@@ -496,7 +506,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S6-T4 — Admin order monitoring
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/admin/app/orders/page.tsx` — create; fetch `GET /api/v1/admin/orders`; render table: order number, customer name, status, payment status, fulfillment status, total, date; add filter tabs: All, Paid, Processing, Shipped
   - `apps/admin/app/orders/[id]/page.tsx` — create; show full order details plus fulfillment task status; show "Mark as processing" / action buttons
@@ -516,7 +526,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S7-T1 — Vendor task list
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/vendor/app/tasks/page.tsx` — create; fetch `GET /api/v1/vendor/tasks`; render task cards: order number, customer shipping address, items to pack, current status; filter by status: pending, in_progress, ready_to_ship
   - `apps/backend/src/controllers/vendor.controller.ts` — create; `listVendorTasksController` returns tasks filtered by `req.user.id` if a vendor ID is assigned, or all unassigned tasks for admin vendors
@@ -530,7 +540,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S7-T2 — Vendor task status update and tracking upload
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/vendor/app/tasks/[id]/page.tsx` — create; show task detail with order items, shipping address, current status; show action buttons: "Mark packed", "Mark shipped" (requires tracking ID + courier name); show a form to enter tracking ID and courier name before marking shipped
   - `apps/backend/src/controllers/vendor.controller.ts` — add `updateVendorTaskController`; accepts `status`, `trackingId`, `courierName`, `notes`; validates transition rules (can only move forward in status); when marked shipped, update the parent order's `fulfillmentStatus` to `"shipped"`
@@ -551,7 +561,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S8-T1 — Error handling and loading states across web
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - All web page files that make API calls — wrap each `api.get()` / `api.post()` with try/catch; show a reusable `<ErrorBanner>` component on failure; show skeleton loaders during fetch instead of empty screens
   - `apps/web/components/error-banner.tsx` — create; receives `message` and optional `retry` callback; styled with warning colors
@@ -564,7 +574,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S8-T2 — Mobile checkout QA pass
 
-- Status: `TODO`
+- Status: `DONE`
 - Scope:
   - Test the full flow on a 390×844 viewport (iPhone 14 size) in Chrome DevTools
   - Verify every step of the checkout wizard renders without overflow
@@ -580,7 +590,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S8-T3 — Analytics funnel events
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/web/lib/analytics.ts` — create; export `track(event: string, props?: Record<string, unknown>)` wrapper around a lightweight analytics call (can use `console.log` as a no-op placeholder initially, or wire to a real provider)
   - Call sites: `apps/web/app/products/[slug]/page.tsx` (product_viewed), `apps/web/store/cart-store.ts` addItem (add_to_cart), `apps/web/app/checkout/page.tsx` step entries (checkout_started, checkout_address_complete, checkout_review_complete), `apps/web/lib/razorpay.ts` onSuccess (payment_success, payment_failed)
@@ -592,7 +602,7 @@ Pick one ticket at a time, starting from the top. Mark it `IN PROGRESS`, impleme
 
 ### S8-T4 — Image delivery with Cloudflare R2 and Next.js Image
 
-- Status: `TODO`
+- Status: `DONE`
 - Files to create / edit:
   - `apps/web/next.config.mjs` — add `images.remotePatterns` for the R2 public domain
   - `apps/web/components/product-image-gallery.tsx` — replace `<img>` with `<Image>` from `next/image`; use `sizes` prop for responsive delivery; keep the gradient placeholder when `product.media` is empty

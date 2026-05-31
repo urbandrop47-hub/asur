@@ -1000,3 +1000,24 @@ header.site-header {
     display: none !important;
   }
 }
+
+/* ─── Checkout mobile ───────────────────────────────────── */
+
+.checkout-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .checkout-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Next/Image fill wrapper ───────────────────────────── */
+
+.img-fill-wrap {
+  position: relative;
+  overflow: hidden;
+}

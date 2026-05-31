@@ -2,6 +2,9 @@ import type { Address, FulfillmentStatus, Order, Payment, PaymentStatus, VendorT
 import type { CreateOrderInput } from "@asur/validations";
 import { hasMongoConnection } from "../config/env";
 import { createId } from "../lib/id";
+import { OrderModel } from "../models/order.model";
+import { PaymentModel } from "../models/payment.model";
+import { VendorTaskModel } from "../models/vendor-task.model";
 import { mockStore } from "./mock-store";
 
 function toOrderNumber() {
@@ -19,16 +22,23 @@ function createLineItems(items: CreateOrderInput["items"]) {
   }));
 }
 
+function stripDoc<T>(doc: unknown): T {
+  const obj = (doc as { toObject?: () => unknown }).toObject?.() ?? doc;
+  const { _id, __v, ...rest } = obj as Record<string, unknown>;
+  void _id; void __v;
+  return rest as T;
+}
+
 export const orderRepository = {
   async create(input: CreateOrderInput & { paymentStatus?: PaymentStatus; fulfillmentStatus?: FulfillmentStatus }) {
     const now = new Date().toISOString();
     const items = createLineItems(input.items);
     const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-    const shipping = subtotal >= 150000 ? 0 : 25000; // free above ₹1500
-    const tax = Math.round(subtotal * 0.18);          // 18% GST
+    const shipping = subtotal >= 150000 ? 0 : 25000;
+    const tax = Math.round(subtotal * 0.18);
     const total = subtotal + shipping + tax;
 
-    const order: Order = {
+    const orderData: Order = {
       id: createId("ord"),
       orderNumber: toOrderNumber(),
       customerId: input.customerId,
@@ -46,22 +56,50 @@ export const orderRepository = {
       updatedAt: now
     };
 
-    if (!hasMongoConnection) {
-      mockStore.orders.push(order);
+    if (hasMongoConnection) {
+      const doc = await OrderModel.create(orderData);
+      return stripDoc<Order>(doc);
     }
-    // MongoDB persistence will be added in S4-T1 when OrderModel is wired up
-    return order;
+
+    mockStore.orders.push(orderData);
+    return orderData;
   },
 
   async listByCustomer(customerId: string) {
+    if (hasMongoConnection) {
+      const docs = await OrderModel.find({ customerId }).sort({ createdAt: -1 }).lean();
+      return docs.map((doc) => {
+        const { _id, __v, ...rest } = doc as Record<string, unknown>;
+        void _id; void __v;
+        return rest as Order;
+      });
+    }
     return mockStore.orders.filter((o) => o.customerId === customerId);
   },
 
   async findById(id: string, customerId: string) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOne({ id, customerId }).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order;
+    }
     return mockStore.orders.find((o) => o.id === id && o.customerId === customerId) ?? null;
   },
 
   async updateStatus(id: string, status: Order["status"]) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOneAndUpdate(
+        { id },
+        { status, updatedAt: new Date().toISOString() },
+        { new: true }
+      ).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order;
+    }
     const order = mockStore.orders.find((o) => o.id === id);
     if (order) {
       order.status = status;
@@ -71,6 +109,17 @@ export const orderRepository = {
   },
 
   async updatePaymentStatus(id: string, paymentStatus: PaymentStatus) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOneAndUpdate(
+        { id },
+        { paymentStatus, updatedAt: new Date().toISOString() },
+        { new: true }
+      ).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order;
+    }
     const order = mockStore.orders.find((o) => o.id === id);
     if (order) {
       order.paymentStatus = paymentStatus;
@@ -80,6 +129,17 @@ export const orderRepository = {
   },
 
   async updateProviderOrderId(id: string, providerOrderId: string) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOneAndUpdate(
+        { id },
+        { providerOrderId },
+        { new: true }
+      ).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order & { providerOrderId?: string };
+    }
     const order = mockStore.orders.find((o) => o.id === id) as (Order & { providerOrderId?: string }) | undefined;
     if (order) {
       order.providerOrderId = providerOrderId;
@@ -88,35 +148,123 @@ export const orderRepository = {
   },
 
   async createVendorTask(orderId: string) {
-    const task: VendorTask = {
+    const taskData: VendorTask = {
       id: createId("task"),
       orderId,
       status: "pending",
       updatedAt: new Date().toISOString()
     };
-    mockStore.vendorTasks.push(task);
-    return task;
+
+    if (hasMongoConnection) {
+      const doc = await VendorTaskModel.create(taskData);
+      return stripDoc<VendorTask>(doc);
+    }
+
+    mockStore.vendorTasks.push(taskData);
+    return taskData;
   },
 
   async ensureVendorTask(orderId: string) {
+    if (hasMongoConnection) {
+      const doc = await VendorTaskModel.findOne({ orderId }).lean();
+      if (doc) {
+        const { _id, __v, ...rest } = doc as Record<string, unknown>;
+        void _id; void __v;
+        return rest as VendorTask;
+      }
+      return this.createVendorTask(orderId);
+    }
     const existing = mockStore.vendorTasks.find((t) => t.orderId === orderId);
     if (!existing) return this.createVendorTask(orderId);
     return existing;
   },
 
-  async createPayment(input: { orderId: string; amount: number; currency: "INR"; providerOrderId?: string }) {
-    const payment: Payment = {
+  async listVendorTasks(vendorId?: string) {
+    if (hasMongoConnection) {
+      const query = vendorId ? { $or: [{ vendorId }, { vendorId: { $exists: false } }] } : {};
+      const docs = await VendorTaskModel.find(query).sort({ updatedAt: -1 }).lean();
+      return docs.map((doc) => {
+        const { _id, __v, ...rest } = doc as Record<string, unknown>;
+        void _id; void __v;
+        return rest as VendorTask;
+      });
+    }
+    const tasks = vendorId
+      ? mockStore.vendorTasks.filter((t) => !t.vendorId || t.vendorId === vendorId)
+      : mockStore.vendorTasks;
+    return [...tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  },
+
+  async findVendorTaskById(id: string) {
+    if (hasMongoConnection) {
+      const doc = await VendorTaskModel.findOne({ id }).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as VendorTask;
+    }
+    return mockStore.vendorTasks.find((t) => t.id === id) ?? null;
+  },
+
+  async updateVendorTask(id: string, updates: Partial<Omit<VendorTask, "id">>) {
+    const now = new Date().toISOString();
+    const patch = { ...updates, updatedAt: now };
+    if (hasMongoConnection) {
+      const doc = await VendorTaskModel.findOneAndUpdate({ id }, patch, { new: true }).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as VendorTask;
+    }
+    const task = mockStore.vendorTasks.find((t) => t.id === id);
+    if (!task) return null;
+    Object.assign(task, patch);
+    return task;
+  },
+
+  async listAll() {
+    if (hasMongoConnection) {
+      const docs = await OrderModel.find({}).sort({ createdAt: -1 }).lean();
+      return docs.map((doc) => {
+        const { _id, __v, ...rest } = doc as Record<string, unknown>;
+        void _id; void __v;
+        return rest as Order;
+      });
+    }
+    return [...mockStore.orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  async findByIdAdmin(id: string) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOne({ id }).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order;
+    }
+    return mockStore.orders.find((o) => o.id === id) ?? null;
+  },
+
+  async createPayment(input: { orderId: string; amount: number; currency: "INR"; providerOrderId?: string; providerPaymentId?: string; status?: Payment["status"] }) {
+    const paymentData: Payment = {
       id: createId("pay"),
       orderId: input.orderId,
       provider: "razorpay",
       providerOrderId: input.providerOrderId,
-      status: "pending",
+      providerPaymentId: input.providerPaymentId,
+      status: input.status ?? "pending",
       amount: input.amount,
       currency: input.currency,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    mockStore.payments.push(payment);
-    return payment;
+
+    if (hasMongoConnection) {
+      const doc = await PaymentModel.create(paymentData);
+      return stripDoc<Payment>(doc);
+    }
+
+    mockStore.payments.push(paymentData);
+    return paymentData;
   }
 };

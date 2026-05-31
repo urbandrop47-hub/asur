@@ -10,6 +10,7 @@
     "test": "echo 'test skipped for @asur/vendor'"
   },
   "dependencies": {
+    "@asur/api-client": "workspace:*",
     "@asur/constants": "workspace:*",
     "@asur/types": "workspace:*",
     "@asur/ui": "workspace:*",
