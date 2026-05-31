@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Script from "next/script";
+import { AppProviders } from "../providers";
+import { SiteFooter } from "../components/site-footer";
+import { SiteHeader } from "../components/site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,7 +22,15 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body suppressHydrationWarning>
+        <AppProviders>
+          <SiteHeader />
+          <main>{children}</main>
+          <SiteFooter />
+        </AppProviders>
+        {/* Razorpay checkout SDK — loaded lazily, only used on /checkout */}
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      </body>
     </html>
   );
 }
