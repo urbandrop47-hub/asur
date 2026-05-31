@@ -23,12 +23,16 @@
     "firebase-admin": "^13.2.0",
     "mongoose": "^8.13.1",
     "razorpay": "^2.9.6",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^3.24.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.1",
     "@types/node": "^22.15.29",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

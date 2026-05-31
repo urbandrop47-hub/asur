@@ -178,6 +178,8 @@ async function main() {
     role: "CUSTOMER",
     addresses: [
       {
+        fullName: "ASUR Customer",
+        phone: "+91 99999 00000",
         line1: "12 Brigade Road",
         city: "Bengaluru",
         state: "Karnataka",
