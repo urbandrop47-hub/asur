@@ -21,7 +21,8 @@ export async function getOrderById(id: string, customerId: string) {
 }
 
 export async function markOrderPaid(orderId: string) {
-  await orderRepository.updateStatus(orderId, "paid");
+  const order = await orderRepository.updateStatus(orderId, "paid");
   await orderRepository.updatePaymentStatus(orderId, "captured");
   await orderRepository.ensureVendorTask(orderId);
+  return order;
 }

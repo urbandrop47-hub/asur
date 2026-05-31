@@ -9,6 +9,7 @@ import { useAuthStore } from "../../store/auth-store";
 import { useCartStore } from "../../store/cart-store";
 import { api } from "../../lib/api";
 import { openRazorpayCheckout, mockRazorpayCheckout } from "../../lib/razorpay";
+import { track } from "../../lib/analytics";
 
 // ─── Step indicator ──────────────────────────────────────────
 
@@ -197,7 +198,7 @@ function AddressStep({
       )}
 
       <div style={{ display: "grid", gap: "1rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div className="checkout-grid-2">
           <div>
             <label style={labelStyle}>Full name *</label>
             <input style={inputStyle} type="text" autoComplete="name" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} placeholder="Rahul Sharma" />
@@ -221,7 +222,7 @@ function AddressStep({
           <input style={inputStyle} type="text" autoComplete="address-line2" value={form.line2} onChange={(e) => set("line2", e.target.value)} placeholder="Apartment, suite, floor…" />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div className="checkout-grid-2">
           <div>
             <label style={labelStyle}>City *</label>
             <input style={inputStyle} type="text" autoComplete="address-level2" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Bengaluru" />
@@ -363,11 +364,12 @@ export default function CheckoutPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Auth guard
+  // Auth guard + checkout_started event
   useEffect(() => {
     if (!mounted) return;
-    if (!session) router.replace("/auth?next=/checkout");
-  }, [mounted, session, router]);
+    if (!session) { router.replace("/auth?next=/checkout"); return; }
+    track("checkout_started", { itemCount: cartItems.length });
+  }, [mounted, session, router, cartItems.length]);
 
   // Load saved addresses
   useEffect(() => {
@@ -499,6 +501,7 @@ export default function CheckoutPage() {
         <AddressStep
           savedAddresses={savedAddresses}
           onConfirm={(addr) => {
+            track("checkout_address_complete");
             setAddress(addr);
             setStep(2);
           }}
@@ -510,6 +513,7 @@ export default function CheckoutPage() {
           address={address}
           onBack={() => setStep(1)}
           onConfirm={() => {
+            track("checkout_review_complete");
             setStep(3);
             handlePayment(address);
           }}

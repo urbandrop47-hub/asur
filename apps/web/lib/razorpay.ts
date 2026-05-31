@@ -1,3 +1,5 @@
+import { track } from "./analytics";
+
 declare global {
   interface Window {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,13 +47,21 @@ export function openRazorpayCheckout(opts: OpenRazorpayOptions): void {
     },
     theme: { color: "#f97316" },
     modal: {
-      ondismiss: opts.onDismiss
+      ondismiss: () => {
+        track("payment_failed", { orderId: opts.orderId, reason: "dismissed" });
+        opts.onDismiss();
+      }
     },
     handler: (response: {
       razorpay_order_id: string;
       razorpay_payment_id: string;
       razorpay_signature: string;
     }) => {
+      track("payment_success", {
+        orderId: opts.orderId,
+        providerOrderId: response.razorpay_order_id,
+        providerPaymentId: response.razorpay_payment_id
+      });
       opts.onSuccess({
         razorpay_order_id: response.razorpay_order_id,
         razorpay_payment_id: response.razorpay_payment_id,

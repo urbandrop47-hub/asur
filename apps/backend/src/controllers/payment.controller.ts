@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
-import { captureMockPayment, createRazorpayOrder, verifyPaymentSignature } from "../services/payment.service";
+import { capturePayment, createRazorpayOrder, verifyPaymentSignature } from "../services/payment.service";
 import { paymentCreateOrderSchema, paymentVerificationSchema } from "../validators/payment.validators";
 import { markOrderPaid } from "../services/order.service";
 
@@ -88,9 +88,14 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
     return;
   }
 
-  // Mark order paid and create vendor task
-  await markOrderPaid(payload.orderId);
+  const order = await markOrderPaid(payload.orderId);
 
-  const captured = await captureMockPayment(payload.orderId, 0);
-  sendSuccess(res, { ...captured, orderId: payload.orderId }, "Payment verified");
+  const captured = await capturePayment({
+    orderId: payload.orderId,
+    amount: order?.total ?? 0,
+    providerOrderId: payload.razorpayOrderId,
+    providerPaymentId: payload.razorpayPaymentId
+  });
+
+  sendSuccess(res, { order, payment: captured.payment }, "Payment verified");
 });

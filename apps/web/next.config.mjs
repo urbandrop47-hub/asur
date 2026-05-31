@@ -10,7 +10,36 @@ const nextConfig = {
     "@asur/types",
     "@asur/ui",
     "@asur/utils"
-  ]
+  ],
+  images: {
+    remotePatterns: [
+      // Cloudflare R2 public bucket (set R2_PUBLIC_URL in .env to enable)
+      {
+        protocol: "https",
+        hostname: "*.r2.dev"
+      },
+      {
+        protocol: "https",
+        hostname: "*.r2.cloudflarestorage.com"
+      },
+      // Allow any custom R2 / CDN hostname via env var at build time
+      ...(process.env.R2_PUBLIC_URL
+        ? (() => {
+            try {
+              const u = new URL(process.env.R2_PUBLIC_URL);
+              return [{ protocol: /** @type {"https"} */ ("https"), hostname: u.hostname }];
+            } catch {
+              return [];
+            }
+          })()
+        : []),
+      // Unsplash — used by the seed product images in dev
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com"
+      }
+    ]
+  }
 };
 
 export default nextConfig;

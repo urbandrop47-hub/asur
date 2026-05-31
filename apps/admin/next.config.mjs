@@ -4,7 +4,7 @@ const nextConfig = {
   experimental: {
     externalDir: true
   },
-  transpilePackages: ["@asur/constants", "@asur/types", "@asur/ui", "@asur/utils"]
+  transpilePackages: ["@asur/api-client", "@asur/constants", "@asur/types", "@asur/ui", "@asur/utils"]
 };
 
 export default nextConfig;
