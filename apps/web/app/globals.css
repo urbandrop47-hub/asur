@@ -255,6 +255,7 @@ header.site-header {
   display: inline-flex;
   align-items: center;
 }
+.pcard-cart:active, .pcard-cart.added { background: var(--accent); color: var(--void); border-color: var(--accent); }
 
 .cart-badge {
   position: absolute;
@@ -272,6 +273,42 @@ header.site-header {
   justify-content: center;
   padding: 0 4px;
 }
+.fsheet.open { transform: none; }
+.fsheet-grab { width: 40px; height: 4px; border-radius: 999px; background: var(--hair-2); margin: 10px auto 0; }
+.fsheet-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--hair); }
+.fsheet-title { font-family: var(--f-mono); font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone); font-weight: 700; }
+.fsheet-title em { font-style: normal; color: var(--accent); }
+.fsheet-body { padding: 6px 18px 12px; overflow-y: auto; }
+.fgroup { padding: 20px 0; border-bottom: 1px solid var(--hair); }
+.fgroup:last-child { border-bottom: none; }
+.fgroup-h { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-d); font-weight: 600; margin-bottom: 16px; display: flex; align-items: baseline; gap: 10px; }
+.fgroup-note { font-size: 9px; letter-spacing: 0.14em; color: var(--bone-q); }
+.fchips { display: flex; flex-wrap: wrap; gap: 8px; }
+.fchip { display: inline-flex; align-items: center; gap: 8px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--bone-d); border: 1px solid var(--hair-2); padding: 10px 13px; border-radius: 999px; }
+.fchip .sw { width: 9px; height: 9px; border-radius: 999px; }
+.fchip.on { background: var(--bone); color: var(--void); border-color: var(--bone); font-weight: 600; }
+.fseg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--hair-2); border-radius: var(--r-sm); overflow: hidden; }
+.fseg-b { padding: 14px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bone-d); border-right: 1px solid var(--hair-2); }
+.fseg-b:last-child { border-right: none; }
+.fseg-b.on { background: var(--accent); color: var(--void); font-weight: 700; }
+.frow { width: 100%; display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--bone); padding: 4px 0; }
+.fswitch { width: 46px; height: 26px; border-radius: 999px; background: var(--ash-3); position: relative; transition: background 0.2s ease; flex: 0 0 auto; }
+.fswitch i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 999px; background: var(--bone-d); transition: transform 0.2s ease, background 0.2s ease; }
+.frow.on .fswitch { background: var(--accent); }
+.frow.on .fswitch i { transform: translateX(20px); background: var(--void); }
+.frange { padding-top: 2px; }
+.frange-track { position: relative; height: 26px; }
+.frange-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 3px; transform: translateY(-50%); background: var(--ash-3); border-radius: 999px; }
+.frange-fill { position: absolute; top: 50%; height: 3px; transform: translateY(-50%); background: var(--accent); border-radius: 999px; }
+.frange-track input[type="range"] { position: absolute; left: 0; top: 0; width: 100%; height: 26px; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.frange-track input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; pointer-events: auto; width: 22px; height: 22px; border-radius: 999px; background: var(--bone); border: 3px solid var(--void); box-shadow: 0 0 0 1px var(--hair-2); cursor: pointer; }
+.frange-track input[type="range"]::-moz-range-thumb { pointer-events: auto; width: 22px; height: 22px; border-radius: 999px; background: var(--bone); border: 3px solid var(--void); cursor: pointer; }
+.frange-vals { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-family: var(--f-display); font-size: 22px; color: var(--bone); letter-spacing: 0.02em; }
+.frange-vals .dash { color: var(--bone-q); font-size: 16px; }
+.fsheet-foot { display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 14px 18px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--hair-2); background: var(--void); }
+.fsheet-clear { padding: 16px 18px; border: 1px solid var(--hair-2); border-radius: 999px; font-family: var(--f-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--bone-d); }
+.fsheet-clear:active { color: var(--accent); border-color: var(--accent); }
+.fsheet-apply { padding: 16px; background: var(--accent); color: var(--void); border-radius: 999px; font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
 
 /* Hamburger */
 .hamburger {
