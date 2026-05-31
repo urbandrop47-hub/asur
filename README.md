@@ -107,6 +107,59 @@ Notes:
 - Railway (or any other server host) must hold the server-side secrets. The backend's `env.ts` loads `.env` files locally and otherwise reads `process.env` in production.
 - For local development you can place env files at repository root or under `apps/backend/` — `apps/backend/src/config/env.ts` already looks for both locations.
 
+## Vercel per-app deployments (monorepo guidance)
+
+This repository is a Turborepo monorepo with multiple Next.js apps. The safest way to deploy to Vercel is to create one Vercel Project per app and point each project at the app's folder as the "Root Directory". This avoids cross-app `.next` path conflicts and keeps environment variables isolated.
+
+Recommended Vercel Projects and settings:
+
+- Project: asur-web (customer storefront)
+  - Root Directory: `apps/web`
+  - Build Command: leave blank (Vercel auto-detects Next) or use `pnpm -C apps/web build`
+  - Install Command: `pnpm install --no-frozen-lockfile`
+  - Output Directory: leave blank for Next.js
+  - Env: add `NEXT_PUBLIC_*` frontend variables (see Key Environment Variables)
+
+- Project: asur-admin (admin dashboard)
+  - Root Directory: `apps/admin`
+  - Build Command: leave blank or `pnpm -C apps/admin build`
+  - Install Command: `pnpm install --no-frozen-lockfile`
+  - Output Directory: leave blank
+  - Env: any NEXT_PUBLIC_* keys the admin app needs
+
+- Project: asur-vendor (vendor dashboard)
+  - Root Directory: `apps/vendor`
+  - Build Command: leave blank or `pnpm -C apps/vendor build`
+  - Install Command: `pnpm install --no-frozen-lockfile`
+  - Output Directory: leave blank
+  - Env: any NEXT_PUBLIC_* keys the vendor app needs
+
+Notes and alternatives:
+- If you previously used a root-level `vercel.json` with `outputDirectory` pointing at `apps/web/.next`, remove or avoid that — it causes other app builds to search for `apps/web/.next` and fail during CI. Per-app `vercel.json` files (added under each app folder) are a safer pattern.
+- We added `apps/web/vercel.json` and `apps/admin/vercel.json` in this repo so you can keep repo-driven build commands. If you use the Vercel dashboard settings, those per-app files are optional.
+- For Turborepo caching, ensure `turbo.json` includes `.next/**` outputs; this repo already lists `.next/**` and app-specific outputs like `apps/web/.next/**`.
+
+
+### Quick Vercel project creation checklist (copy-paste)
+
+Use this when creating a new Vercel Project. Set the "Root Directory" to the app folder and paste the commands below where applicable.
+
+- asur-web (customer storefront)
+  - Root Directory: `apps/web`
+  - Install Command: `pnpm install --no-frozen-lockfile`
+  - Build Command: leave blank or `pnpm -C apps/web build`
+
+- asur-admin (admin dashboard)
+  - Root Directory: `apps/admin`
+  - Install Command: `pnpm install --no-frozen-lockfile`
+  - Build Command: leave blank or `pnpm -C apps/admin build`
+
+- asur-vendor (vendor dashboard)
+  - Root Directory: `apps/vendor`
+  - Install Command: `pnpm install --no-frozen-lockfile`
+  - Build Command: leave blank or `pnpm -C apps/vendor build`
+
+
 ## What the current scaffold covers
 
 - Next.js storefront pages for products, cart, checkout, orders, auth, collections, and account
