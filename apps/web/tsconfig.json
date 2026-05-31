@@ -8,7 +8,11 @@
     ],
     "jsx": "preserve",
     "incremental": true,
-    "module": "esnext"
+    "module": "esnext",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": [
     "next-env.d.ts",
