@@ -138,16 +138,18 @@ export const adminAccessModelSchema = z.object({
   rules: z.array(adminAccessRuleSchema).min(1)
 });
 
+// amount is no longer sent by the client — the server derives it from order.total
 export const paymentCreateOrderSchema = z.object({
-  orderId: z.string().min(1),
-  amount: z.number().nonnegative()
+  orderId: z.string().min(1)
 });
 
 export const cartItemSchema = z.object({
   productId: z.string().min(1),
   variantSku: z.string().min(1),
   quantity: z.number().int().positive(),
-  unitPrice: z.number().nonnegative()
+  unitPrice: z.number().nonnegative(),
+  // Server-side only: set from the product catalogue, never trusted from client.
+  productTitle: z.string().optional()
 });
 
 // customerId is injected server-side from the authenticated session —

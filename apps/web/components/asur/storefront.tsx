@@ -10,7 +10,7 @@ import {
 import { PatternDefs } from './patterns';
 import { ProductCard } from './product-card';
 import { NavDrawer, CartDrawer } from './drawers';
-import { FilterSheet } from './filter-sheet';
+// FilterSheet removed from legacy storefront — use /products page for real filter UX
 import { ProductDetail } from './product-detail';
 import { Checkout } from './checkout';
 import { ShopFooter } from './shop-footer';
@@ -172,13 +172,7 @@ export function Storefront() {
         onCheckout={openCheckout}
         onOpen={(p) => { setCartOpen(false); openPdp(p); }}
       />
-      <FilterSheet
-        open={filterOpen}
-        onClose={() => setFilterOpen(false)}
-        value={filters}
-        onChange={setFilters}
-        resultCount={products.length}
-      />
+      {/* Filter sheet removed — see /products for real filter UX */}
 
       {/* PDP overlay */}
       {view === 'pdp' && activeProduct && (

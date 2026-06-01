@@ -18,7 +18,7 @@ function toOrderNumber() {
 function createLineItems(items: CreateOrderInput["items"]) {
   return items.map((item) => ({
     productId: item.productId,
-    title: item.variantSku,
+    title: item.productTitle ?? item.variantSku,
     variantSku: item.variantSku,
     quantity: item.quantity,
     unitPrice: item.unitPrice,

@@ -142,7 +142,9 @@ export const cartItemSchema = z.object({
   productId: z.string().min(1),
   variantSku: z.string().min(1),
   quantity: z.number().int().positive(),
-  unitPrice: z.number().nonnegative()
+  unitPrice: z.number().nonnegative(),
+  // Server-side only: set from the product catalogue, never trusted from client.
+  productTitle: z.string().optional()
 });
 
 // Server-side schema — includes customerId (injected from session, never trusted from request body).
@@ -152,9 +154,10 @@ export const createOrderSchema = z.object({
   shippingAddress: addressSchema
 });
 
+// amount is intentionally omitted — the server derives it from order.total
+// to prevent clients from submitting a tampered (e.g. 1 paise) amount.
 export const paymentCreateOrderSchema = z.object({
-  orderId: z.string().min(1),
-  amount: z.number().nonnegative()
+  orderId: z.string().min(1)
 });
 
 export const paymentVerificationSchema = z.object({

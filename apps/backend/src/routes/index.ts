@@ -5,7 +5,9 @@ import { authRouter } from "./auth.routes";
 import { ordersRouter } from "./orders.routes";
 import { paymentsRouter } from "./payments.routes";
 import { productsRouter } from "./products.routes";
+import { reviewsRouter } from "./reviews.routes";
 import { vendorRouter } from "./vendor.routes";
+import { wishlistRouter } from "./wishlist.routes";
 
 export const apiRouter: Router = Router();
 
@@ -14,4 +16,6 @@ apiRouter.use(`${API_BASE_PATH}/admin`, adminRouter);
 apiRouter.use(`${API_BASE_PATH}/products`, productsRouter);
 apiRouter.use(`${API_BASE_PATH}/orders`, ordersRouter);
 apiRouter.use(`${API_BASE_PATH}/payments`, paymentsRouter);
+apiRouter.use(`${API_BASE_PATH}/reviews`, reviewsRouter);
 apiRouter.use(`${API_BASE_PATH}/vendor`, vendorRouter);
+apiRouter.use(`${API_BASE_PATH}/wishlist`, wishlistRouter);

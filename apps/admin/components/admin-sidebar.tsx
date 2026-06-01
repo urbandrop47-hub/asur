@@ -9,7 +9,8 @@ import { clearAdminToken, readAdminToken, saveAdminToken } from "../lib/auth-sto
 const NAV = [
   { href: "/", label: "Dashboard", icon: "⬡" },
   { href: "/products", label: "Products", icon: "◈" },
-  { href: "/orders", label: "Orders", icon: "◫" }
+  { href: "/orders", label: "Orders", icon: "◫" },
+  { href: "/reviews", label: "Reviews", icon: "★" }
 ];
 
 function LoginScreen({ onSave }: { onSave: () => void }) {

@@ -4,6 +4,8 @@ import type { VendorTask } from "@asur/types";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
 import { orderRepository } from "../repositories/order.repository";
+import { userRepository } from "../repositories/user.repository";
+import { sendShippingUpdateEmail } from "../services/email.service";
 
 // Status transitions: each key can move to any value in its array
 const TRANSITIONS: Record<VendorTask["status"], VendorTask["status"][]> = {
@@ -55,8 +57,9 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
     return;
   }
 
-  // Vendors may only update tasks assigned to them; admins/super-admins may update any
-  if (user.role === "VENDOR" && task.vendorId && task.vendorId !== user.id) {
+  // Vendors may only update tasks explicitly assigned to them.
+  // Unassigned tasks (vendorId = null/undefined) are admin-only until assigned.
+  if (user.role === "VENDOR" && task.vendorId !== user.id) {
     res.status(403).json({ success: false, message: "Access denied" });
     return;
   }
@@ -100,9 +103,23 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
 
   const updated = await orderRepository.updateVendorTask(id, updates);
 
-  // When completed, update the parent order's fulfillmentStatus (not order status)
+  // When completed, advance both the order status and the fulfillmentStatus so
+  // customers and admins see the shipment reflected everywhere.
   if (body.status === "completed" && updated) {
     await orderRepository.updateFulfillmentStatus(updated.orderId, "shipped");
+    await orderRepository.updateStatus(updated.orderId, "shipped");
+
+    // Fire-and-forget shipping email — never breaks the vendor flow on failure
+    void (async () => {
+      const order = await orderRepository.findByIdAdmin(updated.orderId);
+      if (!order) return;
+      const customer = await userRepository.findById(order.customerId);
+      const customerEmail = customer?.email ?? "";
+      const customerName = customer?.name ?? "there";
+      if (customerEmail) {
+        await sendShippingUpdateEmail(order, updated, customerEmail, customerName);
+      }
+    })();
   }
 
   sendSuccess(res, updated, "Task updated");

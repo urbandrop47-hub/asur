@@ -16,11 +16,20 @@ export function readStoredSession(): AuthSession | null {
     return null;
   }
 
+  let session: AuthSession;
   try {
-    return JSON.parse(raw) as AuthSession;
+    session = JSON.parse(raw) as AuthSession;
   } catch {
     return null;
   }
+
+  // Evict sessions whose accessToken has already expired (Firebase tokens live ~1 hour).
+  if (session.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()) {
+    clearStoredSession();
+    return null;
+  }
+
+  return session;
 }
 
 export function readStoredAuthToken(): string | null {

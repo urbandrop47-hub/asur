@@ -6,6 +6,8 @@ import { capturePayment, createRazorpayOrder, verifyPaymentSignature } from "../
 import { paymentCreateOrderSchema, paymentVerificationSchema } from "../validators/payment.validators";
 import { markOrderPaid } from "../services/order.service";
 import { orderRepository } from "../repositories/order.repository";
+import { userRepository } from "../repositories/user.repository";
+import { sendPaymentReceiptEmail } from "../services/email.service";
 
 /**
  * @swagger
@@ -46,8 +48,8 @@ import { orderRepository } from "../repositories/order.repository";
  *                   type: string
  */
 export const createPaymentOrderController: RequestHandler = asyncHandler(async (req, res) => {
-  const { orderId, amount } = paymentCreateOrderSchema.parse(req.body);
-  const requestingUserId = res.locals.user?.id as string | undefined;
+  const { orderId } = paymentCreateOrderSchema.parse(req.body);
+  const requestingUserId = res.locals.user.id as string;
 
   // Ownership: only the order's owner may create a Razorpay payment intent for it
   const existingOrder = await orderRepository.findByIdAdmin(orderId) as (Order & { providerOrderId?: string }) | null;
@@ -55,12 +57,15 @@ export const createPaymentOrderController: RequestHandler = asyncHandler(async (
     res.status(404).json({ success: false, message: "Order not found" });
     return;
   }
-  if (requestingUserId && existingOrder.customerId !== requestingUserId) {
+  if (existingOrder.customerId !== requestingUserId) {
     res.status(403).json({ success: false, message: "Access denied" });
     return;
   }
 
-  const providerOrder = await createRazorpayOrder({ orderId, amount, currency: "INR" });
+  // Always derive the Razorpay amount from the server-computed order total — never
+  // trust the client-supplied amount, which could be tampered to pay ₹0.01.
+  const amountPaise = Math.round((existingOrder.total ?? 0) * 100);
+  const providerOrder = await createRazorpayOrder({ orderId, amount: amountPaise, currency: "INR" });
   sendSuccess(res, providerOrder, "Payment order created");
 });
 
@@ -100,7 +105,7 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
   // Look up the order and verify the razorpayOrderId matches what we stored.
   // This prevents a replay attack where an attacker reuses a valid signature
   // from their own paid order to mark a different order as paid.
-  const requestingUserId = res.locals.user?.id as string | undefined;
+  const requestingUserId = res.locals.user.id as string;
 
   const order = await orderRepository.findByIdAdmin(payload.orderId) as (Order & { providerOrderId?: string }) | null;
   if (!order) {
@@ -109,18 +114,27 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
   }
 
   // Ownership: only the customer who placed this order may verify its payment
-  if (requestingUserId && order.customerId !== requestingUserId) {
+  if (order.customerId !== requestingUserId) {
     res.status(403).json({ success: false, message: "Access denied" });
     return;
   }
 
-  if (order.providerOrderId && order.providerOrderId !== payload.razorpayOrderId) {
+  // The Razorpay order must have been created for this ASUR order first.
+  // An absent providerOrderId means payment was never initiated — reject immediately
+  // to prevent replay of a valid signature from a different order.
+  if (!order.providerOrderId) {
+    res.status(400).json({ success: false, message: "Payment has not been initiated for this order" });
+    return;
+  }
+  if (order.providerOrderId !== payload.razorpayOrderId) {
     res.status(400).json({ success: false, message: "Payment order ID mismatch" });
     return;
   }
 
-  // Idempotent: already verified
-  if (order.status === "paid") {
+  // Idempotent: only skip if BOTH the order status and paymentStatus are fully
+  // settled. If status=paid but paymentStatus is still pending (i.e. markOrderPaid
+  // succeeded but capturePayment threw on the first call), fall through and retry.
+  if (order.status === "paid" && order.paymentStatus === "captured") {
     sendSuccess(res, { order }, "Payment already verified");
     return;
   }
@@ -142,6 +156,18 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
     providerOrderId: payload.razorpayOrderId,
     providerPaymentId: payload.razorpayPaymentId
   });
+
+  // Fire-and-forget receipt — a failed email must never surface as a payment error
+  if (paidOrder) {
+    void (async () => {
+      const customer = await userRepository.findById(order.customerId);
+      const customerEmail = customer?.email ?? "";
+      const customerName = customer?.name ?? "there";
+      if (customerEmail) {
+        await sendPaymentReceiptEmail(paidOrder, captured.payment, customerEmail, customerName);
+      }
+    })();
+  }
 
   sendSuccess(res, { order: paidOrder, payment: captured.payment }, "Payment verified");
 });

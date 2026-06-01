@@ -28,10 +28,10 @@ Prepared June 2026 · 10 Sprints · 60 Tasks
 
 | Sprint | Title | Theme | Duration | Tasks | Status |
 |--------|-------|-------|----------|-------|--------|
-| S9 | Transactional Email Notifications | Trust | 1 week | 6 | TODO |
-| S10 | Search, Filtering & Discovery | Conversion | 1.5 weeks | 6 | TODO |
-| S11 | SEO, Metadata & Structured Data | Growth | 1 week | 6 | TODO |
-| S12 | Product Reviews & Social Proof | Trust | 1.5 weeks | 6 | TODO |
+| S9 | Transactional Email Notifications | Trust | 1 week | 6 | DONE |
+| S10 | Search, Filtering & Discovery | Conversion | 1.5 weeks | 6 | DONE |
+| S11 | SEO, Metadata & Structured Data | Growth | 1 week | 6 | DONE |
+| S12 | Product Reviews & Social Proof | Trust | 1.5 weeks | 6 | DONE |
 | S13 | Wishlist & Save for Later | Retention | 1 week | 6 | TODO |
 | S14 | Real-Time Inventory & Stock Management | Operations | 1 week | 6 | TODO |
 | S15 | Discount Codes & Promotions | Growth | 1.5 weeks | 6 | TODO |
@@ -67,7 +67,7 @@ The sprints are ordered by **customer impact × risk**. Sprints 9–11 unblock t
 | **Theme** | Trust |
 | **Duration** | 1 week |
 | **Tasks** | 6 |
-| **Status** | TODO |
+| **Status** | DONE |
 
 ### Goal
 
@@ -84,12 +84,12 @@ Every customer-facing event (order placed, payment confirmed, shipped) sends a r
 
 | Task ID | Description | Status | Effort | Owner |
 |---------|-------------|--------|--------|-------|
-| S9-T1 | Set up Resend API + email service module at `apps/backend/src/services/email.service.ts` | TODO | S | Backend |
-| S9-T2 | Order confirmation email: HTML template with order number, items, total, address | TODO | M | Backend |
-| S9-T3 | Payment confirmed email: receipt with Razorpay payment ID and amount | TODO | S | Backend |
-| S9-T4 | Shipping update email: triggered when vendor marks task completed, includes tracking ID and courier | TODO | M | Backend |
-| S9-T5 | Admin new-order notification: internal email to ops when a paid order arrives | TODO | S | Backend |
-| S9-T6 | Email queue: wrap sends in try/catch so a failed email never breaks the payment or order flow | TODO | S | Backend |
+| S9-T1 | Set up Resend API + email service module at `apps/backend/src/services/email.service.ts` | DONE | S | Backend |
+| S9-T2 | Order confirmation email: HTML template with order number, items, total, address | DONE | M | Backend |
+| S9-T3 | Payment confirmed email: receipt with Razorpay payment ID and amount | DONE | S | Backend |
+| S9-T4 | Shipping update email: triggered when vendor marks task completed, includes tracking ID and courier | DONE | M | Backend |
+| S9-T5 | Admin new-order notification: internal email to ops when a paid order arrives | DONE | S | Backend |
+| S9-T6 | Email queue: wrap sends in try/catch so a failed email never breaks the payment or order flow | DONE | S | Backend |
 
 ### Acceptance Criteria
 
@@ -116,7 +116,7 @@ Every customer-facing event (order placed, payment confirmed, shipped) sends a r
 | **Theme** | Conversion |
 | **Duration** | 1.5 weeks |
 | **Tasks** | 6 |
-| **Status** | TODO |
+| **Status** | DONE |
 
 ### Goal
 
@@ -132,12 +132,12 @@ Customers browsing 10+ products need to find what they want. A store with no sea
 
 | Task ID | Description | Status | Effort | Owner |
 |---------|-------------|--------|--------|-------|
-| S10-T1 | Backend: add full-text search to `GET /api/v1/products?q=` using MongoDB `$text` index on title + description | TODO | M | Backend |
-| S10-T2 | Backend: add filter params to product list — category, fit, inStock, minPrice, maxPrice, size, color | TODO | M | Backend |
-| S10-T3 | Backend: add sort param — newest, price_asc, price_desc, popularity | TODO | S | Backend |
-| S10-T4 | Web: search bar in site header — expands inline on desktop, full-screen overlay on mobile | TODO | L | Frontend |
-| S10-T5 | Web: filter sheet on products page — category, size, color, price range, in-stock toggle | TODO | M | Frontend |
-| S10-T6 | Web: active filter chips below header showing applied filters with individual remove buttons | TODO | S | Frontend |
+| S10-T1 | Backend: add full-text search to `GET /api/v1/products?q=` using MongoDB `$text` index on title + description | DONE | M | Backend |
+| S10-T2 | Backend: add filter params to product list — category, fit, inStock, minPrice, maxPrice, size, color | DONE | M | Backend |
+| S10-T3 | Backend: add sort param — newest, price_asc, price_desc, popularity | DONE | S | Backend |
+| S10-T4 | Web: search bar in site header — expands inline on desktop, full-screen overlay on mobile | DONE | L | Frontend |
+| S10-T5 | Web: filter sheet on products page — category, size, color, price range, in-stock toggle | DONE | M | Frontend |
+| S10-T6 | Web: active filter chips below header showing applied filters with individual remove buttons | DONE | S | Frontend |
 
 ### Acceptance Criteria
 
@@ -165,7 +165,7 @@ Customers browsing 10+ products need to find what they want. A store with no sea
 | **Theme** | Growth |
 | **Duration** | 1 week |
 | **Tasks** | 6 |
-| **Status** | TODO |
+| **Status** | DONE |
 
 ### Goal
 
@@ -182,12 +182,12 @@ Every page title is "ASUR — Neither Divine. Nor Damned." Product pages have no
 
 | Task ID | Description | Status | Effort | Owner |
 |---------|-------------|--------|--------|-------|
-| S11-T1 | Split all `"use client"` pages into a server wrapper + client child so `generateMetadata` can be exported | TODO | L | Frontend |
-| S11-T2 | Product detail: `generateMetadata` with title, description, OG image (`product.media[0].url`), price, availability | TODO | M | Frontend |
-| S11-T3 | Products listing: static metadata + collection-level metadata for `/collections/[slug]` | TODO | S | Frontend |
-| S11-T4 | JSON-LD: Product schema on PDP with name, image, price, currency, availability, brand | TODO | M | Frontend |
-| S11-T5 | Sitemap.xml: route at `/sitemap.xml` listing all active product slugs fetched from backend | TODO | M | Frontend |
-| S11-T6 | `robots.txt` + canonical URLs + hreflang (en-IN) + 404 page with proper metadata | TODO | S | Frontend |
+| S11-T1 | Split all `"use client"` pages into a server wrapper + client child so `generateMetadata` can be exported | DONE | L | Frontend |
+| S11-T2 | Product detail: `generateMetadata` with title, description, OG image (`product.media[0].url`), price, availability | DONE | M | Frontend |
+| S11-T3 | Products listing: static metadata + collection-level metadata for `/collections/[slug]` | DONE | S | Frontend |
+| S11-T4 | JSON-LD: Product schema on PDP with name, image, price, currency, availability, brand | DONE | M | Frontend |
+| S11-T5 | Sitemap.xml: route at `/sitemap.xml` listing all active product slugs fetched from backend | DONE | M | Frontend |
+| S11-T6 | `robots.txt` + canonical URLs + hreflang (en-IN) + 404 page with proper metadata | DONE | S | Frontend |
 
 ### Acceptance Criteria
 
@@ -230,12 +230,12 @@ No reviews means no trust. Real stores show verified-purchase ratings on every p
 
 | Task ID | Description | Status | Effort | Owner |
 |---------|-------------|--------|--------|-------|
-| S12-T1 | Backend: Review Mongoose model (`orderId`, `customerId`, `productId`, `rating` 1–5, `body`, `verified`, `createdAt`) | TODO | M | Backend |
-| S12-T2 | Backend: `POST /api/v1/reviews` — authenticated, validates that `customerId` has a paid+delivered order for the `productId` | TODO | M | Backend |
-| S12-T3 | Backend: `GET /api/v1/products/:slug/reviews` — paginated, sorted by newest; includes aggregate rating + count | TODO | S | Backend |
-| S12-T4 | Admin: review moderation panel — approve/reject reviews; only approved reviews show publicly | TODO | M | Admin |
-| S12-T5 | Web PDP: star rating display + review count; scrollable review list below the fold | TODO | M | Frontend |
-| S12-T6 | Web: post-delivery review prompt — shown on order detail page when status is `delivered`; links to review form | TODO | S | Frontend |
+| S12-T1 | Backend: Review Mongoose model (`orderId`, `customerId`, `productId`, `rating` 1–5, `body`, `verified`, `createdAt`) | DONE | M | Backend |
+| S12-T2 | Backend: `POST /api/v1/reviews` — authenticated, validates that `customerId` has a paid+delivered order for the `productId` | DONE | M | Backend |
+| S12-T3 | Backend: `GET /api/v1/products/:slug/reviews` — paginated, sorted by newest; includes aggregate rating + count | DONE | S | Backend |
+| S12-T4 | Admin: review moderation panel — approve/reject reviews; only approved reviews show publicly | DONE | M | Admin |
+| S12-T5 | Web PDP: star rating display + review count; scrollable review list below the fold | DONE | M | Frontend |
+| S12-T6 | Web: post-delivery review prompt — shown on order detail page when status is `delivered`; links to review form | DONE | S | Frontend |
 
 ### Acceptance Criteria
 

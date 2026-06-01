@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
+import { HeartButton } from "./heart-button";
 
 export function ProductCard({ product }: { product: Product }) {
   const lowestPrice = product.variants.length > 0
@@ -71,6 +72,11 @@ export function ProductCard({ product }: { product: Product }) {
               </span>
             </div>
           )}
+
+          {/* Wishlist heart */}
+          <div style={{ position: "absolute", top: 10, left: 10, zIndex: 2 }}>
+            <HeartButton product={product} size={16} />
+          </div>
 
           {/* Low-stock badge */}
           {isLowStock && !isSoldOut && (

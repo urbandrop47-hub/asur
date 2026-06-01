@@ -247,11 +247,12 @@ export type VendorTask = {
 
 export type Review = {
   id: ID;
+  orderId: ID;
+  customerId: ID;
   productId: ID;
-  userId: ID;
   rating: number;
-  title?: string;
-  comment?: string;
+  body: string;
+  approved: boolean;
   createdAt: string;
 };
 
