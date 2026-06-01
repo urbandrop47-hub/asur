@@ -1,4 +1,22 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Collections — ASUR",
+  description: "Explore ASUR drop collections — limited runs, each with a story. Void Season, Black Mirror, and more.",
+  alternates: {
+    canonical: "https://asur.in/collections",
+    languages: { "en-IN": "https://asur.in/collections" },
+  },
+  openGraph: {
+    title: "Collections — ASUR",
+    description: "Limited-run drop collections from ASUR. New season, new lore.",
+    url: "https://asur.in/collections",
+    siteName: "ASUR",
+    type: "website",
+  },
+  twitter: { card: "summary", title: "Collections — ASUR" },
+};
 
 type Collection = {
   slug: string;

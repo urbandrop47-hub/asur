@@ -117,6 +117,13 @@ export const listAddressesController: RequestHandler = asyncHandler(async (_req,
 export const saveAddressController: RequestHandler = asyncHandler(async (req, res) => {
   const user = res.locals.user;
   const address = addressSchema.parse(req.body);
+
+  const profile = await userRepository.findByFirebaseUid(user.firebaseUid);
+  if ((profile?.addresses?.length ?? 0) >= 10) {
+    res.status(400).json({ success: false, message: "You can save up to 10 addresses. Remove one before adding another." });
+    return;
+  }
+
   const updated = await userRepository.saveAddress(user.firebaseUid, address);
   sendSuccess(res, updated, "Address saved");
 });

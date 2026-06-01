@@ -48,4 +48,7 @@ const productSchema = new Schema<Product>(
   { versionKey: false }
 );
 
+// Full-text search index for S10 search feature
+productSchema.index({ title: "text", description: "text", tags: "text" }, { weights: { title: 10, tags: 5, description: 1 } });
+
 export const ProductModel = models.Product ?? model<Product>("Product", productSchema);

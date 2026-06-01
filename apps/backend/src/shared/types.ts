@@ -174,10 +174,27 @@ export type VendorTask = {
   updatedAt: string;
 };
 
+export type Review = {
+  id: string;
+  orderId: string;
+  customerId: string;
+  productId: string;
+  rating: number;
+  body: string;
+  approved: boolean;
+  createdAt: string;
+};
+
 export type AuthSession = {
   sessionId: ID;
   provider: "firebase";
   accessToken: string;
   expiresAt: string;
   user: UserProfile;
+};
+
+export type WishlistItem = {
+  customerId: ID;
+  productId: ID;
+  addedAt: string;
 };

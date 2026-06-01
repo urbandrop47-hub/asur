@@ -69,11 +69,16 @@ export const listAdminInvitesController: RequestHandler = asyncHandler(async (_r
 
 export const createAdminInviteController: RequestHandler = asyncHandler(async (req, res) => {
   const payload = createAdminInviteRequestSchema.parse(req.body);
-  const invite = await createAdminInvite({
-    ...payload,
-    createdBy: res.locals.adminUser?.id ?? payload.createdBy
-  });
-  sendSuccess(res, invite, "Admin invite created", 201);
+  try {
+    const invite = await createAdminInvite({
+      ...payload,
+      createdBy: res.locals.adminUser?.id ?? payload.createdBy
+    });
+    sendSuccess(res, invite, "Admin invite created", 201);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to create invite";
+    res.status(409).json({ success: false, message: msg });
+  }
 });
 
 export const acceptAdminInviteController: RequestHandler = asyncHandler(async (req, res) => {
@@ -99,7 +104,7 @@ export const acceptAdminInviteController: RequestHandler = asyncHandler(async (r
 // ─── Product controllers ──────────────────────────────────────
 
 export const listAdminProductsController: RequestHandler = asyncHandler(async (_req, res) => {
-  const products = await productRepository.list();
+  const products = await productRepository.list(false); // admins see all statuses
   const withSummary = (products ?? []).map((p) => ({
     ...p,
     variantCount: p.variants.length,
@@ -155,8 +160,12 @@ export const updateAdminProductController: RequestHandler = asyncHandler(async (
     ...body,
     updatedAt: new Date().toISOString()
   };
-  if (body.title && !body.slug) {
-    updates.slug = slugify(body.title);
+  // Only derive a slug from the title when the caller explicitly provides a new
+  // title but no slug — never overwrite an existing custom slug silently.
+  if (body.slug) {
+    updates.slug = slugify(body.slug);
+  } else if (body.title) {
+    // Leave the existing slug unchanged; admin must pass slug explicitly to rename it.
   }
   const updated = await productRepository.update(id, updates);
   if (!updated) {

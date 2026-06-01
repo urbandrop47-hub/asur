@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   EmailAuthProvider,
@@ -50,6 +50,9 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
   const [mode, setMode] = useState<"sign-in" | "create-account">("sign-in");
   const [providers, setProviders] = useState<string[]>([]);
   const [pendingLink, setPendingLink] = useState<PendingLink | null>(null);
+  // Ref mirrors state so the onAuthStateChanged callback always sees the latest
+  // value without needing to re-register the listener on every setPendingLink call.
+  const pendingLinkRef = useRef<PendingLink | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [showForgot, setShowForgot] = useState(false);
@@ -58,8 +61,12 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
     if (!firebaseAuth?.currentUser) return;
     const user = firebaseAuth.currentUser;
     try {
-      if (pendingLink) {
-        await linkWithCredential(user, pendingLink.credential);
+      // Read from ref — the state closure captured at effect-registration time
+      // may be stale when onAuthStateChanged fires after setPendingLink was called.
+      const link = pendingLinkRef.current;
+      if (link) {
+        await linkWithCredential(user, link.credential);
+        pendingLinkRef.current = null;
         setPendingLink(null);
       }
       setProviders(user.providerData.map((p) => p.providerId));
@@ -104,7 +111,9 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
           error as Parameters<typeof GoogleAuthProvider.credentialFromError>[0]
         );
         if (pendingCredential) {
-          setPendingLink({ provider: "google", credential: pendingCredential, email: emailForAccount || undefined });
+          const pl: PendingLink = { provider: "google", credential: pendingCredential, email: emailForAccount || undefined };
+          pendingLinkRef.current = pl;
+          setPendingLink(pl);
           if (emailForAccount) {
             setEmail(emailForAccount);
             try {
@@ -153,7 +162,9 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
         try {
           const methods = await fetchSignInMethodsForEmail(firebaseAuth, email.trim());
           if (methods.includes("google.com")) {
-            setPendingLink({ provider: "password", credential: EmailAuthProvider.credential(email.trim(), password), email: email.trim() });
+            const pl: PendingLink = { provider: "password", credential: EmailAuthProvider.credential(email.trim(), password), email: email.trim() };
+            pendingLinkRef.current = pl;
+            setPendingLink(pl);
             setMessage("An account exists for this email. Sign in with Google and we'll link your password automatically.");
             return;
           }

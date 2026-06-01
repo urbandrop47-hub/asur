@@ -14,6 +14,7 @@ import {
   listAdminProductsController,
   updateAdminProductController
 } from "../controllers/admin.controller";
+import { listAdminReviewsController, moderateReviewController } from "../controllers/review.controller";
 
 export const adminRouter: ExpressRouter = Router();
 
@@ -33,3 +34,7 @@ adminRouter.delete("/products/:id", adminOnlyMiddleware, deleteAdminProductContr
 // Order monitoring
 adminRouter.get("/orders", adminOnlyMiddleware, listAdminOrdersController);
 adminRouter.get("/orders/:id", adminOnlyMiddleware, getAdminOrderController);
+
+// Review moderation
+adminRouter.get("/reviews", adminOnlyMiddleware, listAdminReviewsController);
+adminRouter.patch("/reviews/:id", adminOnlyMiddleware, moderateReviewController);

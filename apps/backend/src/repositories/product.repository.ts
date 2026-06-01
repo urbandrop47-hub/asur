@@ -1,14 +1,106 @@
+import type { FilterQuery } from "mongoose";
 import type { Product } from "@asur/types";
 import { hasMongoConnection } from "../config/env";
 import { ProductModel } from "../models/product.model";
 import { mockStore } from "./mock-store";
 
+export type ProductSearchParams = {
+  q?: string;
+  category?: string;
+  fit?: string;
+  size?: string;
+  color?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  sort?: "newest" | "price_asc" | "price_desc" | "popularity";
+  collection?: string;
+};
+
 export const productRepository = {
-  async list() {
+  async list(onlyActive = true) {
     if (hasMongoConnection) {
-      return ProductModel.find().sort({ updatedAt: -1 }).lean<Product[]>().exec();
+      const filter = onlyActive ? { status: "active" } : {};
+      return ProductModel.find(filter).sort({ updatedAt: -1 }).lean<Product[]>().exec();
+    }
+    if (onlyActive) {
+      return mockStore.products.filter((p) => p.status === "active");
     }
     return mockStore.products;
+  },
+
+  async search(params: ProductSearchParams) {
+    if (hasMongoConnection) {
+      const filter: FilterQuery<Product> = { status: "active" };
+
+      if (params.q) {
+        filter.$text = { $search: params.q };
+      }
+      if (params.category) {
+        filter.category = params.category;
+      }
+      if (params.fit) {
+        filter.fit = params.fit;
+      }
+      if (params.collection) {
+        filter.collectionSlugs = params.collection;
+      }
+
+      // Variant-level filters — all conditions must match the same variant
+      const variantMatch: Record<string, unknown> = {};
+      if (params.size) variantMatch.size = params.size;
+      if (params.color) variantMatch.color = { $regex: new RegExp(`^${params.color}$`, "i") };
+      if (params.inStock) variantMatch.stock = { $gt: 0 };
+      if (params.minPrice !== undefined || params.maxPrice !== undefined) {
+        const priceFilter: Record<string, number> = {};
+        if (params.minPrice !== undefined) priceFilter.$gte = params.minPrice;
+        if (params.maxPrice !== undefined) priceFilter.$lte = params.maxPrice;
+        variantMatch.price = priceFilter;
+      }
+      if (Object.keys(variantMatch).length > 0) {
+        filter.variants = { $elemMatch: variantMatch };
+      }
+
+      // Price sorts need aggregation to compute min variant price
+      if (params.sort === "price_asc" || params.sort === "price_desc") {
+        const docs = await ProductModel.aggregate([
+          { $match: filter },
+          { $addFields: { _minPrice: { $min: "$variants.price" } } },
+          { $sort: { _minPrice: params.sort === "price_asc" ? 1 : -1 } },
+          { $project: { _minPrice: 0 } }
+        ]).exec();
+        return docs as Product[];
+      }
+
+      // Text-score sort when a query is present, otherwise newest
+      if (params.q) {
+        return ProductModel.find(filter)
+          .sort({ score: { $meta: "textScore" }, updatedAt: -1 })
+          .lean<Product[]>()
+          .exec();
+      }
+      return ProductModel.find(filter).sort({ updatedAt: -1 }).lean<Product[]>().exec();
+    }
+
+    // Mock fallback — basic filtering in memory
+    let result = mockStore.products.filter((p) => p.status === "active");
+    if (params.q) {
+      const q = params.q.toLowerCase();
+      result = result.filter(
+        (p) => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.tags.some((t) => t.toLowerCase().includes(q))
+      );
+    }
+    if (params.category) result = result.filter((p) => p.category === params.category);
+    if (params.fit) result = result.filter((p) => p.fit === params.fit);
+    if (params.collection) result = result.filter((p) => p.collectionSlugs?.includes(params.collection!));
+    if (params.inStock) result = result.filter((p) => p.variants.some((v) => v.stock > 0));
+    if (params.size) result = result.filter((p) => p.variants.some((v) => v.size === params.size));
+    if (params.color) result = result.filter((p) => p.variants.some((v) => v.color.toLowerCase() === params.color!.toLowerCase()));
+    if (params.minPrice !== undefined) result = result.filter((p) => p.variants.some((v) => v.price >= params.minPrice!));
+    if (params.maxPrice !== undefined) result = result.filter((p) => p.variants.some((v) => v.price <= params.maxPrice!));
+    if (params.sort === "price_asc") result.sort((a, b) => Math.min(...a.variants.map((v) => v.price)) - Math.min(...b.variants.map((v) => v.price)));
+    if (params.sort === "price_desc") result.sort((a, b) => Math.min(...b.variants.map((v) => v.price)) - Math.min(...a.variants.map((v) => v.price)));
+    return result;
   },
 
   async findBySlug(slug: string) {
@@ -42,6 +134,21 @@ export const productRepository = {
     if (!product) return null;
     Object.assign(product, updates);
     return product;
+  },
+
+  /** Atomically decrement a specific variant's stock by `quantity`.
+   *  The $elemMatch filter prevents stock from going negative under concurrent orders. */
+  async decrementVariantStock(productId: string, sku: string, quantity: number): Promise<void> {
+    if (hasMongoConnection) {
+      await ProductModel.updateOne(
+        { id: productId, variants: { $elemMatch: { sku, stock: { $gte: quantity } } } },
+        { $inc: { "variants.$.stock": -quantity } }
+      );
+      return;
+    }
+    const product = mockStore.products.find((p) => p.id === productId);
+    const variant = product?.variants.find((v) => v.sku === sku);
+    if (variant) variant.stock = Math.max(0, variant.stock - quantity);
   },
 
   async deleteById(id: string): Promise<boolean> {

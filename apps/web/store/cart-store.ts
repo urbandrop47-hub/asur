@@ -13,6 +13,7 @@ export type CartLineItem = CartItem & {
   imageUrl?: string;
   size: string;
   color: string;
+  maxStock?: number; // snapshot of variant stock at add-time, used to cap the + button
 };
 
 type CartState = {
@@ -56,9 +57,11 @@ export const useCartStore = create<CartState>()(
           items:
             quantity <= 0
               ? state.items.filter((i) => i.variantSku !== variantSku)
-              : state.items.map((i) =>
-                  i.variantSku === variantSku ? { ...i, quantity } : i
-                ),
+              : state.items.map((i) => {
+                  if (i.variantSku !== variantSku) return i;
+                  const capped = i.maxStock != null ? Math.min(quantity, i.maxStock) : quantity;
+                  return { ...i, quantity: capped };
+                }),
         })),
 
       removeItem: (variantSku) =>

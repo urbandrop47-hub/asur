@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Order } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
+import { useAuthStore } from "../../../../store/auth-store";
 import { api } from "../../../../lib/api";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -28,17 +29,26 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function OrderConfirmationPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const { session, hydrated } = useAuthStore();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    if (!hydrated) return;
+    if (!session) {
+      router.replace(`/auth?next=/orders/${id}/confirmation`);
+      return;
+    }
     if (!id) return;
     api.get<{ data: Order }>(`/api/v1/orders/${id}`)
       .then((r) => setOrder(r.data))
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, session, hydrated, router]);
+
+  if (!hydrated || !session) return null;
 
   if (loading) {
     return (

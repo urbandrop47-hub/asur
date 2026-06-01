@@ -54,6 +54,17 @@ export const adminRepository = {
   },
 
   async createInvite(input: CreateAdminInviteInput) {
+    const normalizedEmail = input.email.toLowerCase();
+
+    // Reject if a pending invite already exists for this email — prevents orphaned tokens.
+    const existing = hasMongoConnection
+      ? await AdminInviteModel.findOne({ email: normalizedEmail, status: "pending" }).lean<AdminInvite>().exec()
+      : mockStore.adminInvites.find((i) => i.email === normalizedEmail && i.status === "pending") ?? null;
+
+    if (existing) {
+      throw new Error(`A pending invite already exists for ${normalizedEmail}. Revoke it before creating a new one.`);
+    }
+
     const now = new Date().toISOString();
     const invite: AdminInvite = {
       id: createId("ainv"),
@@ -78,6 +89,13 @@ export const adminRepository = {
       : mockStore.adminInvites.find((item) => item.token === input.token) ?? null;
 
     if (!invite || invite.status !== "pending" || new Date(invite.expiresAt).getTime() < Date.now()) {
+      return null;
+    }
+
+    // The accepting identity must have the same email as the invite.
+    // Phone-only Firebase accounts have no email — reject them outright rather
+    // than silently bypassing the check (which the old `input.email &&` guard did).
+    if (!input.email || input.email.toLowerCase() !== invite.email.toLowerCase()) {
       return null;
     }
 

@@ -235,6 +235,43 @@ export default function OrderDetailPage() {
         </p>
       </div>
 
+      {/* Post-delivery review prompt */}
+      {(order.status === "delivered" || order.status === "shipped") && (
+        <div style={{
+          border: "1px solid rgba(249,115,22,0.25)", borderRadius: 16, padding: "1.1rem 1.25rem",
+          background: "rgba(249,115,22,0.06)",
+          animation: "fadeInUp 0.35s ease both",
+        }}>
+          <p style={{ margin: "0 0 0.35rem", fontWeight: 700, fontSize: "0.92rem" }}>
+            {order.status === "delivered" ? "How was your order?" : "Almost there — share your thoughts?"}
+          </p>
+          <p style={{ margin: "0 0 0.85rem", fontSize: "0.83rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+            {order.status === "delivered"
+              ? "Your ASUR drop has arrived. Leave a review to help other customers."
+              : "Your order is on its way. You can review once it arrives."}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            {order.items.map((item) => (
+              <Link
+                key={item.variantSku}
+                href={`/products/${item.variantSku.split("-").slice(0, -2).join("-") || "?"}`}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "0.4rem",
+                  padding: "0.45rem 0.9rem", borderRadius: 999, fontSize: "0.8rem", fontWeight: 600,
+                  border: "1px solid rgba(249,115,22,0.35)", color: "var(--accent)",
+                  background: "rgba(249,115,22,0.08)", textDecoration: "none",
+                }}
+              >
+                Review {item.title}
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <Link
         href="/products"

@@ -6,9 +6,33 @@ import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
 import "./globals.css";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://asur.in";
+
 export const metadata: Metadata = {
-  title: "ASUR — Neither Divine. Nor Damned.",
-  description: "Premium streetwear. Single price. No restock. No apology.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "ASUR — Neither Divine. Nor Damned.",
+    template: "%s — ASUR",
+  },
+  description: "Premium Indian streetwear. Single price. No restock. No apology.",
+  alternates: {
+    canonical: SITE_URL,
+    languages: { "en-IN": SITE_URL },
+  },
+  openGraph: {
+    siteName: "ASUR",
+    type: "website",
+    locale: "en_IN",
+  },
+  twitter: {
+    site: "@wearASUR",
+    creator: "@wearASUR",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

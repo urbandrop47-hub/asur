@@ -17,8 +17,10 @@ export default function CartPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const shipping = subtotal > 0 ? (subtotal >= 150000 ? 0 : 25000) : 0;
-  const total = subtotal + shipping;
+  // Same rupee-unit thresholds as checkout page and backend repository
+  const shipping = subtotal > 0 ? (subtotal >= 1500 ? 0 : 250) : 0;
+  const tax = subtotal > 0 ? Math.round(subtotal * 0.18) : 0;
+  const total = subtotal + shipping + tax;
 
   if (!mounted) {
     return (
@@ -200,9 +202,13 @@ export default function CartPage() {
           </div>
           {shipping > 0 && (
             <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
-              Free shipping on orders above {formatCurrency(150000)}
+              Free shipping on orders above {formatCurrency(1500)}
             </p>
           )}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+            <span style={{ color: "var(--text-muted)" }}>GST (18%)</span>
+            <span>{formatCurrency(tax)}</span>
+          </div>
           <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "0.25rem 0" }} />
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "1rem" }}>
             <span>Total</span>

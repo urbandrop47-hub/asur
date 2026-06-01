@@ -26,6 +26,13 @@ function applyRole(profile: UserProfile, role: UserRole): UserProfile {
 }
 
 export const userRepository = {
+  async findById(id: string) {
+    if (hasMongoConnection) {
+      return UserModel.findOne({ id }).lean<UserProfile>().exec();
+    }
+    return mockStore.users.find((user) => user.id === id) ?? null;
+  },
+
   async findByFirebaseUid(firebaseUid: string) {
     if (hasMongoConnection) {
       return UserModel.findOne({ firebaseUid }).lean<UserProfile>().exec();
