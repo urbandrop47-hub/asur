@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Product } from "@asur/types";
 import { ProductCard } from "../../components/product-card";
@@ -24,6 +24,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>("all");
 
   useEffect(() => {
     api
@@ -33,20 +34,67 @@ export default function ProductsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const categories = useMemo(() => {
+    const cats = [...new Set(products.map((p) => p.category))].sort();
+    return cats;
+  }, [products]);
+
+  const filtered = useMemo(() => {
+    if (activeCategory === "all") return products;
+    return products.filter((p) => p.category === activeCategory);
+  }, [products, activeCategory]);
+
+  const activeCount = loading ? null : filtered.length;
+
   return (
     <div className="stack">
-      <div className="section-title">
-        <div>
-          <h1>All Products</h1>
-          <p style={{ margin: "0.35rem 0 0", color: "var(--text-muted)", fontSize: "0.95rem" }}>
-            {loading ? "Loading…" : error ? "" : `${products.length} item${products.length !== 1 ? "s" : ""}`}
-          </p>
+      {/* ── Hero strip ── */}
+      <div className="products-hero">
+        <div className="products-hero-eyebrow">
+          <span>●</span> All Products
         </div>
-        <Link href="/cart" className="badge">
-          View cart
-        </Link>
+        <h1>
+          The<br />
+          <span style={{
+            background: "linear-gradient(135deg, #f97316, #fb7185)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}>
+            Collection
+          </span>
+        </h1>
+        <p className="products-hero-sub">
+          {loading
+            ? "Loading the latest drops…"
+            : error
+              ? ""
+              : `${products.length} piece${products.length !== 1 ? "s" : ""} · hand-picked for the culture`}
+        </p>
+
+        {/* Category filter pills */}
+        {!loading && !error && categories.length > 0 && (
+          <div className="filter-pills">
+            <button
+              className={`filter-pill${activeCategory === "all" ? " active" : ""}`}
+              onClick={() => setActiveCategory("all")}
+            >
+              All ({products.length})
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                className={`filter-pill${activeCategory === cat ? " active" : ""}`}
+                onClick={() => setActiveCategory(cat)}
+              >
+                {cat} ({products.filter((p) => p.category === cat).length})
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* ── Error banner ── */}
       {error && (
         <div className="error-banner">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
@@ -57,21 +105,44 @@ export default function ProductsPage() {
         </div>
       )}
 
+      {/* ── Product grid ── */}
       <div className="grid-3">
         {loading
           ? Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={i} />)
-          : products.map((product) => (
-              <ProductCard key={product.slug} product={product} />
+          : filtered.map((product, i) => (
+              <div
+                key={product.slug}
+                className="animate-in"
+                style={{ animationDelay: `${Math.min(i * 0.06, 0.5)}s` }}
+              >
+                <ProductCard product={product} />
+              </div>
             ))}
       </div>
 
+      {/* ── Filter: no results ── */}
+      {!loading && !error && filtered.length === 0 && activeCategory !== "all" && (
+        <div className="empty-state">
+          <p>No products in &ldquo;{activeCategory}&rdquo;.</p>
+          <button className="filter-pill active" onClick={() => setActiveCategory("all")}>
+            Show all →
+          </button>
+        </div>
+      )}
+
+      {/* ── Truly empty ── */}
       {!loading && !error && products.length === 0 && (
         <div className="empty-state">
           <p>No products found. Add some from the admin panel.</p>
-          <Link href="/" className="badge">
-            Go home
-          </Link>
+          <Link href="/" className="badge">Go home</Link>
         </div>
+      )}
+
+      {/* ── Results count (when filtered) ── */}
+      {!loading && !error && activeCategory !== "all" && activeCount !== null && activeCount > 0 && (
+        <p style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.82rem", marginTop: "0.5rem" }}>
+          Showing {activeCount} of {products.length} products
+        </p>
       )}
     </div>
   );

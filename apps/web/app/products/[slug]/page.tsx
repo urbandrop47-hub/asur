@@ -25,7 +25,6 @@ export default function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const addItem = useCartStore((s) => s.addItem);
 
   useEffect(() => {
@@ -33,9 +32,8 @@ export default function ProductDetailPage() {
     api
       .get<{ data: Product | null }>(`/api/v1/products/${slug}`)
       .then((res) => {
-        if (!res.data) {
-          setNotFound(true);
-        } else {
+        if (!res.data) { setNotFound(true); }
+        else {
           setProduct(res.data);
           track("product_viewed", { id: res.data.id, slug: res.data.slug, title: res.data.title });
         }
@@ -46,14 +44,15 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="pdp-layout">
+      <div className="pdp-layout" style={{ animation: "fadeIn 0.4s ease both" }}>
         <div className="skeleton skeleton-image" style={{ aspectRatio: "4/5", borderRadius: 24 }} />
-        <div style={{ display: "grid", gap: "1rem" }}>
+        <div style={{ display: "grid", gap: "1.2rem" }}>
           <div className="skeleton skeleton-line-sm" />
-          <div className="skeleton skeleton-line" style={{ height: 40 }} />
+          <div className="skeleton skeleton-line" style={{ height: 44 }} />
           <div className="skeleton skeleton-line" style={{ width: "40%", height: 32 }} />
           <div className="skeleton skeleton-line" />
           <div className="skeleton skeleton-line" style={{ width: "80%" }} />
+          <div className="skeleton skeleton-line" style={{ height: 50, borderRadius: 999, marginTop: 8 }} />
         </div>
       </div>
     );
@@ -64,9 +63,7 @@ export default function ProductDetailPage() {
       <div className="empty-state" style={{ marginTop: "4rem" }}>
         <h2>Product not found</h2>
         <p>This product doesn&apos;t exist or has been removed.</p>
-        <Link href="/products" className="badge">
-          Back to products
-        </Link>
+        <Link href="/products" className="badge">Back to products</Link>
       </div>
     );
   }
@@ -80,34 +77,44 @@ export default function ProductDetailPage() {
       : null;
 
   const variantStock = selectedVariant ? selectedVariant.stock : null;
-  const displayPrice =
-    selectedVariant
-      ? selectedVariant.price
-      : Math.min(...product.variants.map((v) => v.price));
+  const displayPrice = selectedVariant
+    ? selectedVariant.price
+    : Math.min(...product.variants.map((v) => v.price));
+  const comparePrice = selectedVariant?.compareAtPrice
+    ?? (product.variants.every((v) => v.compareAtPrice)
+      ? Math.min(...product.variants.map((v) => v.compareAtPrice!))
+      : undefined);
 
   const stockInfo = variantStock !== null ? stockLabel(variantStock) : null;
+  const canAddToCart = !!selectedVariant && variantStock !== 0;
 
   function isComboAvailable(size: string, color: string) {
     return product!.variants.some((v) => v.size === size && v.color === color && v.stock > 0);
   }
 
+  const pickerBtn = (selected: boolean, available: boolean): React.CSSProperties => ({
+    minWidth: 52, minHeight: 44, padding: "0.45rem 0.9rem", borderRadius: 10,
+    border: selected ? "2px solid var(--accent)" : "1px solid rgba(255,255,255,0.14)",
+    background: selected ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.04)",
+    color: available ? "var(--text)" : "rgba(246,241,234,0.25)",
+    fontWeight: selected ? 700 : 500, fontSize: "0.88rem",
+    cursor: available ? "pointer" : "not-allowed",
+    textDecoration: available ? "none" : "line-through",
+    transition: "border-color 150ms ease, background 150ms ease, transform 100ms ease",
+    transform: selected ? "scale(1.04)" : "scale(1)",
+  });
+
   return (
-    <div>
+    <div style={{ animation: "fadeInUp 0.45s cubic-bezier(0.22,1,0.36,1) both" }}>
       {/* Breadcrumb */}
-      <nav
-        style={{
-          display: "flex",
-          gap: "0.5rem",
-          alignItems: "center",
-          marginBottom: "1.5rem",
-          color: "var(--text-muted)",
-          fontSize: "0.83rem",
-        }}
-      >
-        <Link href="/products" style={{ textDecoration: "none", color: "inherit" }}>
+      <nav style={{
+        display: "flex", gap: "0.5rem", alignItems: "center",
+        marginBottom: "1.75rem", color: "var(--text-muted)", fontSize: "0.82rem",
+      }}>
+        <Link href="/products" style={{ textDecoration: "none", color: "inherit", transition: "color 140ms" }}>
           Products
         </Link>
-        <span>/</span>
+        <span style={{ opacity: 0.4 }}>/</span>
         <span style={{ color: "var(--text)" }}>{product.title}</span>
       </nav>
 
@@ -117,87 +124,69 @@ export default function ProductDetailPage() {
           <ProductImageGallery media={product.media} title={product.title} />
         </div>
 
-        {/* Info */}
+        {/* Info panel */}
         <div className="pdp-info">
           {/* Badges */}
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <span
-              style={{
-                padding: "0.3rem 0.75rem",
-                borderRadius: 999,
-                background: "rgba(59,130,246,0.12)",
-                color: "#bfdbfe",
-                fontSize: "0.72rem",
-                fontWeight: 600,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
+          <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+            <span style={{
+              padding: "0.28rem 0.7rem", borderRadius: 999,
+              background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.2)",
+              color: "#bfdbfe", fontSize: "0.7rem", fontWeight: 600,
+              letterSpacing: "0.08em", textTransform: "uppercase",
+            }}>
               {product.category}
             </span>
             {product.drop && (
-              <span
-                style={{
-                  padding: "0.3rem 0.75rem",
-                  borderRadius: 999,
-                  background: "rgba(249,115,22,0.12)",
-                  color: "#fed7aa",
-                  fontSize: "0.72rem",
-                  fontWeight: 600,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                }}
-              >
+              <span style={{
+                padding: "0.28rem 0.7rem", borderRadius: 999,
+                background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)",
+                color: "#fed7aa", fontSize: "0.7rem", fontWeight: 600,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+              }}>
                 {product.drop.name}
               </span>
             )}
             {product.fit && (
-              <span
-                style={{
-                  padding: "0.3rem 0.75rem",
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,0.06)",
-                  color: "var(--text-muted)",
-                  fontSize: "0.72rem",
-                  fontWeight: 600,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                }}
-              >
+              <span style={{
+                padding: "0.28rem 0.7rem", borderRadius: 999,
+                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+                color: "var(--text-muted)", fontSize: "0.7rem", fontWeight: 600,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+              }}>
                 {product.fit}
               </span>
             )}
           </div>
 
+          {/* Title + description */}
           <div>
-            <h1
-              style={{
-                margin: "0 0 0.5rem",
-                fontSize: "clamp(1.5rem, 3vw, 2rem)",
-                fontWeight: 800,
-                lineHeight: 1.2,
-              }}
-            >
+            <h1 style={{ margin: "0 0 0.6rem", fontSize: "clamp(1.5rem, 3vw, 2.1rem)", fontWeight: 800, lineHeight: 1.15 }}>
               {product.title}
             </h1>
-            <p style={{ margin: 0, color: "var(--text-muted)", lineHeight: 1.7, fontSize: "0.95rem" }}>
+            <p style={{ margin: 0, color: "var(--text-muted)", lineHeight: 1.7, fontSize: "0.93rem" }}>
               {product.description}
             </p>
           </div>
 
           {/* Price + stock */}
           <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-            <span className="pdp-price">
-              {product.variants.length > 1 && !selectedVariant ? "from " : ""}
-              {formatCurrency(displayPrice)}
-            </span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
+              <span className="pdp-price">
+                {product.variants.length > 1 && !selectedVariant ? "from " : ""}
+                {formatCurrency(displayPrice)}
+              </span>
+              {comparePrice && comparePrice > displayPrice && (
+                <s style={{ fontSize: "1rem", color: "var(--text-muted)", fontWeight: 400 }}>
+                  {formatCurrency(comparePrice)}
+                </s>
+              )}
+            </div>
             {stockInfo && (
               <span className="pdp-stock">
-                <span
-                  className="pdp-stock-dot"
-                  style={{ background: stockInfo.color }}
-                />
-                <span style={{ color: stockInfo.color, fontSize: "0.82rem" }}>{stockInfo.text}</span>
+                <span className="pdp-stock-dot" style={{ background: stockInfo.color }} />
+                <span style={{ color: stockInfo.color, fontSize: "0.82rem", fontWeight: 600 }}>
+                  {stockInfo.text}
+                </span>
               </span>
             )}
           </div>
@@ -207,19 +196,13 @@ export default function ProductDetailPage() {
           {/* Size picker */}
           {sizes.length > 0 && (
             <div>
-              <p
-                style={{
-                  margin: "0 0 0.65rem",
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                Size{selectedSize && <span style={{ color: "var(--text)" }}> — {selectedSize}</span>}
+              <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Size
+                {selectedSize
+                  ? <span style={{ color: "var(--text)", marginLeft: "0.4rem" }}>— {selectedSize}</span>
+                  : <span style={{ color: "rgba(246,241,234,0.35)", marginLeft: "0.4rem", fontWeight: 400 }}>— select one</span>}
               </p>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
                 {sizes.map((size) => {
                   const available = selectedColor
                     ? isComboAvailable(size, selectedColor)
@@ -230,24 +213,7 @@ export default function ProductDetailPage() {
                       key={size}
                       onClick={() => setSelectedSize(selected ? null : size)}
                       disabled={!available}
-                      style={{
-                        minWidth: 52,
-                        minHeight: 44,
-                        padding: "0.4rem 0.8rem",
-                        borderRadius: 10,
-                        border: selected
-                          ? "2px solid var(--accent)"
-                          : "1px solid rgba(255,255,255,0.14)",
-                        background: selected
-                          ? "rgba(249,115,22,0.1)"
-                          : "rgba(255,255,255,0.04)",
-                        color: available ? "var(--text)" : "rgba(246,241,234,0.3)",
-                        fontWeight: 600,
-                        fontSize: "0.88rem",
-                        cursor: available ? "pointer" : "not-allowed",
-                        textDecoration: available ? "none" : "line-through",
-                        transition: "border-color 140ms ease, background 140ms ease",
-                      }}
+                      style={pickerBtn(selected, available)}
                     >
                       {size}
                     </button>
@@ -260,19 +226,13 @@ export default function ProductDetailPage() {
           {/* Color picker */}
           {colors.length > 0 && (
             <div>
-              <p
-                style={{
-                  margin: "0 0 0.65rem",
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                Color{selectedColor && <span style={{ color: "var(--text)" }}> — {selectedColor}</span>}
+              <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Color
+                {selectedColor
+                  ? <span style={{ color: "var(--text)", marginLeft: "0.4rem" }}>— {selectedColor}</span>
+                  : <span style={{ color: "rgba(246,241,234,0.35)", marginLeft: "0.4rem", fontWeight: 400 }}>— select one</span>}
               </p>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
                 {colors.map((color) => {
                   const available = selectedSize
                     ? isComboAvailable(selectedSize, color)
@@ -283,23 +243,7 @@ export default function ProductDetailPage() {
                       key={color}
                       onClick={() => setSelectedColor(selected ? null : color)}
                       disabled={!available}
-                      style={{
-                        minHeight: 44,
-                        padding: "0.4rem 1rem",
-                        borderRadius: 10,
-                        border: selected
-                          ? "2px solid var(--accent)"
-                          : "1px solid rgba(255,255,255,0.14)",
-                        background: selected
-                          ? "rgba(249,115,22,0.1)"
-                          : "rgba(255,255,255,0.04)",
-                        color: available ? "var(--text)" : "rgba(246,241,234,0.3)",
-                        fontWeight: 500,
-                        fontSize: "0.88rem",
-                        cursor: available ? "pointer" : "not-allowed",
-                        textDecoration: available ? "none" : "line-through",
-                        transition: "border-color 140ms ease, background 140ms ease",
-                      }}
+                      style={pickerBtn(selected, available)}
                     >
                       {color}
                     </button>
@@ -309,32 +253,34 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          {/* SKU info */}
+          {/* SKU chip */}
           {selectedVariant && (
-            <div
-              style={{
-                padding: "0.75rem 1rem",
-                borderRadius: 12,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                fontSize: "0.82rem",
-                color: "var(--text-muted)",
-              }}
-            >
-              SKU:{" "}
-              <span style={{ color: "var(--text)", fontFamily: "monospace" }}>
-                {selectedVariant.sku}
-              </span>
+            <div style={{
+              padding: "0.6rem 0.9rem", borderRadius: 10,
+              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+              fontSize: "0.8rem", color: "var(--text-muted)",
+              animation: "fadeInUp 0.25s ease both",
+            }}>
+              SKU: <span style={{ color: "var(--text)", fontFamily: "var(--f-mono)", letterSpacing: "0.04em" }}>{selectedVariant.sku}</span>
             </div>
           )}
 
           <hr className="pdp-divider" />
 
-          {/* Add to cart CTA */}
+          {/* Add to cart */}
           <button
             className="btn-full btn-primary"
-            disabled={!selectedVariant || variantStock === 0}
-            style={{ fontSize: "1rem" }}
+            disabled={!canAddToCart}
+            style={{
+              fontSize: "1rem",
+              background: added
+                ? "rgba(34,197,94,0.85)"
+                : canAddToCart
+                  ? "linear-gradient(135deg, #f97316, #fb7185)"
+                  : "rgba(255,255,255,0.07)",
+              color: canAddToCart || added ? "#130f0b" : "var(--text-muted)",
+              transition: "background 300ms ease, transform 120ms ease",
+            }}
             onClick={() => {
               if (!selectedVariant || !product) return;
               addItem({
@@ -362,18 +308,15 @@ export default function ProductDetailPage() {
                   : "Add to cart"}
           </button>
 
+          {/* View cart link */}
           {added && (
             <Link
               href="/cart"
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--accent)",
-                fontSize: "0.88rem",
-                fontWeight: 600,
-                textDecoration: "none",
-                gap: 6,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "var(--accent)", fontSize: "0.88rem", fontWeight: 600,
+                textDecoration: "none", gap: 6,
+                animation: "fadeInUp 0.3s ease both",
               }}
             >
               View cart
@@ -383,26 +326,35 @@ export default function ProductDetailPage() {
             </Link>
           )}
 
+          {/* Delivery info strip */}
+          <div style={{
+            display: "flex", gap: "1rem", flexWrap: "wrap",
+            padding: "0.85rem 1rem", borderRadius: 12,
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+          }}>
+            {[
+              { icon: "🚚", text: "Free shipping ₹1,500+" },
+              { icon: "↩️", text: "Easy returns" },
+              { icon: "🔒", text: "Secure checkout" },
+            ].map(({ icon, text }) => (
+              <span key={text} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                <span aria-hidden="true">{icon}</span> {text}
+              </span>
+            ))}
+          </div>
+
+          {/* Back link */}
           <Link
             href="/products"
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--text-muted)",
-              fontSize: "0.85rem",
-              textDecoration: "none",
-              gap: 6,
+              display: "inline-flex", alignItems: "center",
+              color: "var(--text-muted)", fontSize: "0.83rem",
+              textDecoration: "none", gap: 5,
+              transition: "color 140ms ease",
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path
-                d="M9 2L4 7l5 5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Back to all products
           </Link>
