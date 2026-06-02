@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Typecheck & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck packages
+        run: pnpm --filter @asur/types --filter @asur/constants --filter @asur/utils --filter @asur/validations build
+
+      - name: Typecheck backend
+        run: pnpm -C apps/backend build
+
+      - name: Typecheck web
+        run: pnpm -C apps/web build
+        env:
+          # Dummy values so Next.js env validation passes in CI
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+          NEXT_PUBLIC_FIREBASE_API_KEY: ci
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ci.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ci
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ci.appspot.com
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "000000000000"
+          NEXT_PUBLIC_FIREBASE_APP_ID: 1:000000000000:web:ci
+
+      - name: Typecheck admin
+        run: pnpm -C apps/admin build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+          NEXT_PUBLIC_FIREBASE_API_KEY: ci
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ci.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ci
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ci.appspot.com
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "000000000000"
+          NEXT_PUBLIC_FIREBASE_APP_ID: 1:000000000000:web:ci

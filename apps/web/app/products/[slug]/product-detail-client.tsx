@@ -14,6 +14,80 @@ import { HeartButton } from "../../../components/heart-button";
 
 type ReviewAggregate = { averageRating: number; count: number };
 
+// ─── Back-in-stock notification form ────────────────────────────────────────
+function BackInStockForm({ productId, variantSku }: { productId: string; variantSku: string }) {
+  const { session } = useAuthStore();
+  const [email, setEmail] = useState(session?.user?.email ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.post("/api/v1/stock-alerts", { productId, variantSku, email });
+      setDone(true);
+    } catch (err: unknown) {
+      setError((err as { message?: string })?.message ?? "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <div style={{
+        padding: "0.85rem 1rem", borderRadius: 12,
+        background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)",
+        color: "var(--success)", fontSize: "0.88rem", animation: "fadeInUp 0.3s ease both",
+      }}>
+        ✓ You&apos;ll be notified at <strong>{email}</strong> when this variant is back in stock.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      padding: "0.85rem 1rem", borderRadius: 12,
+      background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
+      animation: "fadeInUp 0.3s ease both",
+    }}>
+      <p style={{ margin: "0 0 0.65rem", fontSize: "0.83rem", fontWeight: 600 }}>
+        Notify me when back in stock
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          required
+          style={{
+            flex: 1, minWidth: 180, padding: "0.6rem 0.85rem", borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.05)",
+            color: "var(--text)", fontSize: "0.88rem", outline: "none",
+          }}
+        />
+        <button
+          type="submit"
+          disabled={submitting}
+          style={{
+            padding: "0.6rem 1.2rem", borderRadius: 999, fontWeight: 700, fontSize: "0.85rem",
+            background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)",
+            color: "var(--text)", cursor: submitting ? "wait" : "pointer", opacity: submitting ? 0.6 : 1,
+          }}
+        >
+          {submitting ? "…" : "Notify me"}
+        </button>
+      </form>
+      {error && <p style={{ margin: "0.4rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{error}</p>}
+    </div>
+  );
+}
+
 function ReviewsSection({ slug, productId }: { slug: string; productId: string }) {
   const { session } = useAuthStore();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -471,6 +545,11 @@ export function ProductDetailClient({ product }: { product: Product }) {
                 <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
+          )}
+
+          {/* Back-in-stock signup when selected variant is OOS */}
+          {selectedVariant && variantStock === 0 && (
+            <BackInStockForm productId={product.id} variantSku={selectedVariant.sku} />
           )}
 
           {/* Delivery info strip */}

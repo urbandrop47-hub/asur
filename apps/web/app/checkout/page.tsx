@@ -267,22 +267,68 @@ function AddressStep({
 
 // ─── Step 2: Order review ────────────────────────────────────
 
+type AppliedCoupon = {
+  code: string;
+  discountAmount: number;
+  freeShipping: boolean;
+  type: "percent" | "fixed" | "free_shipping";
+  value: number;
+};
+
 function ReviewStep({
   address,
   onBack,
   onConfirm,
   confirming,
+  coupon,
+  onCouponChange,
 }: {
   address: Address;
   onBack: () => void;
-  onConfirm: () => void;
+  onConfirm: (coupon: AppliedCoupon | null) => void;
   confirming?: boolean;
+  coupon: AppliedCoupon | null;
+  onCouponChange: (c: AppliedCoupon | null) => void;
 }) {
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal());
-  const shipping = subtotal >= 1500 ? 0 : 250;
-  const tax = Math.round(subtotal * 0.18);
-  const total = subtotal + shipping + tax;
+
+  const [couponInput, setCouponInput] = useState(coupon?.code ?? "");
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
+
+  const discount = coupon?.discountAmount ?? 0;
+  const taxableAmount = Math.max(0, subtotal - discount);
+  const baseShipping = subtotal >= 1500 ? 0 : 250;
+  const shipping = coupon?.freeShipping ? 0 : baseShipping;
+  const tax = Math.round(taxableAmount * 0.18);
+  const total = taxableAmount + shipping + tax;
+
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setValidating(true);
+    setCouponError(null);
+    try {
+      const res = await api.post<{ data: AppliedCoupon }>("/api/v1/coupons/validate", {
+        code,
+        subtotal
+      });
+      onCouponChange(res.data);
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message ?? "Invalid coupon";
+      setCouponError(msg);
+      onCouponChange(null);
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  function removeCoupon() {
+    onCouponChange(null);
+    setCouponInput("");
+    setCouponError(null);
+  }
 
   return (
     <div style={{ display: "grid", gap: "1.5rem" }}>
@@ -298,6 +344,70 @@ function ReviewStep({
             <strong style={{ fontSize: "0.9rem", flexShrink: 0 }}>{formatCurrency(item.unitPrice * item.quantity)}</strong>
           </div>
         ))}
+      </div>
+
+      {/* ── Coupon field (T5 + T6) ── */}
+      <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: "1rem" }}>
+        <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Discount code
+        </p>
+
+        {coupon ? (
+          /* Applied state */
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ padding: "3px 10px", borderRadius: 999, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", fontFamily: "monospace", fontWeight: 700, fontSize: "0.85rem" }}>
+                {coupon.code}
+              </span>
+              <span style={{ fontSize: "0.83rem", color: "var(--success)" }}>
+                {coupon.freeShipping ? "Free shipping applied" : `−${formatCurrency(coupon.discountAmount)}`}
+              </span>
+            </div>
+            <button onClick={removeCoupon} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.8rem", padding: "2px 6px" }}>
+              Remove
+            </button>
+          </div>
+        ) : (
+          /* Entry state */
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input
+              type="text"
+              value={couponInput}
+              onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(null); }}
+              onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
+              placeholder="LAUNCH20"
+              style={{
+                flex: 1, padding: "0.65rem 0.9rem", borderRadius: 999,
+                border: `1px solid ${couponError ? "var(--danger)" : "rgba(255,255,255,0.14)"}`,
+                background: "rgba(255,255,255,0.05)", color: "var(--text)",
+                fontFamily: "monospace", fontSize: "0.92rem", letterSpacing: "0.08em", outline: "none"
+              }}
+            />
+            <button
+              onClick={applyCoupon}
+              disabled={!couponInput.trim() || validating}
+              style={{
+                padding: "0.65rem 1.1rem", borderRadius: 999, fontWeight: 700, fontSize: "0.85rem",
+                background: couponInput.trim() ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(249,115,22,0.3)", color: "var(--accent)",
+                cursor: couponInput.trim() && !validating ? "pointer" : "not-allowed", flexShrink: 0
+              }}
+            >
+              {validating ? "…" : "Apply"}
+            </button>
+          </div>
+        )}
+
+        {/* T6 — contextual error messages */}
+        {couponError && (
+          <p style={{ margin: "0.45rem 0 0", fontSize: "0.8rem", color: "var(--danger)", display: "flex", alignItems: "center", gap: 5 }}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+              <circle cx="6.5" cy="6.5" r="6" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M6.5 4v3.5M6.5 9.5h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+            {couponError}
+          </p>
+        )}
       </div>
 
       {/* Shipping address */}
@@ -319,9 +429,17 @@ function ReviewStep({
           <span style={{ color: "var(--text-muted)" }}>Subtotal</span>
           <span>{formatCurrency(subtotal)}</span>
         </div>
+        {coupon && discount > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+            <span style={{ color: "var(--success)" }}>Discount ({coupon.code})</span>
+            <span style={{ color: "var(--success)" }}>−{formatCurrency(discount)}</span>
+          </div>
+        )}
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
           <span style={{ color: "var(--text-muted)" }}>Shipping</span>
-          <span style={{ color: shipping === 0 ? "var(--success)" : "var(--text)" }}>{shipping === 0 ? "Free" : formatCurrency(shipping)}</span>
+          <span style={{ color: shipping === 0 ? "var(--success)" : "var(--text)" }}>
+            {shipping === 0 ? (coupon?.freeShipping ? "Free (coupon)" : "Free") : formatCurrency(shipping)}
+          </span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
           <span style={{ color: "var(--text-muted)" }}>GST (18%)</span>
@@ -335,7 +453,7 @@ function ReviewStep({
       </div>
 
       <button
-        onClick={onConfirm}
+        onClick={() => onConfirm(coupon)}
         disabled={confirming}
         style={{
           width: "100%", borderRadius: 999, padding: "0.95rem", fontSize: "1rem", fontWeight: 700,
@@ -366,6 +484,7 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -405,7 +524,7 @@ export default function CheckoutPage() {
     );
   }
 
-  async function handlePayment(confirmedAddress: Address) {
+  async function handlePayment(confirmedAddress: Address, coupon: AppliedCoupon | null) {
     if (!session) return;
     setProcessing(true);
     setError(null);
@@ -419,7 +538,8 @@ export default function CheckoutPage() {
           quantity: i.quantity,
           unitPrice: i.unitPrice
         })),
-        shippingAddress: confirmedAddress
+        shippingAddress: confirmedAddress,
+        ...(coupon ? { couponCode: coupon.code } : {})
       });
 
       const order = orderRes.data.order;
@@ -500,8 +620,20 @@ export default function CheckoutPage() {
 
       {processing && (
         <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
-          <div style={{ fontSize: "2rem", marginBottom: "0.75rem", animation: "spin 1s linear infinite" }}>⟳</div>
-          Processing payment…
+          <div style={{ marginBottom: "1rem" }}>
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style={{ animation: "spin 0.8s linear infinite" }} aria-hidden="true">
+              <circle cx="18" cy="18" r="15" stroke="rgba(255,255,255,0.1)" strokeWidth="3" />
+              <path d="M18 3 A15 15 0 0 1 33 18" stroke="url(#spinGrad)" strokeWidth="3" strokeLinecap="round" />
+              <defs>
+                <linearGradient id="spinGrad" x1="18" y1="3" x2="33" y2="18" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#f97316" />
+                  <stop offset="1" stopColor="#fb7185" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <p style={{ margin: "0 0 0.25rem", fontWeight: 600 }}>Processing payment…</p>
+          <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)" }}>Please don&apos;t close this page</p>
         </div>
       )}
 
@@ -521,11 +653,13 @@ export default function CheckoutPage() {
           address={address}
           onBack={() => setStep(1)}
           confirming={processing}
-          onConfirm={() => {
+          coupon={appliedCoupon}
+          onCouponChange={setAppliedCoupon}
+          onConfirm={(coupon) => {
             if (processing) return; // guard against double-click
             track("checkout_review_complete");
             setStep(3);
-            handlePayment(address);
+            handlePayment(address, coupon);
           }}
         />
       )}

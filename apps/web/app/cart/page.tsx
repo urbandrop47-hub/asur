@@ -35,30 +35,38 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="empty-state" style={{ marginTop: "4rem" }}>
-        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true">
-          <circle cx="28" cy="28" r="27" stroke="rgba(255,255,255,0.1)" strokeWidth="2" />
-          <path d="M18 20h2l3 14h14l2-10H22" stroke="rgba(255,255,255,0.3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="26" cy="37" r="1.5" fill="rgba(255,255,255,0.3)" />
-          <circle cx="34" cy="37" r="1.5" fill="rgba(255,255,255,0.3)" />
-        </svg>
-        <h2 style={{ margin: 0 }}>Your cart is empty</h2>
-        <p>Find something you love and add it here.</p>
+        {/* Animated empty cart illustration */}
+        <div style={{ position: "relative", width: 96, height: 96, marginBottom: "0.5rem" }}>
+          <svg width="96" height="96" viewBox="0 0 96 96" fill="none" aria-hidden="true">
+            <circle cx="48" cy="48" r="46" stroke="rgba(255,255,255,0.07)" strokeWidth="2" />
+            <circle cx="48" cy="48" r="46" stroke="url(#cartGrad)" strokeWidth="2" strokeDasharray="289" strokeDashoffset="220" strokeLinecap="round" />
+            <path d="M30 34h4l6 26h24l4-18H36" stroke="rgba(255,255,255,0.25)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="42" cy="64" r="3" fill="rgba(255,255,255,0.2)" />
+            <circle cx="58" cy="64" r="3" fill="rgba(255,255,255,0.2)" />
+            <defs>
+              <linearGradient id="cartGrad" x1="2" y1="48" x2="94" y2="48" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#f97316" stopOpacity="0.6" />
+                <stop offset="1" stopColor="#fb7185" stopOpacity="0.2" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800 }}>Your cart is empty</h2>
+        <p style={{ maxWidth: 300 }}>Find something you love and add it here. Limited stock — don&apos;t sleep on the drop.</p>
         <Link
           href="/products"
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            borderRadius: 999,
-            padding: "0.85rem 1.5rem",
+            display: "inline-flex", alignItems: "center", gap: 8,
+            borderRadius: 999, padding: "0.9rem 1.75rem",
             background: "linear-gradient(135deg, #f97316, #fb7185)",
-            color: "#130f0b",
-            fontWeight: 700,
-            fontSize: "0.92rem",
-            textDecoration: "none",
+            color: "#130f0b", fontWeight: 700, fontSize: "0.95rem",
+            textDecoration: "none", boxShadow: "0 6px 24px rgba(249,115,22,0.3)",
           }}
         >
-          Browse products
+          Shop the drop
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M2 7h10M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </Link>
       </div>
     );
@@ -190,6 +198,32 @@ export default function CartPage() {
           <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Order summary
           </h3>
+
+          {/* Free shipping progress bar */}
+          {shipping > 0 && (
+            <div style={{ padding: "0.75rem 0.9rem", borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                <span style={{ fontSize: "0.78rem", color: "var(--success)", fontWeight: 600 }}>
+                  🚚 Add {formatCurrency(1500 - subtotal)} more for free shipping
+                </span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{Math.round((subtotal / 1500) * 100)}%</span>
+              </div>
+              <div style={{ height: 5, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", borderRadius: 999,
+                  width: `${Math.min(100, Math.round((subtotal / 1500) * 100))}%`,
+                  background: "linear-gradient(90deg, #22c55e, #4ade80)",
+                  transition: "width 500ms cubic-bezier(0.22,1,0.36,1)"
+                }} />
+              </div>
+            </div>
+          )}
+          {shipping === 0 && (
+            <div style={{ padding: "0.6rem 0.9rem", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)", fontSize: "0.8rem", color: "var(--success)", fontWeight: 600 }}>
+              ✓ You qualify for free shipping!
+            </div>
+          )}
+
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
             <span style={{ color: "var(--text-muted)" }}>Subtotal</span>
             <span>{formatCurrency(subtotal)}</span>
@@ -200,11 +234,6 @@ export default function CartPage() {
               {shipping === 0 ? "Free" : formatCurrency(shipping)}
             </span>
           </div>
-          {shipping > 0 && (
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
-              Free shipping on orders above {formatCurrency(1500)}
-            </p>
-          )}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
             <span style={{ color: "var(--text-muted)" }}>GST (18%)</span>
             <span>{formatCurrency(tax)}</span>

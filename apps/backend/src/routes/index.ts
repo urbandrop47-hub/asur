@@ -8,6 +8,8 @@ import { productsRouter } from "./products.routes";
 import { reviewsRouter } from "./reviews.routes";
 import { vendorRouter } from "./vendor.routes";
 import { wishlistRouter } from "./wishlist.routes";
+import { stockAlertsRouter } from "./stock-alerts.routes";
+import { couponRouter } from "./coupon.routes";
 
 export const apiRouter: Router = Router();
 
@@ -19,3 +21,5 @@ apiRouter.use(`${API_BASE_PATH}/payments`, paymentsRouter);
 apiRouter.use(`${API_BASE_PATH}/reviews`, reviewsRouter);
 apiRouter.use(`${API_BASE_PATH}/vendor`, vendorRouter);
 apiRouter.use(`${API_BASE_PATH}/wishlist`, wishlistRouter);
+apiRouter.use(`${API_BASE_PATH}/stock-alerts`, stockAlertsRouter);
+apiRouter.use(`${API_BASE_PATH}/coupons`, couponRouter);

@@ -72,7 +72,7 @@ export const createAdminInviteController: RequestHandler = asyncHandler(async (r
   try {
     const invite = await createAdminInvite({
       ...payload,
-      createdBy: res.locals.adminUser?.id ?? payload.createdBy
+      createdBy: payload.createdBy ?? "admin"
     });
     sendSuccess(res, invite, "Admin invite created", 201);
   } catch (err) {

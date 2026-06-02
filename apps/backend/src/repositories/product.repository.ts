@@ -137,18 +137,57 @@ export const productRepository = {
   },
 
   /** Atomically decrement a specific variant's stock by `quantity`.
-   *  The $elemMatch filter prevents stock from going negative under concurrent orders. */
-  async decrementVariantStock(productId: string, sku: string, quantity: number): Promise<void> {
+   *  Returns `true` if the decrement succeeded, `false` if stock was insufficient
+   *  (race-condition guard — prevents overselling under concurrent orders). */
+  async decrementVariantStock(productId: string, sku: string, quantity: number): Promise<boolean> {
     if (hasMongoConnection) {
-      await ProductModel.updateOne(
+      const result = await ProductModel.updateOne(
         { id: productId, variants: { $elemMatch: { sku, stock: { $gte: quantity } } } },
         { $inc: { "variants.$.stock": -quantity } }
+      );
+      return result.modifiedCount > 0;
+    }
+    const product = mockStore.products.find((p) => p.id === productId);
+    const variant = product?.variants.find((v) => v.sku === sku);
+    if (!variant || variant.stock < quantity) return false;
+    variant.stock -= quantity;
+    return true;
+  },
+
+  /** Atomically increment a specific variant's stock (used on order cancellation / restock). */
+  async incrementVariantStock(productId: string, sku: string, quantity: number): Promise<void> {
+    if (hasMongoConnection) {
+      await ProductModel.updateOne(
+        { id: productId, "variants.sku": sku },
+        { $inc: { "variants.$.stock": quantity } }
       );
       return;
     }
     const product = mockStore.products.find((p) => p.id === productId);
     const variant = product?.variants.find((v) => v.sku === sku);
-    if (variant) variant.stock = Math.max(0, variant.stock - quantity);
+    if (variant) variant.stock += quantity;
+  },
+
+  /** Set a specific variant's stock to an exact value (used by bulk restock / admin panel). */
+  async setVariantStock(productId: string, sku: string, stock: number): Promise<void> {
+    if (hasMongoConnection) {
+      await ProductModel.updateOne(
+        { id: productId, "variants.sku": sku },
+        { $set: { "variants.$.stock": stock } }
+      );
+      return;
+    }
+    const product = mockStore.products.find((p) => p.id === productId);
+    const variant = product?.variants.find((v) => v.sku === sku);
+    if (variant) variant.stock = Math.max(0, stock);
+  },
+
+  /** List all products for inventory — all statuses, sorted by title. */
+  async listAll(): Promise<Product[]> {
+    if (hasMongoConnection) {
+      return ProductModel.find({}).sort({ title: 1 }).lean<Product[]>().exec();
+    }
+    return [...mockStore.products].sort((a, b) => a.title.localeCompare(b.title));
   },
 
   async deleteById(id: string): Promise<boolean> {

@@ -73,8 +73,8 @@ export function ProductCard({ product }: { product: Product }) {
             </div>
           )}
 
-          {/* Wishlist heart */}
-          <div style={{ position: "absolute", top: 10, left: 10, zIndex: 2 }}>
+          {/* Wishlist heart — fades in on card hover (desktop), always visible on touch */}
+          <div className="heart-reveal" style={{ position: "absolute", top: 10, left: 10, zIndex: 2 }}>
             <HeartButton product={product} size={16} />
           </div>
 
