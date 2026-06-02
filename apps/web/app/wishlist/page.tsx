@@ -18,12 +18,21 @@ export default function WishlistPage() {
   const router = useRouter();
   const session = useAuthStore((s) => s.session);
   const hydrated = useAuthStore((s) => s.hydrated);
-  const { items: localItems, setAll, pendingProductId, setPendingProductId } = useWishlistStore();
+  const { setAll, pendingProductId, setPendingProductId } = useWishlistStore();
+  // Subscribe to the store's item list so removals via HeartButton are reflected immediately
+  const storeItems = useWishlistStore((s) => s.items);
   const addCartItem = useCartStore((s) => s.addItem);
 
   const [entries, setEntries] = useState<WishlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Keep the rendered grid in sync when HeartButton removes items from the Zustand store
+  useEffect(() => {
+    if (entries.length === 0) return;
+    const activeIds = new Set(storeItems.map((i) => i.productId));
+    setEntries((prev) => prev.filter((e) => activeIds.has(e.productId)));
+  }, [storeItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync pending wishlist item (added before login) after sign-in
   useEffect(() => {

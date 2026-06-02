@@ -15,6 +15,28 @@ import {
   updateAdminProductController
 } from "../controllers/admin.controller";
 import { listAdminReviewsController, moderateReviewController } from "../controllers/review.controller";
+import {
+  listInventoryController,
+  updateStockController,
+  bulkStockUpdateController,
+  cancelOrderController
+} from "../controllers/inventory.controller";
+import {
+  listCouponsController,
+  createCouponController,
+  updateCouponController,
+  deleteCouponController
+} from "../controllers/coupon.controller";
+import {
+  getAnalyticsController,
+  getRevenueChartController,
+  exportOrdersCsvController
+} from "../controllers/analytics.controller";
+import {
+  listAdminReturnsController,
+  getAdminReturnController,
+  adminDecideReturnController
+} from "../controllers/return.controller";
 
 export const adminRouter: ExpressRouter = Router();
 
@@ -38,3 +60,27 @@ adminRouter.get("/orders/:id", adminOnlyMiddleware, getAdminOrderController);
 // Review moderation
 adminRouter.get("/reviews", adminOnlyMiddleware, listAdminReviewsController);
 adminRouter.patch("/reviews/:id", adminOnlyMiddleware, moderateReviewController);
+
+// Inventory management
+adminRouter.get("/inventory", adminOnlyMiddleware, listInventoryController);
+adminRouter.patch("/inventory/stock", adminOnlyMiddleware, updateStockController);
+adminRouter.post("/inventory/bulk-stock", adminOnlyMiddleware, bulkStockUpdateController);
+
+// Order cancellation (admin)
+adminRouter.post("/orders/:id/cancel", adminOnlyMiddleware, cancelOrderController);
+
+// Analytics
+adminRouter.get("/analytics", adminOnlyMiddleware, getAnalyticsController);
+adminRouter.get("/analytics/revenue-chart", adminOnlyMiddleware, getRevenueChartController);
+adminRouter.get("/analytics/export-csv", adminOnlyMiddleware, exportOrdersCsvController);
+
+// Returns management
+adminRouter.get("/returns", adminOnlyMiddleware, listAdminReturnsController);
+adminRouter.get("/returns/:id", adminOnlyMiddleware, getAdminReturnController);
+adminRouter.patch("/returns/:id", adminOnlyMiddleware, adminDecideReturnController);
+
+// Coupon management
+adminRouter.get("/coupons", adminOnlyMiddleware, listCouponsController);
+adminRouter.post("/coupons", adminOnlyMiddleware, createCouponController);
+adminRouter.patch("/coupons/:code", adminOnlyMiddleware, updateCouponController);
+adminRouter.delete("/coupons/:code", adminOnlyMiddleware, deleteCouponController);

@@ -473,6 +473,13 @@ header.site-header {
   justify-content: center;
 }
 
+/* ─── Stack layout helper ────────────────────────────────── */
+
+.stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
 /* ─── Layout helpers ─────────────────────────────────────── */
 
 .card-surface {
@@ -1053,6 +1060,11 @@ header.site-header {
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }
 
 @keyframes drift {
@@ -1644,4 +1656,264 @@ main:has(.auth-page-root) {
   .search-trigger { display: none; }
   .header-search-btn { display: flex; }
   .search-inline { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MISSING KEYFRAMES
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes draw-circle {
+  from { stroke-dashoffset: 213; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes draw-check {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes shimmer-text {
+  from { background-position: 0% center; }
+  to   { background-position: 200% center; }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(0.92); opacity: 0.8; }
+  50%  { transform: scale(1.04); opacity: 0.4; }
+  100% { transform: scale(0.92); opacity: 0.8; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.88); }
+  60%  { transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRODUCT CARD — SHOP BUTTON + HEART HOVER
+   ═══════════════════════════════════════════════════════════════ */
+
+.pcard-shop-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+  min-height: 44px;
+  transition: opacity 180ms ease, transform 120ms ease, box-shadow 180ms ease;
+  will-change: transform;
+}
+.pcard-shop-btn:not([aria-disabled="true"]):hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.3);
+}
+.pcard-shop-btn:active { transform: scale(0.97); }
+
+/* Heart button — hidden until card is hovered (desktop) */
+@media (hover: hover) {
+  .product-card .heart-reveal {
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+  .product-card:hover .heart-reveal {
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FOCUS-VISIBLE — keyboard navigation styles
+   ═══════════════════════════════════════════════════════════════ */
+
+:focus-visible {
+  outline: 2px solid rgba(249, 115, 22, 0.8);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove outline for mouse users */
+:focus:not(:focus-visible) { outline: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLLBAR POLISH
+   ═══════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ═══════════════════════════════════════════════════════════════
+   TOAST NOTIFICATION
+   ═══════════════════════════════════════════════════════════════ */
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  background: rgba(18, 20, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(20px);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: slide-up 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  white-space: nowrap;
+}
+.toast.success { border-color: rgba(34, 197, 94, 0.35); color: var(--success); }
+.toast.error   { border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ENHANCED BUTTON STATES
+   ═══════════════════════════════════════════════════════════════ */
+
+.btn-full:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.35);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IMPROVED INPUT FOCUS
+   ═══════════════════════════════════════════════════════════════ */
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="password"]:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE SAFE AREA + BOTTOM NAV PADDING
+   ═══════════════════════════════════════════════════════════════ */
+
+.cart-sticky-bar {
+  padding-bottom: max(1rem, calc(1rem + env(safe-area-inset-bottom)));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PDP — ENHANCED IMAGE GALLERY
+   ═══════════════════════════════════════════════════════════════ */
+
+.pdp-gallery img {
+  border-radius: 16px;
+}
+
+/* Better variant picker active state animation */
+@keyframes picker-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06); }
+  100% { transform: scale(1.04); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NAVIGATION — active link indicator
+   ═══════════════════════════════════════════════════════════════ */
+
+.nav-links a[data-active="true"],
+.nav-links a:is([href="/products"]):where(:hover, :focus-visible) {
+  color: var(--text);
+}
+
+/* Underline slide-in effect for desktop nav links */
+.nav-links a {
+  position: relative;
+}
+.nav-links a::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms ease;
+}
+.nav-links a:hover::after {
+  transform: scaleX(1);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WISHLIST PAGE — grid responsive
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 360px) {
+  .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SITE HEADER — improved
+   ═══════════════════════════════════════════════════════════════ */
+
+header.site-header {
+  transition: box-shadow 200ms ease;
+}
+
+/* Shadow appears when scrolled — toggled via JS or just always present */
+header.site-header.scrolled {
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRODUCT GRID — masonry-feel stagger on load
+   ═══════════════════════════════════════════════════════════════ */
+
+.grid-3 > .animate-in:nth-child(3n+2) {
+  animation-delay: calc(var(--stagger, 0s) + 0.06s);
+}
+.grid-3 > .animate-in:nth-child(3n+3) {
+  animation-delay: calc(var(--stagger, 0s) + 0.12s);
 }

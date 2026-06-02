@@ -198,13 +198,33 @@ export type Order = {
   subtotal: number;
   shipping: number;
   tax: number;
+  discount: number;
   total: number;
   currency: "INR";
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   fulfillmentStatus: FulfillmentStatus;
   vendorTaskId?: ID;
+  couponCode?: string;
+  discountAmount?: number;
   shippingAddress: Address;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CouponType = "percent" | "fixed" | "free_shipping";
+
+export type Coupon = {
+  code: string;
+  type: CouponType;
+  value: number;
+  minOrderValue: number;
+  usageLimit: number;
+  usedCount: number;
+  perCustomerLimit: number;
+  isActive: boolean;
+  expiresAt: string;
+  description?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -261,6 +281,29 @@ export type WishlistEntry = {
   userId: ID;
   productId: ID;
   createdAt: string;
+};
+
+export type ReturnStatus = "requested" | "approved" | "rejected" | "refunded";
+
+export type ReturnItem = {
+  variantSku: string;
+  quantity: number;
+  reason: string;
+};
+
+export type Return = {
+  id: ID;
+  orderId: ID;
+  orderNumber: string;
+  customerId: ID;
+  items: ReturnItem[];
+  reason: string;
+  status: ReturnStatus;
+  refundId?: string;
+  refundAmount?: number;
+  adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ApiMeta = {

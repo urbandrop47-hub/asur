@@ -1,7 +1,7 @@
-# ASUR — Sprint Roadmap Phase 2 (Sprints 9–18)
+# ASUR — Sprint Roadmap (Sprints 9–23)
 
 **Launch-Ready Feature Backlog**  
-Prepared June 2026 · 10 Sprints · 60 Tasks
+Prepared June 2026 · Updated June 2026 · 15 Sprints · 90 Tasks
 
 ---
 
@@ -18,32 +18,40 @@ Prepared June 2026 · 10 Sprints · 60 Tasks
 9. [Sprint 15 — Discount Codes & Promotions](#sprint-15--discount-codes--promotions)
 10. [Sprint 16 — Admin Analytics Dashboard](#sprint-16--admin-analytics-dashboard)
 11. [Sprint 17 — Production Hardening & Observability](#sprint-17--production-hardening--observability)
-12. [Sprint 18 — React Native / Expo Mobile App Phase 1](#sprint-18--react-native--expo-mobile-app-phase-1)
+12. [Sprint 18 — CI/CD & Railway Deployment](#sprint-18--cicd--railway-deployment)
+13. [Sprint 19 — Returns & Refunds](#sprint-19--returns--refunds)
+14. [Sprint 20 — Customer Account & Profile](#sprint-20--customer-account--profile)
+15. [Sprint 21 — Drop / Flash Sale Engine](#sprint-21--drop--flash-sale-engine)
+16. [Sprint 22 — PWA & Performance](#sprint-22--pwa--performance)
+17. [Sprint 23 — Abandoned Cart Recovery](#sprint-23--abandoned-cart-recovery)
 
 ---
 
 ## Sprint Summary
 
-10 sprints. 60 tasks. Everything needed to go from functional MVP to a store that earns customer trust, drives organic growth, and can handle real-world traffic.
-
 | Sprint | Title | Theme | Duration | Tasks | Status |
 |--------|-------|-------|----------|-------|--------|
-| S9 | Transactional Email Notifications | Trust | 1 week | 6 | DONE |
-| S10 | Search, Filtering & Discovery | Conversion | 1.5 weeks | 6 | DONE |
-| S11 | SEO, Metadata & Structured Data | Growth | 1 week | 6 | DONE |
-| S12 | Product Reviews & Social Proof | Trust | 1.5 weeks | 6 | DONE |
-| S13 | Wishlist & Save for Later | Retention | 1 week | 6 | TODO |
-| S14 | Real-Time Inventory & Stock Management | Operations | 1 week | 6 | TODO |
-| S15 | Discount Codes & Promotions | Growth | 1.5 weeks | 6 | TODO |
-| S16 | Admin Analytics Dashboard | Operations | 1.5 weeks | 6 | TODO |
-| S17 | Production Hardening & Observability | Reliability | 1 week | 6 | TODO |
-| S18 | React Native / Expo Mobile App (Phase 1) | Platform | 2 weeks | 6 | TODO |
+| S9 | Transactional Email Notifications | Trust | 1 week | 6 | ✅ DONE |
+| S10 | Search, Filtering & Discovery | Conversion | 1.5 weeks | 6 | ✅ DONE |
+| S11 | SEO, Metadata & Structured Data | Growth | 1 week | 6 | ✅ DONE |
+| S12 | Product Reviews & Social Proof | Trust | 1.5 weeks | 6 | ✅ DONE |
+| S13 | Wishlist & Save for Later | Retention | 1 week | 6 | ✅ DONE |
+| S14 | Real-Time Inventory & Stock Management | Operations | 1 week | 6 | ✅ DONE |
+| S15 | Discount Codes & Promotions | Growth | 1.5 weeks | 6 | ✅ DONE |
+| S16 | Admin Analytics Dashboard | Operations | 1.5 weeks | 6 | ✅ DONE |
+| S17 | Production Hardening & Observability | Reliability | 1 week | 6 | ✅ DONE |
+| S18 | CI/CD & Railway Deployment | Reliability | 1 week | 6 | ✅ DONE |
+| S19 | Returns & Refunds | Trust | 1.5 weeks | 6 | ✅ DONE |
+| S20 | Customer Account & Profile | Retention | 1 week | 6 | TODO ← **next** |
+| S21 | Drop / Flash Sale Engine | Growth | 1.5 weeks | 6 | TODO |
+| S22 | PWA & Performance | Platform | 1 week | 6 | TODO |
+| S23 | Abandoned Cart Recovery | Revenue | 1 week | 6 | TODO |
+
+> **S18 and S19 are hard launch blockers** — the store cannot go live without automated deploys and a refund path. S20–S21 are the next retention and brand-identity layer. S22–S23 are multipliers once the store is live.
 
 ---
 
 ## Execution Order Rationale
-
-The sprints are ordered by **customer impact × risk**. Sprints 9–11 unblock the launch: without email, customers don't trust the store; without SEO, no organic traffic arrives. Sprints 12–15 build retention and revenue levers. Sprints 16–17 give the team the visibility and reliability needed to operate at scale. Sprint 18 opens the mobile channel.
 
 1. **S9 — Email** — trust baseline; without this, paid orders have no paper trail
 2. **S10 — Search & Filter** — conversion; customers can't buy what they can't find
@@ -54,9 +62,12 @@ The sprints are ordered by **customer impact × risk**. Sprints 9–11 unblock t
 7. **S15 — Discounts** — growth; required for launch campaign and influencer codes
 8. **S16 — Analytics** — ops; founder needs daily KPI visibility to make decisions
 9. **S17 — Production Hardening** — reliability; rate limiting + Sentry before real traffic
-10. **S18 — Mobile App** — platform; native app is the highest-trust signal for Indian D2C
-
-> **Total estimated timeline:** 13–15 weeks for a solo developer; 6–8 weeks with two developers working in parallel on frontend and backend tracks.
+10. **S18 — CI/CD & Deploy** — reliability; nothing ships without an automated deploy pipeline
+11. **S19 — Returns & Refunds** — trust; no D2C brand survives without a working refund path
+12. **S20 — Customer Account** — retention; customers need a profile, address book, and order history
+13. **S21 — Drop Engine** — growth; ASUR is a drop brand — scheduling and countdowns are core to the identity
+14. **S22 — PWA** — platform; replaces native mobile with an installable, offline-capable web app
+15. **S23 — Abandoned Cart Recovery** — revenue; ~70% cart abandonment rate means automated recovery is high-ROI
 
 ---
 
@@ -67,45 +78,22 @@ The sprints are ordered by **customer impact × risk**. Sprints 9–11 unblock t
 | **Theme** | Trust |
 | **Duration** | 1 week |
 | **Tasks** | 6 |
-| **Status** | DONE |
+| **Status** | ✅ DONE |
 
 ### Goal
 
 Every customer-facing event (order placed, payment confirmed, shipped) sends a real email. Without this, customers have no paper trail and will not trust the store.
 
-### Stack & Touchpoints
-
-- Resend (email API)
-- React Email (templates)
-- `apps/backend` (email service)
-- `apps/web` (confirmation page)
-
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S9-T1 | Set up Resend API + email service module at `apps/backend/src/services/email.service.ts` | DONE | S | Backend |
-| S9-T2 | Order confirmation email: HTML template with order number, items, total, address | DONE | M | Backend |
-| S9-T3 | Payment confirmed email: receipt with Razorpay payment ID and amount | DONE | S | Backend |
-| S9-T4 | Shipping update email: triggered when vendor marks task completed, includes tracking ID and courier | DONE | M | Backend |
-| S9-T5 | Admin new-order notification: internal email to ops when a paid order arrives | DONE | S | Backend |
-| S9-T6 | Email queue: wrap sends in try/catch so a failed email never breaks the payment or order flow | DONE | S | Backend |
-
-### Acceptance Criteria
-
-1. Placing an order sends a confirmation email within 5 seconds
-2. Payment verified endpoint triggers a receipt email
-3. Vendor marking task completed triggers a shipping email with tracking link
-4. Failed email sends are logged but do not cause API errors
-5. All emails render correctly on Gmail mobile and Outlook desktop
-
-### Key Files
-
-- `apps/backend/src/services/email.service.ts` (new)
-- `apps/backend/src/services/email-templates/` (new — React Email or MJML)
-- `apps/backend/src/controllers/order.controller.ts` (wire send after order created)
-- `apps/backend/src/controllers/payment.controller.ts` (wire send after payment verified)
-- `apps/backend/src/controllers/vendor.controller.ts` (wire send after task completed)
+| Task ID | Description | Status |
+|---------|-------------|--------|
+| S9-T1 | Set up Resend API + email service module at `apps/backend/src/services/email.service.ts` | ✅ DONE |
+| S9-T2 | Order confirmation email: HTML template with order number, items, total, address | ✅ DONE |
+| S9-T3 | Payment confirmed email: receipt with Razorpay payment ID and amount | ✅ DONE |
+| S9-T4 | Shipping update email: triggered when vendor marks task completed, includes tracking ID | ✅ DONE |
+| S9-T5 | Admin new-order notification: internal email to ops when a paid order arrives | ✅ DONE |
+| S9-T6 | Email queue: wrap sends in try/catch so a failed email never breaks the payment flow | ✅ DONE |
 
 ---
 
@@ -116,45 +104,18 @@ Every customer-facing event (order placed, payment confirmed, shipped) sends a r
 | **Theme** | Conversion |
 | **Duration** | 1.5 weeks |
 | **Tasks** | 6 |
-| **Status** | DONE |
-
-### Goal
-
-Customers browsing 10+ products need to find what they want. A store with no search or filter is dead at scale. This sprint adds full-text search and faceted filtering to the product grid.
-
-### Stack & Touchpoints
-
-- MongoDB Atlas Search (or Mongoose `$text` index)
-- `apps/web` search overlay
-- `apps/backend` search route
+| **Status** | ✅ DONE |
 
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S10-T1 | Backend: add full-text search to `GET /api/v1/products?q=` using MongoDB `$text` index on title + description | DONE | M | Backend |
-| S10-T2 | Backend: add filter params to product list — category, fit, inStock, minPrice, maxPrice, size, color | DONE | M | Backend |
-| S10-T3 | Backend: add sort param — newest, price_asc, price_desc, popularity | DONE | S | Backend |
-| S10-T4 | Web: search bar in site header — expands inline on desktop, full-screen overlay on mobile | DONE | L | Frontend |
-| S10-T5 | Web: filter sheet on products page — category, size, color, price range, in-stock toggle | DONE | M | Frontend |
-| S10-T6 | Web: active filter chips below header showing applied filters with individual remove buttons | DONE | S | Frontend |
-
-### Acceptance Criteria
-
-1. Searching "oversized" returns all products with that keyword in title or description
-2. Filtering by `size=L` only shows products that have an L variant with `stock > 0`
-3. Filter sheet is a bottom drawer on mobile, side panel on desktop
-4. Active filters persist across page navigation (URL params)
-5. Clearing all filters returns the full catalogue
-6. Results update without full page reload
-
-### Key Files
-
-- `apps/backend/src/controllers/product.controller.ts` (add query params)
-- `apps/backend/src/repositories/product.repository.ts` (add search/filter methods)
-- `apps/web/components/site-header.tsx` (search bar)
-- `apps/web/app/products/page.tsx` (filter state + URL params)
-- `apps/web/components/asur/filter-sheet.tsx` (extend existing)
+| Task ID | Description | Status |
+|---------|-------------|--------|
+| S10-T1 | Backend: full-text search on `GET /api/v1/products?q=` using MongoDB `$text` index | ✅ DONE |
+| S10-T2 | Backend: filter params — category, fit, inStock, minPrice, maxPrice, size, color | ✅ DONE |
+| S10-T3 | Backend: sort param — newest, price_asc, price_desc, popularity | ✅ DONE |
+| S10-T4 | Web: search bar in header — inline on desktop, full-screen overlay on mobile | ✅ DONE |
+| S10-T5 | Web: filter sheet — category, size, color, price range, in-stock toggle | ✅ DONE |
+| S10-T6 | Web: active filter chips with individual remove buttons | ✅ DONE |
 
 ---
 
@@ -165,45 +126,18 @@ Customers browsing 10+ products need to find what they want. A store with no sea
 | **Theme** | Growth |
 | **Duration** | 1 week |
 | **Tasks** | 6 |
-| **Status** | DONE |
-
-### Goal
-
-Every page title is "ASUR — Neither Divine. Nor Damned." Product pages have no OG images. Google indexes the site with no useful data. This sprint makes the store discoverable.
-
-### Stack & Touchpoints
-
-- Next.js `generateMetadata`
-- `next-sitemap` or custom sitemap route
-- JSON-LD
-- Open Graph
+| **Status** | ✅ DONE |
 
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S11-T1 | Split all `"use client"` pages into a server wrapper + client child so `generateMetadata` can be exported | DONE | L | Frontend |
-| S11-T2 | Product detail: `generateMetadata` with title, description, OG image (`product.media[0].url`), price, availability | DONE | M | Frontend |
-| S11-T3 | Products listing: static metadata + collection-level metadata for `/collections/[slug]` | DONE | S | Frontend |
-| S11-T4 | JSON-LD: Product schema on PDP with name, image, price, currency, availability, brand | DONE | M | Frontend |
-| S11-T5 | Sitemap.xml: route at `/sitemap.xml` listing all active product slugs fetched from backend | DONE | M | Frontend |
-| S11-T6 | `robots.txt` + canonical URLs + hreflang (en-IN) + 404 page with proper metadata | DONE | S | Frontend |
-
-### Acceptance Criteria
-
-1. Sharing a product URL on WhatsApp/Twitter shows product image, title, and price in the preview
-2. Google Search Console can crawl all product URLs via `sitemap.xml`
-3. Product pages score 90+ on Lighthouse SEO audit
-4. No duplicate title tags across any two pages
-5. Structured data passes Google Rich Results Test for Product schema
-
-### Key Files
-
-- `apps/web/app/products/[slug]/page.tsx` (server wrapper + `generateMetadata`)
-- `apps/web/app/products/page.tsx` (static metadata)
-- `apps/web/app/sitemap.ts` (new — Next.js 15 sitemap route)
-- `apps/web/app/robots.ts` (new)
-- `apps/web/app/products/[slug]/json-ld.tsx` (new — Product JSON-LD component)
+| Task ID | Description | Status |
+|---------|-------------|--------|
+| S11-T1 | Split `"use client"` pages into server wrapper + client child for `generateMetadata` | ✅ DONE |
+| S11-T2 | Product detail: `generateMetadata` with title, description, OG image, price, availability | ✅ DONE |
+| S11-T3 | Products listing: static metadata + collection-level metadata | ✅ DONE |
+| S11-T4 | JSON-LD: Product schema on PDP with name, image, price, currency, availability, brand | ✅ DONE |
+| S11-T5 | Sitemap.xml: route listing all active product slugs | ✅ DONE |
+| S11-T6 | `robots.txt` + canonical URLs + hreflang (en-IN) + 404 page | ✅ DONE |
 
 ---
 
@@ -214,46 +148,18 @@ Every page title is "ASUR — Neither Divine. Nor Damned." Product pages have no
 | **Theme** | Trust |
 | **Duration** | 1.5 weeks |
 | **Tasks** | 6 |
-| **Status** | TODO |
-
-### Goal
-
-No reviews means no trust. Real stores show verified-purchase ratings on every product card and PDP. This sprint adds the full review lifecycle: submit, moderate, display.
-
-### Stack & Touchpoints
-
-- MongoDB Review model
-- Backend review routes
-- Web review form + display
+| **Status** | ✅ DONE |
 
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S12-T1 | Backend: Review Mongoose model (`orderId`, `customerId`, `productId`, `rating` 1–5, `body`, `verified`, `createdAt`) | DONE | M | Backend |
-| S12-T2 | Backend: `POST /api/v1/reviews` — authenticated, validates that `customerId` has a paid+delivered order for the `productId` | DONE | M | Backend |
-| S12-T3 | Backend: `GET /api/v1/products/:slug/reviews` — paginated, sorted by newest; includes aggregate rating + count | DONE | S | Backend |
-| S12-T4 | Admin: review moderation panel — approve/reject reviews; only approved reviews show publicly | DONE | M | Admin |
-| S12-T5 | Web PDP: star rating display + review count; scrollable review list below the fold | DONE | M | Frontend |
-| S12-T6 | Web: post-delivery review prompt — shown on order detail page when status is `delivered`; links to review form | DONE | S | Frontend |
-
-### Acceptance Criteria
-
-1. Only customers with a paid+delivered order for the product can leave a review
-2. Reviews require admin approval before appearing publicly
-3. Product card shows average rating as filled stars with review count
-4. PDP shows a breakdown (5★: N, 4★: N, etc.) and paginated review list
-5. Submitting a review shows confirmation and disables the form to prevent duplicates
-
-### Key Files
-
-- `apps/backend/src/models/review.model.ts` (new)
-- `apps/backend/src/repositories/review.repository.ts` (new)
-- `apps/backend/src/controllers/review.controller.ts` (new)
-- `apps/backend/src/routes/reviews.routes.ts` (new)
-- `apps/admin/app/reviews/page.tsx` (new — moderation queue)
-- `apps/web/app/products/[slug]/page.tsx` (add reviews section)
-- `apps/web/components/star-rating.tsx` (new)
+| Task ID | Description | Status |
+|---------|-------------|--------|
+| S12-T1 | Review model: `orderId`, `customerId`, `productId`, `rating`, `body`, `verified` | ✅ DONE |
+| S12-T2 | `POST /api/v1/reviews` — validates customer has paid+delivered order for the product | ✅ DONE |
+| S12-T3 | `GET /api/v1/products/:slug/reviews` — paginated, includes aggregate rating + count | ✅ DONE |
+| S12-T4 | Admin: review moderation panel — approve/reject; only approved reviews show publicly | ✅ DONE |
+| S12-T5 | Web PDP: star rating display + review count; scrollable review list | ✅ DONE |
+| S12-T6 | Web: post-delivery review prompt on order detail page when status is `delivered` | ✅ DONE |
 
 ---
 
@@ -264,46 +170,18 @@ No reviews means no trust. Real stores show verified-purchase ratings on every p
 | **Theme** | Retention |
 | **Duration** | 1 week |
 | **Tasks** | 6 |
-| **Status** | TODO |
-
-### Goal
-
-Customers browsing a drop they can't afford right now should be able to save it. Wishlists are a free retention tool — they bring customers back. A store without one loses browsers who aren't ready to buy.
-
-### Stack & Touchpoints
-
-- MongoDB Wishlist model
-- Backend wishlist routes
-- Web wishlist page + heart icon
+| **Status** | ✅ DONE |
 
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S13-T1 | Backend: Wishlist model (`customerId`, `items: [productId, variantSku, addedAt]`) | TODO | S | Backend |
-| S13-T2 | Backend: `GET`/`POST`/`DELETE /api/v1/wishlist` — add/remove items, list all; authenticated | TODO | M | Backend |
-| S13-T3 | Web: heart icon on every product card and PDP — filled if in wishlist, outline if not; toggles on click | TODO | M | Frontend |
-| S13-T4 | Web: `/wishlist` page — grid of saved products with remove button and Move to Cart CTA | TODO | M | Frontend |
-| S13-T5 | Web: wishlist count badge on header icon (next to cart icon) | TODO | S | Frontend |
-| S13-T6 | Web: if unauthenticated user clicks heart, prompt sign-in then persist the intent after login | TODO | M | Frontend |
-
-### Acceptance Criteria
-
-1. Clicking the heart on a product card adds it to the wishlist without page reload
-2. Wishlist count in the header updates immediately
-3. Moving an item to cart from `/wishlist` adds it and removes it from the wishlist
-4. Wishlist state persists across page refreshes (server-stored, not localStorage)
-5. Unauthenticated wishlist click redirects to `/auth?next=/wishlist` and restores intent
-
-### Key Files
-
-- `apps/backend/src/models/wishlist.model.ts` (new)
-- `apps/backend/src/controllers/wishlist.controller.ts` (new)
-- `apps/backend/src/routes/wishlist.routes.ts` (new)
-- `apps/web/app/wishlist/page.tsx` (new)
-- `apps/web/components/heart-button.tsx` (new)
-- `apps/web/store/wishlist-store.ts` (new — mirrors cart-store pattern)
-- `apps/web/components/site-header.tsx` (add wishlist badge)
+| Task ID | Description | Status |
+|---------|-------------|--------|
+| S13-T1 | Wishlist model: `customerId`, `items: [productId, variantSku, addedAt]` | ✅ DONE |
+| S13-T2 | `GET`/`POST`/`DELETE /api/v1/wishlist` — authenticated | ✅ DONE |
+| S13-T3 | Web: heart icon on product cards and PDP — optimistic toggle | ✅ DONE |
+| S13-T4 | Web: `/wishlist` page — grid of saved products with Move to Cart CTA | ✅ DONE |
+| S13-T5 | Web: wishlist count badge in header | ✅ DONE |
+| S13-T6 | Web: unauthenticated heart click redirects to auth then restores intent | ✅ DONE |
 
 ---
 
@@ -314,45 +192,18 @@ Customers browsing a drop they can't afford right now should be able to save it.
 | **Theme** | Operations |
 | **Duration** | 1 week |
 | **Tasks** | 6 |
-| **Status** | TODO |
-
-### Goal
-
-Right now stock is never decremented when an order is placed — two customers can buy the last unit. This sprint implements atomic stock reservation, low-stock alerts, and restocking workflows.
-
-### Stack & Touchpoints
-
-- MongoDB `findOneAndUpdate` atomic ops
-- Admin inventory panel
-- Email alerts
+| **Status** | ✅ DONE |
 
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S14-T1 | Backend: atomic stock decrement on order creation — use `$inc` operator to decrement `variant.stock`; rollback if order fails | TODO | L | Backend |
-| S14-T2 | Backend: stock release on order cancellation — increment stock back when order status moves to `cancelled` | TODO | M | Backend |
-| S14-T3 | Backend: low-stock alert — trigger email to admin when any variant drops below 5 units | TODO | M | Backend |
-| S14-T4 | Admin: inventory panel at `/inventory` with sortable stock column, inline stock edit, and low-stock badge | TODO | M | Admin |
-| S14-T5 | Admin: bulk stock update — CSV upload of `(sku, stock)` pairs to restock after a drop | TODO | L | Admin |
-| S14-T6 | Web: back-in-stock notification signup — email field on OOS product page; email sent when stock restored | TODO | M | Frontend |
-
-### Acceptance Criteria
-
-1. Two concurrent orders for the last unit: only one succeeds; the other gets a 409 with a clear message
-2. Cancelling an order restores the reserved stock
-3. Admin receives an email when any variant hits 5 units remaining
-4. Back-in-stock signup stores the email and triggers notification on restock
-5. Bulk CSV upload correctly adjusts stock for all SKUs in the file
-
-### Key Files
-
-- `apps/backend/src/repositories/product.repository.ts` (atomic stock ops)
-- `apps/backend/src/services/order.service.ts` (wire stock decrement + release)
-- `apps/backend/src/services/inventory.service.ts` (new — alerts, notifications)
-- `apps/admin/app/inventory/page.tsx` (new)
-- `apps/admin/app/inventory/bulk-upload.tsx` (new)
-- `apps/web/app/products/[slug]/page.tsx` (OOS notification form)
+| Task ID | Description | Status |
+|---------|-------------|--------|
+| S14-T1 | Atomic stock decrement on order creation via `$inc`; race-condition guard | ✅ DONE |
+| S14-T2 | Stock release on order cancellation | ✅ DONE |
+| S14-T3 | Low-stock alert email to admin when any variant drops below 5 units | ✅ DONE |
+| S14-T4 | Admin: inventory panel with sortable stock column, inline edit, low-stock badge | ✅ DONE |
+| S14-T5 | Admin: bulk stock update via CSV upload | ✅ DONE |
+| S14-T6 | Web: back-in-stock notification signup on OOS PDP | ✅ DONE |
 
 ---
 
@@ -363,47 +214,18 @@ Right now stock is never decremented when an order is placed — two customers c
 | **Theme** | Growth |
 | **Duration** | 1.5 weeks |
 | **Tasks** | 6 |
-| **Status** | TODO |
-
-### Goal
-
-Without discount codes there is no lever for launch campaigns, influencer partnerships, or abandoned-cart recovery. This sprint adds a complete promo engine.
-
-### Stack & Touchpoints
-
-- MongoDB Coupon model
-- Backend coupon routes
-- Checkout coupon field
+| **Status** | ✅ DONE |
 
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S15-T1 | Backend: Coupon model (`code`, `type: percent\|fixed\|free_shipping`, `value`, `minOrderValue`, `usageLimit`, `usedCount`, `expiresAt`, `isActive`) | TODO | M | Backend |
-| S15-T2 | Backend: `POST /api/v1/coupons/validate` — checks code validity, usage, expiry, min order; returns discount amount | TODO | M | Backend |
-| S15-T3 | Backend: apply coupon to order — store `couponCode` + `discountAmount` on Order; subtract from total | TODO | M | Backend |
-| S15-T4 | Admin: coupon management CRUD — create, list, pause/activate, view usage count per code | TODO | M | Admin |
-| S15-T5 | Web checkout: coupon code field between address and review steps — shows discount applied in review step | TODO | M | Frontend |
-| S15-T6 | Web: coupon error states — expired, invalid, min order not met, already used (per account for single-use codes) | TODO | S | Frontend |
-
-### Acceptance Criteria
-
-1. Admin creates `LAUNCH20` for 20% off; customer applies it at checkout and sees a discount line item
-2. Expired codes return a clear error message
-3. Single-use codes cannot be reused by the same account
-4. Discount is applied before GST calculation
-5. Order record stores the applied coupon code and discount amount
-6. Admin can see total redemptions per code
-
-### Key Files
-
-- `apps/backend/src/models/coupon.model.ts` (new)
-- `apps/backend/src/controllers/coupon.controller.ts` (new)
-- `apps/backend/src/routes/coupon.routes.ts` (new)
-- `apps/admin/app/coupons/page.tsx` (new)
-- `apps/web/app/checkout/page.tsx` (coupon field in step 2)
-- `apps/backend/src/repositories/order.repository.ts` (store coupon on order)
-- `packages/types/src/index.ts` (add `couponCode` + `discountAmount` to `Order`)
+| Task ID | Description | Status |
+|---------|-------------|--------|
+| S15-T1 | Coupon model: `code`, `type`, `value`, `minOrderValue`, `usageLimit`, `usedCount`, `expiresAt` | ✅ DONE |
+| S15-T2 | `POST /api/v1/coupons/validate` — checks code, usage, expiry, min order | ✅ DONE |
+| S15-T3 | Apply coupon to order — store `couponCode` + `discountAmount`; subtract from total | ✅ DONE |
+| S15-T4 | Admin: coupon CRUD — create, list, pause/activate, view usage count | ✅ DONE |
+| S15-T5 | Web checkout: coupon code field with Apply/Remove and discount line in review step | ✅ DONE |
+| S15-T6 | Web: coupon error states — expired, invalid, min order not met, already used | ✅ DONE |
 
 ---
 
@@ -414,45 +236,18 @@ Without discount codes there is no lever for launch campaigns, influencer partne
 | **Theme** | Operations |
 | **Duration** | 1.5 weeks |
 | **Tasks** | 6 |
-| **Status** | TODO |
-
-### Goal
-
-An admin who cannot see revenue, conversion, or top products cannot run the store. This sprint builds a real-time dashboard with the KPIs a founder needs every morning.
-
-### Stack & Touchpoints
-
-- MongoDB aggregation pipeline
-- `apps/admin` dashboard
-- Chart library (Recharts or Victory)
+| **Status** | ✅ DONE |
 
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S16-T1 | Backend: `GET /api/v1/admin/analytics` — returns GMV (7d/30d), orders count, AOV, top 5 products by revenue, funnel visits→cart→checkout→paid | TODO | L | Backend |
-| S16-T2 | Backend: `GET /api/v1/admin/analytics/revenue-chart` — daily revenue for last 30 days (for sparkline chart) | TODO | M | Backend |
-| S16-T3 | Admin: dashboard homepage (`/admin`) — KPI tiles: GMV, orders, AOV, conversion rate; replaces current placeholder | TODO | M | Admin |
-| S16-T4 | Admin: revenue sparkline chart — 30-day daily revenue bar chart using Recharts | TODO | M | Admin |
-| S16-T5 | Admin: top products table — ranked by units sold and revenue; click through to product edit | TODO | S | Admin |
-| S16-T6 | Admin: CSV export — download orders as CSV with order number, customer email, items, total, status, date | TODO | M | Admin |
-
-### Acceptance Criteria
-
-1. Dashboard loads in < 2 seconds with real MongoDB data
-2. GMV and order counts are accurate to the last completed order
-3. Revenue chart updates when new orders arrive (manual refresh)
-4. CSV export produces a valid file that opens in Excel with correct columns
-5. All KPI tiles show comparison vs previous period (e.g. +12% vs last week)
-
-### Key Files
-
-- `apps/backend/src/controllers/analytics.controller.ts` (new)
-- `apps/backend/src/routes/analytics.routes.ts` (new)
-- `apps/admin/app/page.tsx` (replace placeholder with real dashboard)
-- `apps/admin/components/kpi-tile.tsx` (new)
-- `apps/admin/components/revenue-chart.tsx` (new — Recharts)
-- `apps/admin/components/top-products-table.tsx` (new)
+| Task ID | Description | Status |
+|---------|-------------|--------|
+| S16-T1 | `GET /api/v1/admin/analytics` — GMV 7d/30d with % change, orders, AOV, top 5 products | ✅ DONE |
+| S16-T2 | `GET /api/v1/admin/analytics/revenue-chart` — 30-day daily data, all gaps filled | ✅ DONE |
+| S16-T3 | Admin dashboard: KPI tiles with 7d/30d toggle and % change vs prior period | ✅ DONE |
+| S16-T4 | Admin: pure SVG bar chart (no Recharts dependency) | ✅ DONE |
+| S16-T5 | Admin: top products table ranked by revenue with relative bars | ✅ DONE |
+| S16-T6 | Admin: CSV export of all orders as streaming blob download | ✅ DONE |
 
 ---
 
@@ -463,96 +258,219 @@ An admin who cannot see revenue, conversion, or top products cannot run the stor
 | **Theme** | Reliability |
 | **Duration** | 1 week |
 | **Tasks** | 6 |
-| **Status** | TODO |
-
-### Goal
-
-The store is feature-complete but not production-safe. Rate limiting, structured logging, health checks, and error tracking must be in place before real traffic hits.
-
-### Stack & Touchpoints
-
-- `express-rate-limit`
-- Pino (structured logging)
-- Sentry (error tracking)
-- Railway health endpoints
+| **Status** | ✅ DONE |
 
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S17-T1 | Rate limiting: 100 req/min per IP on all routes; stricter limits on `POST /auth/session` (10/min) and payment routes (20/min) | TODO | M | Backend |
-| S17-T2 | Structured logging with Pino: replace `console.log` with Pino logger; log request method, path, status, duration on every request | TODO | M | Backend |
-| S17-T3 | Sentry integration: backend (Node SDK) + web (Next.js SDK); capture unhandled errors with request context | TODO | M | Both |
-| S17-T4 | Health check enhancement: `GET /health` returns DB ping latency, uptime, version, env; used by Railway for zero-downtime deploys | TODO | S | Backend |
-| S17-T5 | Security headers: `helmet.js` on all routes; CSP that allows only Razorpay, Firebase, and R2 domains | TODO | M | Backend |
-| S17-T6 | Load test: k6 script simulating 50 concurrent users browsing + adding to cart + checking out; document results | TODO | L | DevOps |
-
-### Acceptance Criteria
-
-1. Sending 200 requests/min from one IP returns 429 after the 100th
-2. Every API request appears in Railway logs with method, path, status, and duration
-3. Triggering an unhandled error sends an event to Sentry with a stack trace
-4. `/health` returns 200 with DB latency < 50 ms under normal conditions
-5. k6 test shows P99 response time < 500 ms for product listing under 50 concurrent users
-
-### Key Files
-
-- `apps/backend/src/app.ts` (rate limiting, helmet, Pino middleware)
-- `apps/backend/src/lib/logger.ts` (new — Pino instance)
-- `apps/backend/src/lib/sentry.ts` (new)
-- `apps/web/sentry.client.config.ts` (new)
-- `apps/web/sentry.server.config.ts` (new)
-- `k6/load-test.js` (new — load test script)
+| Task ID | Description | Status |
+|---------|-------------|--------|
+| S17-T1 | Rate limiting: 100/min global, 10/min auth, 20/min payments via `express-rate-limit` | ✅ DONE |
+| S17-T2 | Pino structured logging: every request logs method, path, status, duration | ✅ DONE |
+| S17-T3 | Sentry: backend Node SDK + web Next.js SDK; gated on `SENTRY_DSN` env var | ✅ DONE |
+| S17-T4 | Enhanced `/health`: DB ping latency, uptime, version, env | ✅ DONE |
+| S17-T5 | Helmet CSP: allows Razorpay, Firebase, R2 domains only | ✅ DONE |
+| S17-T6 | k6 load test script: 50 VUs across browse/cart/checkout; p95 < 2s threshold | ✅ DONE |
 
 ---
 
-## Sprint 18 — React Native / Expo Mobile App (Phase 1)
+## Sprint 18 — CI/CD & Railway Deployment
 
 | | |
 |--|--|
-| **Theme** | Platform |
-| **Duration** | 2 weeks |
+| **Theme** | Reliability |
+| **Duration** | 1 week |
+| **Tasks** | 6 |
+| **Status** | TODO ← **next** |
+
+### Goal
+
+Nothing is deployed anywhere. Before real traffic hits, you need automated deploys with zero-downtime swaps, environment parity, and rollback capability. S18 and S19 are hard launch blockers.
+
+### Tasks
+
+| Task ID | Description | Effort |
+|---------|-------------|--------|
+| S18-T1 | GitHub Actions CI pipeline: typecheck + build on every PR | ✅ DONE |
+| S18-T2 | Railway backend service: `railway.toml` + `nixpacks.toml`, health check path `/health` | ✅ DONE |
+| S18-T3 | Railway web + admin services: `railway.toml` + `nixpacks.toml` per app | ✅ DONE |
+| S18-T4 | Zero-downtime: Railway uses `GET /health` (S17) as readiness probe | ✅ DONE |
+| S18-T5 | Preview environments: `preview.yml` workflow deploys Railway PR environment + posts URL comment | ✅ DONE |
+| S18-T6 | Production bootstrap: `bootstrap-prod.ts` script + `pnpm bootstrap:prod` command | ✅ DONE |
+
+### Key Files
+
+- `.github/workflows/ci.yml` (new)
+- `.github/workflows/deploy.yml` (new)
+- `railway.toml` (new — service config)
+- `apps/backend/Dockerfile` (new — or nixpacks config)
+
+---
+
+## Sprint 19 — Returns & Refunds
+
+| | |
+|--|--|
+| **Theme** | Trust |
+| **Duration** | 1.5 weeks |
 | **Tasks** | 6 |
 | **Status** | TODO |
 
 ### Goal
 
-ASUR is mobile-first. A native app unlocks push notifications, faster load times, App Store presence, and the single biggest trust signal for Indian D2C brands. This sprint ships a read-only catalogue app with auth; cart and checkout follow in Phase 2.
-
-### Stack & Touchpoints
-
-- Expo (React Native)
-- Firebase Auth (same project as web)
-- NativeWind or StyleSheet
-- Expo Router
+No D2C brand survives without a return policy that works end-to-end. Customers expect a form, a confirmation email, and a real Razorpay refund. Without this, post-purchase trust collapses.
 
 ### Tasks
 
-| Task ID | Description | Status | Effort | Owner |
-|---------|-------------|--------|--------|-------|
-| S18-T1 | Bootstrap Expo app at `apps/mobile` with Expo Router; configure Firebase Auth with the same project as web | TODO | L | Mobile |
-| S18-T2 | Auth screens: sign in with Google + email/password using `expo-auth-session`; exchange Firebase token with backend | TODO | L | Mobile |
-| S18-T3 | Product listing screen: grid of cards fetching from `GET /api/v1/products`; pull-to-refresh; skeleton loaders | TODO | M | Mobile |
-| S18-T4 | Product detail screen: image gallery (`FlatList` with horizontal scroll), variant selector, stock badge, price | TODO | M | Mobile |
-| S18-T5 | Order history screen: list of past orders from `GET /api/v1/orders`; tap to see order detail with timeline | TODO | M | Mobile |
-| S18-T6 | Push notifications: Expo push token stored on backend; notify customer when order is shipped | TODO | L | Mobile |
-
-### Acceptance Criteria
-
-1. App installs and runs on iOS 16+ and Android 13+ via Expo Go
-2. Sign-in with Google works end-to-end on a physical device
-3. Product listing fetches from the same backend as the web app
-4. Order history shows the same orders as the web app for the same account
-5. Shipping push notification arrives within 30 seconds of vendor marking task complete
+| Task ID | Description | Effort |
+|---------|-------------|--------|
+| S19-T1 | Return model: `orderId`, `items[]`, `reason`, `status (requested→approved→refunded)`, `refundId` | M |
+| S19-T2 | `POST /api/v1/orders/:id/return` — authenticated; validates within 7-day return window | M |
+| S19-T3 | Admin returns queue: list pending requests, approve/reject with one click | M |
+| S19-T4 | Razorpay refund API: trigger `refund.create` on approval; store `refundId` on order | L |
+| S19-T5 | Email: return confirmation + refund-initiated email with amount and estimated timeline | M |
+| S19-T6 | Web: "Request Return" button on delivered order detail page with reason dropdown | S |
 
 ### Key Files
 
-- `apps/mobile/` (new Expo project)
-- `apps/mobile/app/(tabs)/index.tsx` (product listing)
-- `apps/mobile/app/(tabs)/orders.tsx` (order history)
-- `apps/mobile/app/product/[slug].tsx` (PDP)
-- `apps/mobile/app/auth.tsx` (sign-in screen)
-- `apps/backend/src/controllers/auth.controller.ts` (store push token)
+- `apps/backend/src/models/return.model.ts` (new)
+- `apps/backend/src/controllers/return.controller.ts` (new)
+- `apps/backend/src/routes/return.routes.ts` (new)
+- `apps/admin/app/returns/page.tsx` (new)
+- `apps/web/app/orders/[id]/page.tsx` (add return button)
+
+---
+
+## Sprint 20 — Customer Account & Profile
+
+| | |
+|--|--|
+| **Theme** | Retention |
+| **Duration** | 1 week |
+| **Tasks** | 6 |
+| **Status** | TODO |
+
+### Goal
+
+There is no `/account` page. Customers can't manage addresses, see their full order history, or update their profile. This is a baseline UX expectation for any store.
+
+### Tasks
+
+| Task ID | Description | Effort |
+|---------|-------------|--------|
+| S20-T1 | `/account` page with tabs: Profile / Orders / Addresses / Wishlist | M |
+| S20-T2 | Editable profile: name, phone, avatar upload to R2 | M |
+| S20-T3 | Address book: add/edit/delete saved addresses; set default | M |
+| S20-T4 | Orders tab: full history with status badges and re-order button | S |
+| S20-T5 | Account deletion: self-service data deletion request (GDPR/IT Act compliance) | M |
+| S20-T6 | Header: replace auth button with avatar dropdown linking to account sections | S |
+
+### Key Files
+
+- `apps/web/app/account/page.tsx` (new)
+- `apps/web/app/account/profile/page.tsx` (new)
+- `apps/web/app/account/addresses/page.tsx` (new)
+- `apps/backend/src/controllers/customer.controller.ts` (extend with address CRUD)
+- `apps/web/components/site-header.tsx` (avatar dropdown)
+
+---
+
+## Sprint 21 — Drop / Flash Sale Engine
+
+| | |
+|--|--|
+| **Theme** | Growth |
+| **Duration** | 1.5 weeks |
+| **Tasks** | 6 |
+| **Status** | TODO |
+
+### Goal
+
+ASUR is a drop brand. Right now there is no way to schedule a release, run a countdown, or create urgency around a launch. This is a core part of the brand identity and a direct conversion lever.
+
+### Tasks
+
+| Task ID | Description | Effort |
+|---------|-------------|--------|
+| S21-T1 | `Drop` model: `name`, `slug`, `scheduledAt`, `products[]`, `status (upcoming→live→ended)` | M |
+| S21-T2 | Admin: drop scheduler — create a drop, attach products, set go-live datetime | M |
+| S21-T3 | Backend: cron job flips drop status at `scheduledAt`; publishes products atomically | L |
+| S21-T4 | Web: countdown clock on PDP and homepage hero for the next upcoming drop | M |
+| S21-T5 | Drop waitlist: email signup before a drop goes live; blast email when it opens | M |
+| S21-T6 | "Only N left" live badge on PDP during active drops (polls stock every 30s) | S |
+
+### Key Files
+
+- `apps/backend/src/models/drop.model.ts` (new)
+- `apps/backend/src/controllers/drop.controller.ts` (new)
+- `apps/backend/src/routes/drop.routes.ts` (new)
+- `apps/admin/app/drops/page.tsx` (new)
+- `apps/web/components/countdown-timer.tsx` (new)
+- `apps/web/app/page.tsx` (wire in next drop countdown)
+
+---
+
+## Sprint 22 — PWA & Performance
+
+| | |
+|--|--|
+| **Theme** | Platform |
+| **Duration** | 1 week |
+| **Tasks** | 6 |
+| **Status** | TODO |
+
+### Goal
+
+With no native app, a Progressive Web App gives customers an installable, app-like experience on Android and iOS Safari with zero App Store friction. Also addresses Core Web Vitals before any SEO scale.
+
+### Tasks
+
+| Task ID | Description | Effort |
+|---------|-------------|--------|
+| S22-T1 | `manifest.json` + service worker via `next-pwa`; full app icon set | M |
+| S22-T2 | Offline shell: cache home + product listing for repeat visitors | M |
+| S22-T3 | "Add to Home Screen" install prompt banner on mobile after second visit | M |
+| S22-T4 | Image optimisation audit: all product images through Next.js `<Image>` with proper `sizes` | S |
+| S22-T5 | Lighthouse CI check in GitHub Actions: fail PR if LCP > 2.5s or CLS > 0.1 | M |
+| S22-T6 | Web Push notifications: opt-in on order confirmation; notify on ship event | L |
+
+### Key Files
+
+- `apps/web/public/manifest.json` (new)
+- `apps/web/next.config.mjs` (add `next-pwa`)
+- `.github/workflows/lighthouse.yml` (new)
+
+---
+
+## Sprint 23 — Abandoned Cart Recovery
+
+| | |
+|--|--|
+| **Theme** | Revenue |
+| **Duration** | 1 week |
+| **Tasks** | 6 |
+| **Status** | TODO |
+
+### Goal
+
+Industry average cart abandonment is ~70%. An automated recovery email sequence is one of the highest-ROI additions to any e-commerce store. No infrastructure needed beyond what's already built.
+
+### Tasks
+
+| Task ID | Description | Effort |
+|---------|-------------|--------|
+| S23-T1 | Persist authed cart to DB on every add-to-cart event (TTL 7 days) | M |
+| S23-T2 | Cron: query carts with items added > 1 hour ago, no completed order, email not yet sent | M |
+| S23-T3 | Recovery email #1 (1h): product images, prices, one-click resume cart link (signed URL) | M |
+| S23-T4 | Recovery email #2 (24h): same cart + auto-generated 5% nudge coupon | M |
+| S23-T5 | Admin: abandoned cart dashboard — count, recovery rate, revenue recovered | M |
+| S23-T6 | Unsubscribe: one-click opt-out from recovery emails stored on customer record | S |
+
+### Key Files
+
+- `apps/backend/src/models/cart.model.ts` (new — persisted cart)
+- `apps/backend/src/services/cart-recovery.service.ts` (new)
+- `apps/backend/src/jobs/cart-recovery.job.ts` (new — cron)
+- `apps/admin/app/analytics/abandoned-carts/page.tsx` (new)
 
 ---
 
@@ -563,7 +481,7 @@ ASUR is mobile-first. A native app unlocks push notifications, faster load times
 | `TODO` | Not started |
 | `IN PROGRESS` | Actively being worked on |
 | `BLOCKED` | Waiting on a dependency |
-| `DONE` | Finished and verified |
+| `✅ DONE` | Finished and verified |
 
 ## Effort Legend
 
@@ -575,4 +493,4 @@ ASUR is mobile-first. A native app unlocks push notifications, faster load times
 
 ---
 
-*ASUR · Phase 2 Roadmap · Confidential*
+*ASUR · Sprint Roadmap · Confidential*

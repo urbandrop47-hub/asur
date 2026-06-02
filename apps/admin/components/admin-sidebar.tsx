@@ -9,8 +9,11 @@ import { clearAdminToken, readAdminToken, saveAdminToken } from "../lib/auth-sto
 const NAV = [
   { href: "/", label: "Dashboard", icon: "⬡" },
   { href: "/products", label: "Products", icon: "◈" },
+  { href: "/inventory", label: "Inventory", icon: "⊞" },
   { href: "/orders", label: "Orders", icon: "◫" },
-  { href: "/reviews", label: "Reviews", icon: "★" }
+  { href: "/reviews", label: "Reviews", icon: "★" },
+  { href: "/coupons", label: "Coupons", icon: "%" },
+  { href: "/returns", label: "Returns", icon: "↩" }
 ];
 
 function LoginScreen({ onSave }: { onSave: () => void }) {
@@ -19,7 +22,7 @@ function LoginScreen({ onSave }: { onSave: () => void }) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (token.trim().length < 4) { setError("Token too short"); return; }
+    if (token.trim().length < 8) { setError("Password too short"); return; }
     saveAdminToken(token.trim());
     onSave();
   }
@@ -39,13 +42,14 @@ function LoginScreen({ onSave }: { onSave: () => void }) {
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: "1rem" }}>
           <div>
             <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.4rem", color: "var(--text-muted)" }}>
-              Admin bearer token
+              Admin password
             </label>
             <input
-              type="text"
+              type="password"
               value={token}
               onChange={(e) => { setToken(e.target.value); setError(""); }}
-              placeholder="Firebase UID or bootstrap token"
+              placeholder="Enter your admin password"
+              autoComplete="current-password"
               style={{
                 width: "100%", padding: "0.75rem", borderRadius: 10,
                 border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)",
@@ -67,7 +71,7 @@ function LoginScreen({ onSave }: { onSave: () => void }) {
           </button>
         </form>
         <p style={{ marginTop: "1rem", fontSize: "0.75rem", color: "var(--text-muted)", textAlign: "center" }}>
-          Dev mode: use your Firebase UID or SUPER_ADMIN_BOOTSTRAP_FIREBASE_UID
+          Set in <code>ADMIN_SECRET</code> env var on the backend
         </p>
       </div>
     </div>

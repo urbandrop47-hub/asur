@@ -47,6 +47,15 @@ export function SiteHeader() {
     setMounted(true);
   }, []);
 
+  // Add shadow when scrolled
+  useEffect(() => {
+    function onScroll() {
+      document.querySelector("header.site-header")?.classList.toggle("scrolled", window.scrollY > 8);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   useEffect(() => {
     document.body.style.overflow = (drawerOpen || overlayOpen) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };

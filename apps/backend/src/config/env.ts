@@ -27,6 +27,7 @@ const envSchema = z.object({
   SUPER_ADMIN_BOOTSTRAP_PHONE: z.string().optional().default(""),
   SUPER_ADMIN_BOOTSTRAP_AVATAR_URL: z.string().optional().default(""),
   JWT_SECRET: z.string().optional().default(""),
+  ADMIN_SECRET: z.string().optional().default(""),
   FIREBASE_PROJECT_ID: z.string().optional().default(""),
   FIREBASE_CLIENT_EMAIL: z.string().optional().default(""),
   FIREBASE_PRIVATE_KEY: z.string().optional().default(""),
@@ -43,16 +44,7 @@ const envSchema = z.object({
 
 export const env = envSchema.parse(process.env);
 
-// Refuse to start in production with the bootstrap bypass active
-if (env.NODE_ENV === "production" && env.SUPER_ADMIN_BOOTSTRAP_ENABLED === "true") {
-  throw new Error(
-    "SUPER_ADMIN_BOOTSTRAP_ENABLED must not be 'true' in production. " +
-    "Promote the admin account and set it to 'false' before deploying."
-  );
-}
-
 export const hasMongoConnection = env.MONGODB_URI.length > 0;
-export const shouldBootstrapSuperAdmin = env.SUPER_ADMIN_BOOTSTRAP_ENABLED === "true";
 export const hasFirebaseCredentials =
   env.FIREBASE_PROJECT_ID.length > 0 && env.FIREBASE_CLIENT_EMAIL.length > 0 && env.FIREBASE_PRIVATE_KEY.length > 0;
 export const hasRazorpayCredentials = env.RAZORPAY_KEY.length > 0 && env.RAZORPAY_SECRET.length > 0;

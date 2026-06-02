@@ -34,13 +34,28 @@ function stripDoc<T>(doc: unknown): T {
 }
 
 export const orderRepository = {
-  async create(input: CreateOrderInput & { paymentStatus?: PaymentStatus; fulfillmentStatus?: FulfillmentStatus }) {
+  async create(input: CreateOrderInput & {
+    paymentStatus?: PaymentStatus;
+    fulfillmentStatus?: FulfillmentStatus;
+    couponCode?: string;
+    discountAmount?: number;
+    freeShipping?: boolean;
+  }) {
     const now = new Date().toISOString();
     const items = createLineItems(input.items);
     const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-    const shipping = subtotal >= 1500 ? 0 : 250; // free above ₹1,500; else ₹250 flat
-    const tax = Math.round(subtotal * 0.18);
-    const total = subtotal + shipping + tax;
+    const baseShipping = subtotal >= 1500 ? 0 : 250;
+    const shipping = input.freeShipping ? 0 : baseShipping;
+    // For free_shipping coupons the monetary saving is the shipping amount waived;
+    // for percent/fixed coupons it's the explicit discountAmount passed in.
+    const discountAmount = input.freeShipping
+      ? baseShipping                         // e.g. ₹250 shipping waived
+      : (input.discountAmount ?? 0);
+    // GST is computed on subtotal after any subtotal discount (not shipping discount)
+    const subtotalDiscount = input.freeShipping ? 0 : discountAmount;
+    const taxableAmount = Math.max(0, subtotal - subtotalDiscount);
+    const tax = Math.round(taxableAmount * 0.18);
+    const total = taxableAmount + shipping + tax;
 
     const orderData: Order = {
       id: createId("ord"),
@@ -50,11 +65,14 @@ export const orderRepository = {
       subtotal,
       shipping,
       tax,
+      discount: discountAmount,
       total,
       currency: "INR",
       status: "pending_payment",
       paymentStatus: input.paymentStatus ?? "pending",
       fulfillmentStatus: input.fulfillmentStatus ?? "unassigned",
+      couponCode: input.couponCode,
+      discountAmount,
       shippingAddress: input.shippingAddress as Address,
       createdAt: now,
       updatedAt: now
@@ -267,6 +285,17 @@ export const orderRepository = {
       return rest as Order;
     }
     return mockStore.orders.find((o) => o.id === id) ?? null;
+  },
+
+  /** Count orders by a customer that used a specific coupon — for per-customer limit checks. */
+  async countByCustomerAndCoupon(customerId: string, couponCode: string): Promise<number> {
+    const upper = couponCode.toUpperCase();
+    if (hasMongoConnection) {
+      return OrderModel.countDocuments({ customerId, couponCode: upper, status: { $ne: "cancelled" } });
+    }
+    return mockStore.orders.filter(
+      (o) => o.customerId === customerId && (o as Order & { couponCode?: string }).couponCode === upper && o.status !== "cancelled"
+    ).length;
   },
 
   async createPayment(input: { orderId: string; amount: number; currency: "INR"; providerOrderId?: string; providerPaymentId?: string; status?: Payment["status"] }) {

@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 import { env, hasMongoConnection } from "./env";
+import { logger } from "../lib/logger";
 
 let databasePromise: Promise<typeof mongoose> | null = null;
 
 export async function connectDatabase() {
   if (!hasMongoConnection) {
-    console.info("[backend] MONGODB_URI not set, using in-memory repositories for local development.");
+    logger.info("MONGODB_URI not set, using in-memory repositories for local development");
     return null;
   }
 

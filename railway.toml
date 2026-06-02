@@ -1,0 +1,32 @@
+# ASUR — Railway Project Configuration
+#
+# Only the backend runs on Railway.
+# The three Next.js apps (web, admin, vendor) are deployed on Vercel.
+#
+# In the Railway dashboard, create ONE service:
+#
+#   Service name     Root Directory
+#   ─────────────────────────────────
+#   asur-backend     apps/backend
+#
+# Railway will find apps/backend/railway.toml and apps/backend/nixpacks.toml automatically.
+#
+# Required env vars — set in Railway dashboard → Service → Variables:
+#
+#   NODE_ENV=production
+#   PORT=4000
+#   MONGODB_URI=<Atlas connection string>
+#   ADMIN_SECRET=<strong password — used to log into the admin panel>
+#   FIREBASE_PROJECT_ID=
+#   FIREBASE_CLIENT_EMAIL=
+#   FIREBASE_PRIVATE_KEY=
+#   RAZORPAY_KEY=
+#   RAZORPAY_SECRET=
+#   RESEND_API_KEY=
+#   ADMIN_EMAIL=
+#   R2_ACCESS_KEY=
+#   R2_SECRET_KEY=
+#   R2_BUCKET=
+#   R2_ACCOUNT_ID=
+#   R2_PUBLIC_URL=
+#   SENTRY_DSN=          (optional)

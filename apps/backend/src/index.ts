@@ -1,6 +1,7 @@
 import { startServer } from "./server";
+import { logger } from "./lib/logger";
 
 void startServer().catch((error) => {
-  console.error("[backend] failed to start", error);
+  logger.error(error, "failed to start backend");
   process.exit(1);
 });

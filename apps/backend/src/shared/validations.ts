@@ -151,7 +151,8 @@ export const cartItemSchema = z.object({
 export const createOrderSchema = z.object({
   customerId: z.string().min(1),
   items: z.array(cartItemSchema).min(1),
-  shippingAddress: addressSchema
+  shippingAddress: addressSchema,
+  couponCode: z.string().trim().toUpperCase().optional()
 });
 
 // amount is intentionally omitted — the server derives it from order.total
