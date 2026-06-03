@@ -33,6 +33,4 @@ const couponSchema = new Schema<CouponDoc>(
   { versionKey: false }
 );
 
-couponSchema.index({ code: 1 }, { unique: true });
-
 export const CouponModel = models.Coupon ?? model<CouponDoc>("Coupon", couponSchema);
