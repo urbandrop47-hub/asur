@@ -139,15 +139,20 @@ export function createApp(): Express {
   app.use("/api/v1/auth/session", authLimiter);
   app.use("/api/v1/payments", paymentLimiter);
 
-  // Enhanced health check (T4)
+  // Root probe — confirms the server is accepting requests
+  app.get("/", (_req, res) => {
+    res.json({ success: true, message: "ASUR Backend Running" });
+  });
+
+  // Enhanced health check
   app.get("/health", async (_req, res) => {
     let dbLatencyMs: number | null = null;
     let dbStatus = "disconnected";
 
-    if (hasMongoConnection && mongoose.connection.readyState === 1) {
+    if (hasMongoConnection && mongoose.connection.readyState === 1 && mongoose.connection.db) {
       try {
         const t0 = Date.now();
-        await mongoose.connection.db!.admin().ping();
+        await mongoose.connection.db.admin().ping();
         dbLatencyMs = Date.now() - t0;
         dbStatus = "connected";
       } catch {
