@@ -9,7 +9,7 @@ export async function startServer() {
   await connectDatabase();
 
   const app = createApp();
-  app.listen(env.PORT, () => {
-    logger.info(`asur-backend listening on http://localhost:${env.PORT}`);
+  app.listen(env.PORT, "0.0.0.0", () => {
+    logger.info(`asur-backend listening on 0.0.0.0:${env.PORT}`);
   });
 }
