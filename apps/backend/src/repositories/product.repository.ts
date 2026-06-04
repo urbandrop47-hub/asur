@@ -15,6 +15,20 @@ export type ProductSearchParams = {
   inStock?: boolean;
   sort?: "newest" | "price_asc" | "price_desc" | "popularity";
   collection?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type ProductSearchResult = {
+  products: Product[];
+  total: number;
+};
+
+export type SuggestItem = {
+  slug: string;
+  title: string;
+  category: string;
+  image?: string;
 };
 
 export const productRepository = {
@@ -29,7 +43,11 @@ export const productRepository = {
     return mockStore.products;
   },
 
-  async search(params: ProductSearchParams) {
+  async search(params: ProductSearchParams): Promise<ProductSearchResult> {
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.min(100, Math.max(1, params.limit ?? 24));
+    const skip = (page - 1) * limit;
+
     if (hasMongoConnection) {
       const filter: FilterQuery<Product> = { status: "active" };
 
@@ -63,23 +81,38 @@ export const productRepository = {
 
       // Price sorts need aggregation to compute min variant price
       if (params.sort === "price_asc" || params.sort === "price_desc") {
-        const docs = await ProductModel.aggregate([
+        const [agg] = await ProductModel.aggregate([
           { $match: filter },
           { $addFields: { _minPrice: { $min: "$variants.price" } } },
-          { $sort: { _minPrice: params.sort === "price_asc" ? 1 : -1 } },
-          { $project: { _minPrice: 0 } }
+          {
+            $facet: {
+              total: [{ $count: "count" }],
+              products: [
+                { $sort: { _minPrice: params.sort === "price_asc" ? 1 : -1 } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: { _minPrice: 0 } }
+              ]
+            }
+          }
         ]).exec();
-        return docs as Product[];
+        return {
+          products: (agg?.products ?? []) as Product[],
+          total: agg?.total?.[0]?.count ?? 0
+        };
       }
 
       // Text-score sort when a query is present, otherwise newest
-      if (params.q) {
-        return ProductModel.find(filter)
-          .sort({ score: { $meta: "textScore" }, updatedAt: -1 })
-          .lean<Product[]>()
-          .exec();
-      }
-      return ProductModel.find(filter).sort({ updatedAt: -1 }).lean<Product[]>().exec();
+      const findQuery = params.q
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? ProductModel.find(filter).sort({ score: { $meta: "textScore" }, updatedAt: -1 } as any)
+        : ProductModel.find(filter).sort({ updatedAt: -1 });
+
+      const [products, total] = await Promise.all([
+        findQuery.skip(skip).limit(limit).lean<Product[]>().exec(),
+        ProductModel.countDocuments(filter)
+      ]);
+      return { products, total };
     }
 
     // Mock fallback — basic filtering in memory
@@ -100,7 +133,38 @@ export const productRepository = {
     if (params.maxPrice !== undefined) result = result.filter((p) => p.variants.some((v) => v.price <= params.maxPrice!));
     if (params.sort === "price_asc") result.sort((a, b) => Math.min(...a.variants.map((v) => v.price)) - Math.min(...b.variants.map((v) => v.price)));
     if (params.sort === "price_desc") result.sort((a, b) => Math.min(...b.variants.map((v) => v.price)) - Math.min(...a.variants.map((v) => v.price)));
-    return result;
+    const total = result.length;
+    return { products: result.slice(skip, skip + limit), total };
+  },
+
+  async suggest(q: string, limit = 6): Promise<SuggestItem[]> {
+    if (hasMongoConnection) {
+      const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const docs = await ProductModel.find(
+        { status: "active", $or: [{ title: regex }, { category: regex }, { tags: regex }] },
+        { slug: 1, title: 1, category: 1, media: { $slice: 1 } }
+      )
+        .limit(limit)
+        .lean()
+        .exec();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (docs as unknown as Array<{ slug: string; title: string; category: string; media?: Array<{ url: string }> }>).map((d) => ({
+        slug: d.slug,
+        title: d.title,
+        category: d.category,
+        image: d.media?.[0]?.url
+      }));
+    }
+    // Mock fallback
+    const q2 = q.toLowerCase();
+    return mockStore.products
+      .filter((p) => p.status === "active" && (
+        p.title.toLowerCase().includes(q2) ||
+        p.category.toLowerCase().includes(q2) ||
+        p.tags.some((t) => t.toLowerCase().includes(q2))
+      ))
+      .slice(0, limit)
+      .map((p) => ({ slug: p.slug, title: p.title, category: p.category, image: p.media?.[0]?.url }));
   },
 
   async findBySlug(slug: string) {

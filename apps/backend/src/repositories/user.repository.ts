@@ -173,6 +173,71 @@ export const userRepository = {
     return existing.addresses;
   },
 
+  async updateEmailPrefs(firebaseUid: string, prefs: { marketing: boolean }) {
+    if (hasMongoConnection) {
+      const user = await UserModel.findOneAndUpdate(
+        { firebaseUid },
+        { $set: { "emailPrefs.marketing": prefs.marketing, updatedAt: new Date().toISOString() } },
+        { new: true }
+      ).lean<UserProfile>().exec();
+      return user;
+    }
+    const existing = mockStore.users.find((u) => u.firebaseUid === firebaseUid);
+    if (!existing) return null;
+    if (!existing.emailPrefs) existing.emailPrefs = { marketing: true };
+    existing.emailPrefs.marketing = prefs.marketing;
+    existing.updatedAt = new Date().toISOString();
+    return existing;
+  },
+
+  async updateEmailPrefsByUserId(userId: string, prefs: { marketing: boolean }) {
+    if (hasMongoConnection) {
+      const user = await UserModel.findOneAndUpdate(
+        { id: userId },
+        { $set: { "emailPrefs.marketing": prefs.marketing, updatedAt: new Date().toISOString() } },
+        { new: true }
+      ).lean<UserProfile>().exec();
+      return user;
+    }
+    const existing = mockStore.users.find((u) => u.id === userId);
+    if (!existing) return null;
+    if (!existing.emailPrefs) existing.emailPrefs = { marketing: true };
+    existing.emailPrefs.marketing = prefs.marketing;
+    existing.updatedAt = new Date().toISOString();
+    return existing;
+  },
+
+  /** Anonymise a user's PII for GDPR "right to erasure". Order records are retained for accounting. */
+  async anonymize(firebaseUid: string) {
+    if (hasMongoConnection) {
+      await UserModel.updateOne(
+        { firebaseUid },
+        {
+          $set: {
+            name: "Deleted User",
+            email: null,
+            phoneNumber: null,
+            avatarUrl: null,
+            addresses: [],
+            "emailPrefs.marketing": false,
+            updatedAt: new Date().toISOString()
+          }
+        }
+      );
+      return true;
+    }
+    const existing = mockStore.users.find((u) => u.firebaseUid === firebaseUid);
+    if (!existing) return false;
+    existing.name = "Deleted User";
+    existing.email = undefined;
+    existing.phoneNumber = undefined;
+    existing.avatarUrl = undefined;
+    existing.addresses = [];
+    if (existing.emailPrefs) existing.emailPrefs.marketing = false;
+    existing.updatedAt = new Date().toISOString();
+    return true;
+  },
+
   async setRole(input: UpdateUserRoleInput) {
     if (hasMongoConnection) {
       const user = await UserModel.findOne({ firebaseUid: input.firebaseUid }).exec();

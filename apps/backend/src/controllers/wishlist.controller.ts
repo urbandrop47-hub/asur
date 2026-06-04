@@ -48,6 +48,10 @@ export const removeFromWishlistController: RequestHandler = asyncHandler(async (
     ? req.params.productId[0]
     : req.params.productId;
 
-  await wishlistRepository.remove(customerId, productId);
+  const removed = await wishlistRepository.remove(customerId, productId);
+  if (!removed) {
+    res.status(404).json({ success: false, message: "Item not found in wishlist" });
+    return;
+  }
   sendSuccess(res, null, "Removed from wishlist");
 });

@@ -30,13 +30,19 @@ import {
 import {
   getAnalyticsController,
   getRevenueChartController,
-  exportOrdersCsvController
+  exportOrdersCsvController,
+  getSearchAnalyticsController
 } from "../controllers/analytics.controller";
 import {
   listAdminReturnsController,
   getAdminReturnController,
   adminDecideReturnController
 } from "../controllers/return.controller";
+import {
+  listSizeChartsController,
+  upsertSizeChartController,
+  deleteSizeChartController
+} from "../controllers/size-chart.controller";
 
 export const adminRouter: ExpressRouter = Router();
 
@@ -84,3 +90,8 @@ adminRouter.get("/coupons", adminOnlyMiddleware, listCouponsController);
 adminRouter.post("/coupons", adminOnlyMiddleware, createCouponController);
 adminRouter.patch("/coupons/:code", adminOnlyMiddleware, updateCouponController);
 adminRouter.delete("/coupons/:code", adminOnlyMiddleware, deleteCouponController);
+
+// Size chart management
+adminRouter.get("/size-guide", adminOnlyMiddleware, listSizeChartsController);
+adminRouter.post("/size-guide/:category", adminOnlyMiddleware, upsertSizeChartController);
+adminRouter.delete("/size-guide/:category", adminOnlyMiddleware, deleteSizeChartController);

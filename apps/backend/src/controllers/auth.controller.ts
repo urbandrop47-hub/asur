@@ -1,4 +1,5 @@
 import { z } from "zod";
+import crypto from "node:crypto";
 import type { RequestHandler } from "express";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
@@ -6,6 +7,32 @@ import { createSession, resolveUserFromIdToken } from "../services/auth.service"
 import { authSessionSchema } from "../validators/auth.validators";
 import { addressSchema } from "../shared/validations";
 import { userRepository } from "../repositories/user.repository";
+import { OrderModel } from "../models/order.model";
+import { ReviewModel } from "../models/review.model";
+import { WishlistModel } from "../models/wishlist.model";
+import { hasMongoConnection } from "../config/env";
+import { env } from "../config/env";
+import { mockStore } from "../repositories/mock-store";
+
+const UNSUB_SECRET = env.JWT_SECRET || "asur-unsub-fallback-secret";
+
+function makeUnsubToken(userId: string): string {
+  const hmac = crypto.createHmac("sha256", UNSUB_SECRET).update(userId).digest("base64url");
+  return `${Buffer.from(userId).toString("base64url")}.${hmac}`;
+}
+
+function verifyUnsubToken(token: string): string | null {
+  try {
+    const [uidB64, hmac] = token.split(".");
+    if (!uidB64 || !hmac) return null;
+    const userId = Buffer.from(uidB64, "base64url").toString("utf8");
+    const expected = crypto.createHmac("sha256", UNSUB_SECRET).update(userId).digest("base64url");
+    if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(hmac))) return null;
+    return userId;
+  } catch {
+    return null;
+  }
+}
 
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -160,4 +187,95 @@ export const deleteAddressController: RequestHandler = asyncHandler(async (req, 
     return;
   }
   sendSuccess(res, updated, "Address removed");
+});
+
+// PATCH /api/v1/auth/email-preferences
+export const updateEmailPrefsController: RequestHandler = asyncHandler(async (req, res) => {
+  const user = res.locals.user;
+  const schema = z.object({ marketing: z.boolean() });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: "marketing (boolean) is required" });
+    return;
+  }
+  const updated = await userRepository.updateEmailPrefs(user.firebaseUid, parsed.data);
+  if (!updated) {
+    res.status(404).json({ success: false, message: "User not found" });
+    return;
+  }
+  sendSuccess(res, { marketing: updated.emailPrefs?.marketing ?? true }, "Email preferences updated");
+});
+
+// GET /api/v1/auth/email-preferences
+export const getEmailPrefsController: RequestHandler = asyncHandler(async (req, res) => {
+  const user = res.locals.user;
+  const profile = await userRepository.findByFirebaseUid(user.firebaseUid);
+  sendSuccess(res, { marketing: profile?.emailPrefs?.marketing ?? true }, "Email preferences fetched");
+});
+
+// GET /api/v1/unsubscribe?token=<token> — public, no auth required
+export const unsubscribeController: RequestHandler = asyncHandler(async (req, res) => {
+  const token = typeof req.query.token === "string" ? req.query.token : "";
+  if (!token) {
+    res.status(400).send("<html><body><h2>Invalid unsubscribe link.</h2></body></html>");
+    return;
+  }
+  const userId = verifyUnsubToken(token);
+  if (!userId) {
+    res.status(400).send("<html><body><h2>This unsubscribe link is invalid or has expired.</h2></body></html>");
+    return;
+  }
+  await userRepository.updateEmailPrefsByUserId(userId, { marketing: false });
+  // Redirect to web confirmation page
+  const webUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  res.redirect(`${webUrl}/unsubscribed`);
+});
+
+// GET /api/v1/auth/data-export — GDPR data portability
+export const dataExportController: RequestHandler = asyncHandler(async (req, res) => {
+  const user = res.locals.user;
+  const profile = await userRepository.findByFirebaseUid(user.firebaseUid);
+
+  let orders: unknown[] = [];
+  let reviews: unknown[] = [];
+  let wishlist: unknown[] = [];
+
+  if (hasMongoConnection) {
+    [orders, reviews, wishlist] = await Promise.all([
+      OrderModel.find({ customerId: user.id }).lean(),
+      ReviewModel.find({ customerId: user.id }).lean(),
+      WishlistModel.find({ userId: user.id }).lean()
+    ]);
+  } else {
+    orders = mockStore.orders.filter((o) => o.customerId === user.id);
+    reviews = (mockStore as Record<string, unknown[]>).reviews?.filter((r: unknown) => (r as { customerId: string }).customerId === user.id) ?? [];
+  }
+
+  const exportData = {
+    profile: {
+      id: profile?.id,
+      email: profile?.email,
+      name: profile?.name,
+      phoneNumber: profile?.phoneNumber,
+      role: profile?.role,
+      addresses: profile?.addresses,
+      emailPrefs: profile?.emailPrefs,
+      createdAt: profile?.createdAt
+    },
+    orders,
+    reviews,
+    wishlist,
+    exportedAt: new Date().toISOString()
+  };
+
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Disposition", `attachment; filename="asur-data-export-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.status(200).send(JSON.stringify(exportData, null, 2));
+});
+
+// DELETE /api/v1/auth/account — GDPR right to erasure (anonymises PII, keeps order records)
+export const deleteAccountController: RequestHandler = asyncHandler(async (req, res) => {
+  const user = res.locals.user;
+  await userRepository.anonymize(user.firebaseUid);
+  sendSuccess(res, null, "Account data anonymised. Your order records are retained for legal/accounting purposes per our Privacy Policy.");
 });

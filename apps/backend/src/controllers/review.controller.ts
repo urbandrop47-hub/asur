@@ -19,13 +19,10 @@ export const createReviewController: RequestHandler = asyncHandler(async (req, r
   const customerId: string = res.locals.user.id;
   const input = createReviewSchema.parse(req.body);
 
-  // Verify the order exists, belongs to this customer, and contains the product
+  // Verify the order exists and belongs to this customer
   const order = await orderRepository.findById(input.orderId, customerId);
   if (!order) {
     throw new AppError(404, "Order not found");
-  }
-  if (order.customerId !== customerId) {
-    throw new AppError(403, "Access denied");
   }
 
   // Only allow reviews after shipment (shipped or delivered)
@@ -74,11 +71,16 @@ export const listProductReviewsController: RequestHandler = asyncHandler(async (
 });
 
 // Admin: GET /api/v1/admin/reviews — all reviews for moderation
+// ?filter=pending → unapproved only; ?filter=approved → approved only; no param → all
 export const listAdminReviewsController: RequestHandler = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page ?? 1));
-  const pending = req.query.pending === "true" ? false : undefined; // pending = not approved
+  const filter = req.query.filter as string | undefined;
+  const approvedOnly =
+    filter === "approved" ? true :
+    filter === "pending" ? false :
+    undefined;
 
-  const { reviews, total } = await reviewRepository.listAll(page, 20, pending === false ? false : undefined);
+  const { reviews, total } = await reviewRepository.listAll(page, 20, approvedOnly);
   sendSuccess(res, { reviews, total }, "Reviews fetched");
 });
 

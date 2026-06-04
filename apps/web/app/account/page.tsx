@@ -388,6 +388,8 @@ export default function AccountPage() {
   }
 
   async function handleDeleteAddress(index: number) {
+    // Guard against concurrent deletes — a stale index would delete the wrong address
+    if (deletingIndex !== null) return;
     setDeletingIndex(index);
     try {
       await api.del(`/api/v1/auth/addresses/${index}`);
@@ -471,11 +473,12 @@ export default function AccountPage() {
       </div>
 
       {/* Quick links */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.6rem" }}>
         {[
           { href: "/orders", label: "Orders", icon: "📦" },
           { href: "/wishlist", label: "Wishlist", icon: "♡" },
           { href: "/orders", label: "Returns", icon: "↩" },
+          { href: "/account/notifications", label: "Privacy", icon: "🔔" },
         ].map(({ href, label, icon }) => (
           <Link
             key={label}

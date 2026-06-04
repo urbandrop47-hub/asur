@@ -13,6 +13,7 @@ const LEGAL_LINKS = [
   { label: "Privacy policy", href: "/privacy" },
   { label: "Terms of use", href: "/terms" },
   { label: "Returns & refunds", href: "/returns" },
+  { label: "FAQ", href: "/faq" },
 ];
 
 const TRUST_BADGES = [

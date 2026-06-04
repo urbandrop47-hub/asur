@@ -485,6 +485,9 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  // Tracks the pending order created before Razorpay opens — reused on retry
+  // so we don't create a second orphaned order if the user dismisses the modal.
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -530,19 +533,25 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      // 1. Create backend order
-      const orderRes = await api.post<{ data: { order: Order } }>("/api/v1/orders", {
-        items: cartItems.map((i) => ({
-          productId: i.productId,
-          variantSku: i.variantSku,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice
-        })),
-        shippingAddress: confirmedAddress,
-        ...(coupon ? { couponCode: coupon.code } : {})
-      });
-
-      const order = orderRes.data.order;
+      // 1. Create backend order (or reuse a pending one from a prior dismissed attempt)
+      let order: Order;
+      if (pendingOrderId) {
+        const existingRes = await api.get<{ data: Order }>(`/api/v1/orders/${pendingOrderId}`);
+        order = existingRes.data;
+      } else {
+        const orderRes = await api.post<{ data: { order: Order } }>("/api/v1/orders", {
+          items: cartItems.map((i) => ({
+            productId: i.productId,
+            variantSku: i.variantSku,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice
+          })),
+          shippingAddress: confirmedAddress,
+          ...(coupon ? { couponCode: coupon.code } : {})
+        });
+        order = orderRes.data.order;
+        setPendingOrderId(order.id);
+      }
       // Use the server-computed total — never re-derive from client cart prices,
       // which may differ if the catalogue changed between add-to-cart and checkout.
       const totalPaise = Math.round((order.total ?? 0) * 100);
@@ -583,6 +592,7 @@ export default function CheckoutPage() {
               razorpayPaymentId: payload.razorpay_payment_id,
               razorpaySignature: payload.razorpay_signature
             });
+            setPendingOrderId(null);
             clearCart();
             router.push(`/orders/${order.id}/confirmation`);
           } catch {
@@ -594,6 +604,7 @@ export default function CheckoutPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setProcessing(false);
+      setStep(2); // return to review so user can retry
     }
   }
 

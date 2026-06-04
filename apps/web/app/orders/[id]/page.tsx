@@ -364,6 +364,12 @@ export default function OrderDetailPage() {
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--text-muted)" }}>
             <span>Subtotal</span><span>{formatCurrency(order.subtotal)}</span>
           </div>
+          {(order.discount ?? 0) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--success)" }}>
+              <span>Discount{order.couponCode ? ` (${order.couponCode})` : ""}</span>
+              <span>−{formatCurrency(order.discount ?? 0)}</span>
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--text-muted)" }}>
             <span>Shipping</span>
             <span style={{ color: order.shipping === 0 ? "var(--success)" : "inherit" }}>
@@ -428,7 +434,7 @@ export default function OrderDetailPage() {
             {order.items.map((item) => (
               <Link
                 key={item.variantSku}
-                href={`/products/${item.variantSku.split("-").slice(0, -2).join("-") || "?"}`}
+                href={`/products?q=${encodeURIComponent(item.title)}`}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: "0.4rem",
                   padding: "0.45rem 0.9rem", borderRadius: 999, fontSize: "0.8rem", fontWeight: 600,

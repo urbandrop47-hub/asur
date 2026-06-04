@@ -4,6 +4,7 @@ import { sendSuccess } from "../lib/response";
 import { hasMongoConnection } from "../config/env";
 import { OrderModel } from "../models/order.model";
 import { ProductModel } from "../models/product.model";
+import { SearchEventModel } from "../models/search-event.model";
 import { mockStore } from "../repositories/mock-store";
 
 const PAID_STATUSES = ["paid", "processing", "packed", "shipped", "delivered"];
@@ -169,6 +170,51 @@ export const getRevenueChartController: RequestHandler = asyncHandler(async (_re
   sendSuccess(res, { chart }, "Revenue chart fetched (mock)");
 });
 
+// ── GET /api/v1/admin/analytics/search ───────────────────────────────────────
+export const getSearchAnalyticsController: RequestHandler = asyncHandler(async (_req, res) => {
+  if (hasMongoConnection) {
+    const cutoff30 = daysAgo(30).toISOString();
+    const [topQueries, zeroResultQueries, totalSearches] = await Promise.all([
+      // Top 10 queries by volume (last 30d)
+      SearchEventModel.aggregate([
+        { $match: { createdAt: { $gte: cutoff30 } } },
+        { $group: { _id: "$query", count: { $sum: 1 }, avgResults: { $avg: "$resultsCount" } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]),
+      // Top 10 zero-result queries
+      SearchEventModel.aggregate([
+        { $match: { createdAt: { $gte: cutoff30 }, resultsCount: 0 } },
+        { $group: { _id: "$query", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]),
+      SearchEventModel.countDocuments({ createdAt: { $gte: cutoff30 } })
+    ]);
+
+    sendSuccess(res, {
+      totalSearches,
+      topQueries: topQueries.map((q: { _id: string; count: number; avgResults: number }) => ({
+        query: q._id,
+        count: q.count,
+        avgResults: Math.round(q.avgResults)
+      })),
+      zeroResultQueries: zeroResultQueries.map((q: { _id: string; count: number }) => ({
+        query: q._id,
+        count: q.count
+      }))
+    }, "Search analytics fetched");
+    return;
+  }
+
+  // Mock fallback
+  sendSuccess(res, {
+    totalSearches: 0,
+    topQueries: [],
+    zeroResultQueries: []
+  }, "Search analytics fetched (mock)");
+});
+
 // ── GET /api/v1/admin/analytics/export-csv ────────────────────────────────────
 export const exportOrdersCsvController: RequestHandler = asyncHandler(async (_req, res) => {
   let orders;
@@ -184,11 +230,13 @@ export const exportOrdersCsvController: RequestHandler = asyncHandler(async (_re
     const itemsSummary = ((o.items as Array<{ title: string; quantity: number }>) ?? [])
       .map((i) => `${i.title} x${i.quantity}`)
       .join(" | ");
+    // Escape embedded double-quotes by doubling them (RFC 4180)
+    const escapedItems = `"${itemsSummary.replace(/"/g, '""')}"`;
     return [
       o.orderNumber,
       String(o.createdAt).slice(0, 10),
       o.customerId,
-      `"${itemsSummary}"`,
+      escapedItems,
       o.subtotal,
       o.discount ?? 0,
       o.shipping,

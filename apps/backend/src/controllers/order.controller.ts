@@ -3,11 +3,12 @@ import { z } from "zod";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
 import { cartItemSchema, addressSchema } from "../shared/validations";
-import { createOrder, getOrderById, listOrdersByCustomer } from "../services/order.service";
+import { cancelOrder, createOrder, getOrderById, listOrdersByCustomer } from "../services/order.service";
 
 const createOrderBodySchema = z.object({
   items: z.array(cartItemSchema).min(1),
-  shippingAddress: addressSchema
+  shippingAddress: addressSchema,
+  couponCode: z.string().trim().toUpperCase().optional()
 });
 
 /**
@@ -41,10 +42,17 @@ const createOrderBodySchema = z.object({
  *         description: Not authenticated
  */
 export const createOrderController: RequestHandler = asyncHandler(async (req, res) => {
-  const { items, shippingAddress } = createOrderBodySchema.parse(req.body);
+  const { items, shippingAddress, couponCode } = createOrderBodySchema.parse(req.body);
   const customerId: string = res.locals.user.id;
-  const result = await createOrder({ customerId, items, shippingAddress });
+  const result = await createOrder({ customerId, items, shippingAddress, couponCode });
   sendSuccess(res, result, "Order created", 201);
+});
+
+export const cancelOrderController: RequestHandler = asyncHandler(async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const customerId: string = res.locals.user.id;
+  const order = await cancelOrder(id, customerId, false);
+  sendSuccess(res, { order }, "Order cancelled");
 });
 
 /**

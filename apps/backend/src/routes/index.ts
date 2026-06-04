@@ -10,6 +10,7 @@ import { vendorRouter } from "./vendor.routes";
 import { wishlistRouter } from "./wishlist.routes";
 import { stockAlertsRouter } from "./stock-alerts.routes";
 import { couponRouter } from "./coupon.routes";
+import { sizeChartRouter } from "./size-chart.routes";
 
 export const apiRouter: Router = Router();
 
@@ -23,3 +24,4 @@ apiRouter.use(`${API_BASE_PATH}/vendor`, vendorRouter);
 apiRouter.use(`${API_BASE_PATH}/wishlist`, wishlistRouter);
 apiRouter.use(`${API_BASE_PATH}/stock-alerts`, stockAlertsRouter);
 apiRouter.use(`${API_BASE_PATH}/coupons`, couponRouter);
+apiRouter.use(`${API_BASE_PATH}/size-guide`, sizeChartRouter);

@@ -133,9 +133,35 @@ export default function WishlistPage() {
           Wishlist
         </h1>
         {entries.length > 0 && (
-          <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-            {entries.length} item{entries.length !== 1 ? "s" : ""}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              {entries.length} item{entries.length !== 1 ? "s" : ""}
+            </span>
+            {/* Share buttons */}
+            <button
+              onClick={() => {
+                const text = entries.map((e) => `${e.product.title} — ${window.location.origin}/products/${e.product.slug}`).join("\n");
+                navigator.clipboard?.writeText(text).then(() => alert("Wishlist copied to clipboard!")).catch(() => {});
+              }}
+              title="Copy wishlist"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.35rem 0.7rem", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <rect x="1" y="3" width="7" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M4 3V2a1 1 0 011-1h5a1 1 0 011 1v7a1 1 0 01-1 1H9" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+              Copy
+            </button>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent("My ASUR wishlist 🖤\n\n" + entries.map((e) => `• ${e.product.title} — ${typeof window !== "undefined" ? window.location.origin : "https://asur.in"}/products/${e.product.slug}`).join("\n"))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Share via WhatsApp"
+              style={{ background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.25)", borderRadius: 8, padding: "0.35rem 0.7rem", fontSize: "0.75rem", fontWeight: 600, color: "#25d366", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem", textDecoration: "none" }}
+            >
+              WhatsApp
+            </a>
+          </div>
         )}
       </div>
 

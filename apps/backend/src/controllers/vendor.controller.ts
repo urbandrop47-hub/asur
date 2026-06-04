@@ -103,10 +103,21 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
 
   const updated = await orderRepository.updateVendorTask(id, updates);
 
-  // When completed, advance both the order status and the fulfillmentStatus so
-  // customers and admins see the shipment reflected everywhere.
+  // Sync order fulfillmentStatus to mirror vendor task progress at every transition
+  if (body.status && updated) {
+    const fulfillmentMap: Record<string, "in_progress" | "ready_to_ship" | "shipped"> = {
+      in_progress: "in_progress",
+      ready_to_ship: "ready_to_ship",
+      completed: "shipped"
+    };
+    const nextFulfillment = fulfillmentMap[body.status];
+    if (nextFulfillment) {
+      await orderRepository.updateFulfillmentStatus(updated.orderId, nextFulfillment);
+    }
+  }
+
+  // When completed, also advance the order's overall status to "shipped"
   if (body.status === "completed" && updated) {
-    await orderRepository.updateFulfillmentStatus(updated.orderId, "shipped");
     await orderRepository.updateStatus(updated.orderId, "shipped");
 
     // Fire-and-forget shipping email — never breaks the vendor flow on failure
