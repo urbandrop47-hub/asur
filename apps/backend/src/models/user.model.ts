@@ -17,6 +17,11 @@ const addressSchema = new Schema(
   { _id: false }
 );
 
+const emailPrefsSchema = new Schema(
+  { marketing: { type: Boolean, default: true } },
+  { _id: false }
+);
+
 const userSchema = new Schema<UserProfile>(
   {
     id: { type: String, required: true, index: true },
@@ -27,6 +32,7 @@ const userSchema = new Schema<UserProfile>(
     avatarUrl: { type: String },
     role: { type: String, required: true, default: "CUSTOMER" },
     addresses: { type: [addressSchema], default: [] },
+    emailPrefs: { type: emailPrefsSchema, default: () => ({ marketing: true }) },
     createdAt: { type: String, required: true },
     updatedAt: { type: String, required: true }
   },

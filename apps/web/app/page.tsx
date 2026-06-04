@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Product } from "@asur/types";
 import { ProductCard } from "../components/product-card";
 import { api } from "../lib/api";
+import { getRecent } from "../lib/recently-viewed";
 
 // ─── Marquee strip ────────────────────────────────────────────────────────────
 
@@ -211,6 +212,7 @@ const VALUE_PROPS = [
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recentSlugs, setRecentSlugs] = useState<{ slug: string; title: string; image?: string }[]>([]);
 
   useEffect(() => {
     api
@@ -218,6 +220,7 @@ export default function HomePage() {
       .then((res) => setProducts(res.data.slice(0, 6)))
       .catch(() => {})
       .finally(() => setLoading(false));
+    setRecentSlugs(getRecent().slice(0, 4));
   }, []);
 
   const collections = [
@@ -317,6 +320,50 @@ export default function HomePage() {
           </div>
         )}
       </section>
+
+      {/* Recently viewed */}
+      {recentSlugs.length > 0 && (
+        <section style={{ marginBottom: "3rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+            <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, letterSpacing: "-0.01em" }}>Recently viewed</h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "1rem" }}>
+            {recentSlugs.map((item) => (
+              <Link
+                key={item.slug}
+                href={`/products/${item.slug}`}
+                style={{ textDecoration: "none", color: "var(--text)" }}
+              >
+                <div style={{
+                  border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden",
+                  background: "rgba(255,255,255,0.02)",
+                  transition: "border-color 180ms",
+                }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(249,115,22,0.35)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                >
+                  {item.image ? (
+                    <div style={{ aspectRatio: "3/4", overflow: "hidden", background: "rgba(255,255,255,0.04)" }}>
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ aspectRatio: "3/4", background: "rgba(255,255,255,0.05)" }} />
+                  )}
+                  <div style={{ padding: "0.7rem 0.85rem 0.85rem" }}>
+                    <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {item.title}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Value props */}
       <section style={{ marginBottom: "1rem" }}>

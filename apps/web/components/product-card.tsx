@@ -1,10 +1,16 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { HeartButton } from "./heart-button";
+import { useCompareStore } from "../store/compare-store";
 
 export function ProductCard({ product }: { product: Product }) {
+  const { add, remove, has } = useCompareStore();
+  const inCompare = has(product.slug);
+
   const lowestPrice = product.variants.length > 0
     ? Math.min(...product.variants.map((v) => v.price))
     : 0;
@@ -151,6 +157,26 @@ export function ProductCard({ product }: { product: Product }) {
             {isSoldOut ? "Out of stock" : isLowStock ? `${totalStock} left` : "In stock"}
           </span>
         </div>
+
+        {/* Compare toggle */}
+        <button
+          onClick={() => inCompare ? remove(product.slug) : add(product)}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem",
+            padding: "0.4rem 0.75rem", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600,
+            border: `1px solid ${inCompare ? "rgba(249,115,22,0.4)" : "rgba(255,255,255,0.12)"}`,
+            background: inCompare ? "rgba(249,115,22,0.08)" : "transparent",
+            color: inCompare ? "var(--accent)" : "var(--text-muted)",
+            cursor: "pointer", transition: "all 0.15s"
+          }}
+          aria-pressed={inCompare}
+          aria-label={inCompare ? `Remove ${product.title} from comparison` : `Add ${product.title} to comparison`}
+        >
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+            <path d="M1 8h3M1 5.5h5M1 3h9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          </svg>
+          {inCompare ? "✓ Comparing" : "Compare"}
+        </button>
 
         {/* CTA */}
         <Link

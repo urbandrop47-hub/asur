@@ -18,6 +18,12 @@ type Analytics = {
 
 type ChartDay = { day: string; revenue: number; orders: number };
 
+type SearchAnalytics = {
+  totalSearches: number;
+  topQueries: Array<{ query: string; count: number; avgResults: number }>;
+  zeroResultQueries: Array<{ query: string; count: number }>;
+};
+
 // ─── KPI Tile ────────────────────────────────────────────────────────────────
 
 function KpiTile({
@@ -221,6 +227,7 @@ function ExportButton() {
 export default function AdminDashboardPage() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [chart, setChart] = useState<ChartDay[]>([]);
+  const [searchAnalytics, setSearchAnalytics] = useState<SearchAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<"7d" | "30d">("30d");
@@ -230,11 +237,13 @@ export default function AdminDashboardPage() {
     setError(null);
     Promise.all([
       api.get<{ data: Analytics }>("/api/v1/admin/analytics"),
-      api.get<{ data: { chart: ChartDay[] } }>("/api/v1/admin/analytics/revenue-chart")
+      api.get<{ data: { chart: ChartDay[] } }>("/api/v1/admin/analytics/revenue-chart"),
+      api.get<{ data: SearchAnalytics }>("/api/v1/admin/analytics/search").catch(() => null)
     ])
-      .then(([a, c]) => {
+      .then(([a, c, s]) => {
         setAnalytics(a.data);
         setChart(c.data.chart);
+        if (s) setSearchAnalytics(s.data);
       })
       .catch((e: Error) => setError(e.message ?? "Failed to load analytics"))
       .finally(() => setLoading(false));
@@ -394,6 +403,61 @@ export default function AdminDashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Search Analytics */}
+      {(loading || searchAnalytics) && (
+        <div style={{ marginTop: "1rem", padding: "1.25rem 1.35rem", borderRadius: 16, border: "1px solid var(--border)", background: "rgba(255,255,255,0.02)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "1rem" }}>
+            <div>
+              <h2 style={{ margin: "0 0 0.1rem", fontSize: "0.9rem", fontWeight: 700 }}>Search analytics (30d)</h2>
+              <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                {loading ? "Loading…" : `${searchAnalytics?.totalSearches ?? 0} total searches`}
+              </p>
+            </div>
+          </div>
+          {loading ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 28, borderRadius: 6 }} />)}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+              <div>
+                <p style={{ margin: "0 0 0.6rem", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Top queries
+                </p>
+                {(searchAnalytics?.topQueries ?? []).length === 0 ? (
+                  <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>No searches yet</p>
+                ) : (
+                  searchAnalytics?.topQueries.map((q, i) => (
+                    <div key={q.query} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0", borderBottom: i < (searchAnalytics.topQueries.length - 1) ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <span style={{ fontSize: "0.83rem", fontWeight: 500 }}>{q.query}</span>
+                      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{q.avgResults} results</span>
+                        <span style={{ fontSize: "0.75rem", fontWeight: 700, background: "rgba(56,189,248,0.1)", color: "var(--accent)", borderRadius: 999, padding: "1px 7px" }}>{q.count}×</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div>
+                <p style={{ margin: "0 0 0.6rem", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Zero-result searches
+                </p>
+                {(searchAnalytics?.zeroResultQueries ?? []).length === 0 ? (
+                  <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>None — great catalog coverage!</p>
+                ) : (
+                  searchAnalytics?.zeroResultQueries.map((q, i) => (
+                    <div key={q.query} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0", borderBottom: i < (searchAnalytics.zeroResultQueries.length - 1) ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <span style={{ fontSize: "0.83rem", fontWeight: 500, color: "var(--danger, #ef4444)" }}>{q.query}</span>
+                      <span style={{ fontSize: "0.75rem", fontWeight: 700, background: "rgba(239,68,68,0.1)", color: "var(--danger, #ef4444)", borderRadius: 999, padding: "1px 7px" }}>{q.count}×</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

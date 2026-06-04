@@ -30,6 +30,7 @@ export function orderConfirmationHtml(order: Order, customerName: string): strin
     ${divider()}
     <table cellpadding="0" cellspacing="0">
       ${kv("Subtotal", `₹${order.subtotal.toLocaleString("en-IN")}`)}
+      ${(order.discount ?? 0) > 0 ? kv("Discount" + (order.couponCode ? ` (${order.couponCode})` : ""), `−₹${(order.discount ?? 0).toLocaleString("en-IN")}`) : ""}
       ${kv("Shipping", order.shipping === 0 ? "Free" : `₹${order.shipping.toLocaleString("en-IN")}`)}
       ${kv("GST (18%)", `₹${order.tax.toLocaleString("en-IN")}`)}
       ${kv("Total", `₹${order.total.toLocaleString("en-IN")}`)}

@@ -5,12 +5,22 @@ import Link from "next/link";
 import type { Product, Review } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { ProductImageGallery } from "../../../components/product-image-gallery";
+import { SizeGuideModal } from "../../../components/size-guide-modal";
 import { useCartStore } from "../../../store/cart-store";
 import { useAuthStore } from "../../../store/auth-store";
 import { track } from "../../../lib/analytics";
 import { api } from "../../../lib/api";
 import { StarRating, InteractiveStars } from "../../../components/star-rating";
 import { HeartButton } from "../../../components/heart-button";
+import { ProductCard } from "../../../components/product-card";
+import { recordView } from "../../../lib/recently-viewed";
+
+const FIT_DESCRIPTIONS: Record<string, string> = {
+  regular:  "Classic silhouette — follows the body without being tight. True to size.",
+  oversized:"Intentionally cut 2 sizes larger for a relaxed, dropped-shoulder look. Size down if in doubt.",
+  boxy:     "Cropped and boxy — hits at the hip with a square cut. Consider sizing up in length-sensitive looks.",
+  relaxed:  "Slightly loose through the body with a comfortable drape. Generally true to size."
+};
 
 type ReviewAggregate = { averageRating: number; count: number };
 
@@ -287,15 +297,17 @@ export function ProductDetailClient({ product }: { product: Product }) {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const addItem = useCartStore((s) => s.addItem);
 
   useEffect(() => {
     track("product_viewed", { id: product.id, slug: product.slug, title: product.title });
+    recordView(product);
     return () => {
       if (addedTimer.current) clearTimeout(addedTimer.current);
     };
-  }, [product.id, product.slug, product.title]);
+  }, [product.id, product.slug, product.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sizes = [...new Set(product.variants.map((v) => v.size))];
   const colors = [...new Set(product.variants.map((v) => v.color))];
@@ -426,12 +438,20 @@ export function ProductDetailClient({ product }: { product: Product }) {
           {/* Size picker */}
           {sizes.length > 0 && (
             <div>
-              <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                Size
-                {selectedSize
-                  ? <span style={{ color: "var(--text)", marginLeft: "0.4rem" }}>— {selectedSize}</span>
-                  : <span style={{ color: "rgba(246,241,234,0.35)", marginLeft: "0.4rem", fontWeight: 400 }}>— select one</span>}
-              </p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem" }}>
+                <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  Size
+                  {selectedSize
+                    ? <span style={{ color: "var(--text)", marginLeft: "0.4rem" }}>— {selectedSize}</span>
+                    : <span style={{ color: "rgba(246,241,234,0.35)", marginLeft: "0.4rem", fontWeight: 400 }}>— select one</span>}
+                </p>
+                <button
+                  onClick={() => setSizeGuideOpen(true)}
+                  style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 2 }}
+                >
+                  Size guide
+                </button>
+              </div>
               <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
                 {sizes.map((size) => {
                   const available = selectedColor
@@ -445,6 +465,13 @@ export function ProductDetailClient({ product }: { product: Product }) {
                   );
                 })}
               </div>
+              {/* Fit description */}
+              {product.fit && FIT_DESCRIPTIONS[product.fit] && (
+                <p style={{ margin: "0.6rem 0 0", fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                  <strong style={{ color: "var(--text)", textTransform: "capitalize" }}>{product.fit} fit</strong>
+                  {" — "}{FIT_DESCRIPTIONS[product.fit]}
+                </p>
+              )}
             </div>
           )}
 
@@ -583,6 +610,57 @@ export function ProductDetailClient({ product }: { product: Product }) {
       </div>
 
       <ReviewsSection slug={product.slug} productId={product.id} />
+      <RelatedProducts slug={product.slug} />
+
+      {sizeGuideOpen && (
+        <SizeGuideModal
+          category={product.category}
+          onClose={() => setSizeGuideOpen(false)}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── Related products ────────────────────────────────────────────────────────
+function RelatedProducts({ slug }: { slug: string }) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .get<{ data: Product[] }>(`/api/v1/products/${slug}/related`)
+      .then((r) => setProducts(r.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  if (!loading && products.length === 0) return null;
+
+  return (
+    <section style={{ padding: "2.5rem 0 1rem" }}>
+      <h2 style={{ margin: "0 0 1.25rem", fontSize: "1.1rem", fontWeight: 800, letterSpacing: "-0.01em" }}>
+        You may also like
+      </h2>
+      {loading ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "1rem" }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton-card">
+              <div className="skeleton skeleton-image" />
+              <div className="skeleton-body">
+                <div className="skeleton skeleton-line-sm" />
+                <div className="skeleton skeleton-line" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "1rem" }}>
+          {products.map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

@@ -10,7 +10,9 @@ import { validateCoupon } from "../services/coupon.service";
 export const validateCouponController: RequestHandler = asyncHandler(async (req, res) => {
   const { code, subtotal } = z.object({
     code: z.string().min(1),
-    subtotal: z.number().positive()
+    // Cap subtotal at a reasonable maximum — the server re-validates at order creation
+    // with the real computed subtotal, so this is only a first-pass guard
+    subtotal: z.number().positive().max(1_000_000)
   }).parse(req.body);
 
   // Pass customerId if session exists (optional — for per-customer limit check)

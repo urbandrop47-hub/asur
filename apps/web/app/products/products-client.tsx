@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -19,6 +19,8 @@ import {
   type ProductFilters
 } from "../../lib/filter-params";
 
+const PAGE_SIZE = 24;
+
 function ProductSkeleton() {
   return (
     <div className="skeleton-card">
@@ -33,14 +35,107 @@ function ProductSkeleton() {
   );
 }
 
+function Pagination({
+  page,
+  total,
+  pageSize,
+  onPage
+}: {
+  page: number;
+  total: number;
+  pageSize: number;
+  onPage: (p: number) => void;
+}) {
+  const totalPages = Math.ceil(total / pageSize);
+  if (totalPages <= 1) return null;
+
+  // Build page window: always show first, last, current ±1, and ellipsis
+  const pages: (number | "…")[] = [];
+  const add = (n: number) => { if (!pages.includes(n)) pages.push(n); };
+  add(1);
+  if (page > 3) pages.push("…");
+  for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) add(i);
+  if (page < totalPages - 2) pages.push("…");
+  if (totalPages > 1) add(totalPages);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", marginTop: "2rem", flexWrap: "wrap" }}>
+      <button
+        onClick={() => onPage(page - 1)}
+        disabled={page <= 1}
+        style={{
+          padding: "0.5rem 0.85rem",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          background: "none",
+          color: page <= 1 ? "var(--text-muted)" : "var(--text)",
+          cursor: page <= 1 ? "default" : "pointer",
+          fontSize: "0.85rem"
+        }}
+        aria-label="Previous page"
+      >
+        ←
+      </button>
+
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`ellipsis-${i}`} style={{ padding: "0.5rem 0.4rem", color: "var(--text-muted)", fontSize: "0.85rem" }}>…</span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onPage(p as number)}
+            style={{
+              padding: "0.5rem 0.75rem",
+              borderRadius: 8,
+              border: p === page ? "1px solid var(--accent)" : "1px solid var(--border)",
+              background: p === page ? "var(--accent)" : "none",
+              color: p === page ? "#130f0b" : "var(--text)",
+              fontWeight: p === page ? 700 : 400,
+              cursor: p === page ? "default" : "pointer",
+              fontSize: "0.85rem",
+              minWidth: 36
+            }}
+            aria-current={p === page ? "page" : undefined}
+          >
+            {p}
+          </button>
+        )
+      )}
+
+      <button
+        onClick={() => onPage(page + 1)}
+        disabled={page >= totalPages}
+        style={{
+          padding: "0.5rem 0.85rem",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          background: "none",
+          color: page >= totalPages ? "var(--text-muted)" : "var(--text)",
+          cursor: page >= totalPages ? "default" : "pointer",
+          fontSize: "0.85rem"
+        }}
+        aria-label="Next page"
+      >
+        →
+      </button>
+
+      <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginLeft: "0.5rem" }}>
+        {total} result{total !== 1 ? "s" : ""}
+      </span>
+    </div>
+  );
+}
+
 function ProductsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const collectionSlug = searchParams.get("collection") ?? undefined;
+  const page = Math.max(1, Number(searchParams.get("page") ?? 1));
   const filters = useMemo(() => filtersFromParams(searchParams), [searchParams]);
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -53,9 +148,17 @@ function ProductsPageInner() {
     setLoading(true);
     setError(null);
     const qs = filtersToApiQuery(filters, collectionSlug);
+    // Append pagination params
+    const sep = qs.includes("?") ? "&" : "?";
+    const paginatedQs = `${qs}${sep}page=${page}&limit=${PAGE_SIZE}`;
     api
-      .get<{ data: Product[] }>(`/api/v1/products${qs}`)
-      .then((res) => setProducts(res.data))
+      .get<{ data: Product[]; meta?: { page: number; pageSize: number; total: number } }>(
+        `/api/v1/products${paginatedQs}`
+      )
+      .then((res) => {
+        setProducts(res.data);
+        setTotal(res.meta?.total ?? res.data.length);
+      })
       .catch((err: Error) => setError(err.message ?? "Failed to load products"))
       .finally(() => setLoading(false));
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -63,6 +166,7 @@ function ProductsPageInner() {
   function pushFilters(f: ProductFilters) {
     const p = filtersToParams(f);
     if (collectionSlug) p.set("collection", collectionSlug);
+    // Reset to page 1 when filters change
     router.push(`/products?${p.toString()}`);
   }
 
@@ -70,6 +174,18 @@ function ProductsPageInner() {
     const p = new URLSearchParams();
     if (collectionSlug) p.set("collection", collectionSlug);
     router.push(`/products${p.toString() ? `?${p.toString()}` : ""}`);
+  }
+
+  function goToPage(p: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (p === 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(p));
+    }
+    router.push(`/products?${params.toString()}`);
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   const chips = useMemo(() => activeFilterChips(filters), [filters]);
@@ -112,7 +228,7 @@ function ProductsPageInner() {
             ? "Loading the latest drops…"
             : error
               ? ""
-              : `${products.length} piece${products.length !== 1 ? "s" : ""}${collectionLabel ? ` in ${collectionLabel}` : activeCount > 0 ? " matching your filters" : " · hand-picked for the culture"}`}
+              : `${total} piece${total !== 1 ? "s" : ""}${collectionLabel ? ` in ${collectionLabel}` : activeCount > 0 ? " matching your filters" : " · hand-picked for the culture"}`}
         </p>
 
         {collectionSlug && (
@@ -129,7 +245,9 @@ function ProductsPageInner() {
       {!loading && !error && (
         <div className="products-toolbar">
           <div style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-            {products.length} result{products.length !== 1 ? "s" : ""}
+            {total > PAGE_SIZE
+              ? `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}`
+              : `${total} result${total !== 1 ? "s" : ""}`}
           </div>
           <div className="products-toolbar-right">
             <select
@@ -207,6 +325,16 @@ function ProductsPageInner() {
             </button>
           )}
         </div>
+      )}
+
+      {/* ── Pagination ── */}
+      {!loading && !error && (
+        <Pagination
+          page={page}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onPage={goToPage}
+        />
       )}
 
       {/* ── Filter sheet ── */}

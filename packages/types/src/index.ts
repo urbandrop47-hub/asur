@@ -140,6 +140,10 @@ export type AdminInvite = {
   acceptedAt?: string;
 };
 
+export type EmailPrefs = {
+  marketing: boolean;
+};
+
 export type UserProfile = {
   id: ID;
   firebaseUid: string;
@@ -149,6 +153,7 @@ export type UserProfile = {
   avatarUrl?: string;
   role: UserRole;
   addresses: Address[];
+  emailPrefs?: EmailPrefs;
   createdAt: string;
   updatedAt: string;
 };

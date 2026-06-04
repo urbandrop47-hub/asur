@@ -27,7 +27,8 @@ export async function createOrder(input: CreateOrderInput) {
       if (variant.stock < item.quantity) {
         throw new AppError(409, `Only ${variant.stock} unit(s) left for this item`, { variantSku: item.variantSku, available: variant.stock });
       }
-      return { ...item, unitPrice: variant.price, productTitle: product.title };
+      // Carry the full product/variant data so later steps don't need to re-fetch
+      return { ...item, unitPrice: variant.price, productTitle: product.title, _product: product, _variant: variant };
     })
   );
 
@@ -41,9 +42,12 @@ export async function createOrder(input: CreateOrderInput) {
     );
   }
 
+  // Strip internal cache fields before passing to repository
+  const orderItems = verifiedItems.map(({ _product: _p, _variant: _v, ...rest }) => { void _p; void _v; return rest; });
+
   const order = await orderRepository.create({
     ...input,
-    items: verifiedItems,
+    items: orderItems,
     paymentStatus: "pending",
     fulfillmentStatus: "unassigned",
     couponCode: couponResult ? couponResult.coupon.code : undefined,
@@ -73,13 +77,13 @@ export async function createOrder(input: CreateOrderInput) {
     throw new AppError(409, `Item sold out — another order just took the last unit for SKU ${failed.variantSku}`);
   }
 
-  // Fire-and-forget low-stock alerts for variants that dropped below the threshold
+  // Fire-and-forget low-stock alerts — reuse the already-fetched product/variant data
   void (async () => {
     for (const item of verifiedItems) {
-      const product = await productRepository.findById(item.productId);
-      const variant = product?.variants.find((v) => v.sku === item.variantSku);
-      if (variant && variant.stock < LOW_STOCK_THRESHOLD && variant.stock >= 0) {
-        await sendLowStockAlertEmail(product!.title, item.variantSku, variant.stock);
+      // Post-decrement stock = pre-decrement stock minus quantity ordered
+      const postDecrementStock = item._variant.stock - item.quantity;
+      if (postDecrementStock < LOW_STOCK_THRESHOLD && postDecrementStock >= 0) {
+        await sendLowStockAlertEmail(item._product.title, item.variantSku, postDecrementStock);
       }
     }
   })();

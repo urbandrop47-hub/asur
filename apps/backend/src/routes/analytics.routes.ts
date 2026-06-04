@@ -4,7 +4,8 @@ import { adminOnlyMiddleware } from "../middlewares/admin-only";
 import {
   getAnalyticsController,
   getRevenueChartController,
-  exportOrdersCsvController
+  exportOrdersCsvController,
+  getSearchAnalyticsController
 } from "../controllers/analytics.controller";
 
 export const analyticsRouter: ExpressRouter = Router();
@@ -12,3 +13,4 @@ export const analyticsRouter: ExpressRouter = Router();
 analyticsRouter.get("/", adminOnlyMiddleware, getAnalyticsController);
 analyticsRouter.get("/revenue-chart", adminOnlyMiddleware, getRevenueChartController);
 analyticsRouter.get("/export-csv", adminOnlyMiddleware, exportOrdersCsvController);
+analyticsRouter.get("/search", adminOnlyMiddleware, getSearchAnalyticsController);

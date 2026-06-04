@@ -15,6 +15,10 @@ export type Address = {
 
 export type UserRole = "CUSTOMER" | "ADMIN" | "VENDOR" | "SUPER_ADMIN";
 
+export type EmailPrefs = {
+  marketing: boolean;
+};
+
 export type UserProfile = {
   id: ID;
   firebaseUid: string;
@@ -24,6 +28,7 @@ export type UserProfile = {
   avatarUrl?: string;
   role: UserRole;
   addresses: Address[];
+  emailPrefs?: EmailPrefs;
   createdAt: string;
   updatedAt: string;
 };

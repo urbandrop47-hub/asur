@@ -21,7 +21,9 @@ export async function requestReturn(
   if (!order) throw Object.assign(new Error("Order not found"), { status: 404 });
   if (order.status !== "delivered") throw Object.assign(new Error("Only delivered orders can be returned"), { status: 400 });
 
-  const deliveredAt = new Date(order.updatedAt);
+  // Use deliveredAt if set; fall back to updatedAt only when the field is absent
+  const deliveryTimestamp = (order as Record<string, unknown>).deliveredAt as string | undefined;
+  const deliveredAt = new Date(deliveryTimestamp ?? order.updatedAt);
   const cutoff = new Date(deliveredAt.getTime() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   if (new Date() > cutoff) throw Object.assign(new Error("Return window of 7 days has passed"), { status: 400 });
 
@@ -89,16 +91,30 @@ export async function approveReturn(id: string, adminNote?: string): Promise<Ret
     const orderItem = order.items.find((i) => i.variantSku === ri.variantSku);
     if (orderItem) refundAmount += orderItem.unitPrice * ri.quantity;
   }
-  // Include proportional tax
-  const taxRate = order.subtotal > 0 ? order.tax / order.subtotal : 0.18;
-  refundAmount = Math.round(refundAmount * (1 + taxRate));
+  // Apply proportional discount: if a coupon reduced the order subtotal, each
+  // item's effective price is reduced by the same ratio before adding GST.
+  // Using order.discount / order.subtotal rather than deriving a rate from
+  // order.tax prevents over-refunding on discounted orders.
+  const discountRatio = order.subtotal > 0 ? Math.min(1, (order.discount ?? 0) / order.subtotal) : 0;
+  refundAmount = Math.round(refundAmount * (1 - discountRatio) * 1.18);
 
-  // Trigger Razorpay refund
+  // Trigger Razorpay refund — only available in MongoDB mode (PaymentModel is MongoDB-only)
   let refundId: string | undefined;
-  const payment = await PaymentModel.findOne({ orderId: ret.orderId, status: "captured" }).lean<Payment>().exec();
-
-  if (payment?.providerPaymentId) {
-    refundId = await createRazorpayRefund(payment.providerPaymentId, refundAmount);
+  if (hasRazorpayCredentials || process.env.NODE_ENV !== "production") {
+    try {
+      const payment = await PaymentModel.findOne({ orderId: ret.orderId, status: "captured" }).lean<Payment>().exec();
+      if (payment?.providerPaymentId) {
+        refundId = await createRazorpayRefund(payment.providerPaymentId, refundAmount);
+      }
+    } catch (err) {
+      // Razorpay refund failed — mark as approved without refundId so admin can retry
+      const updated = await returnRepository.updateStatus(id, "approved", { refundAmount, adminNote });
+      if (!updated) throw new Error("Failed to update return");
+      throw Object.assign(
+        new Error(`Return approved but Razorpay refund failed: ${err instanceof Error ? err.message : "unknown error"}`),
+        { status: 502, return: updated }
+      );
+    }
   }
 
   const updated = await returnRepository.updateStatus(id, refundId ? "refunded" : "approved", {
