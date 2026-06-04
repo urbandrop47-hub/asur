@@ -199,5 +199,27 @@ export const productRepository = {
     if (idx === -1) return false;
     mockStore.products.splice(idx, 1);
     return true;
+  },
+
+  async related(slug: string, limit = 4): Promise<Product[]> {
+    if (hasMongoConnection) {
+      const product = await ProductModel.findOne({ slug }).lean<Product>().exec();
+      if (!product) return [];
+      const docs = await ProductModel.aggregate([
+        { $match: { status: "active", slug: { $ne: slug }, category: product.category } },
+        { $sample: { size: limit } }
+      ]).exec();
+      return docs as Product[];
+    }
+
+    const product = mockStore.products.find((p) => p.slug === slug);
+    if (!product) return [];
+    const pool = mockStore.products.filter((p) => p.status === "active" && p.slug !== slug && p.category === product.category);
+    // Fisher-Yates shuffle then slice
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, limit);
   }
 };

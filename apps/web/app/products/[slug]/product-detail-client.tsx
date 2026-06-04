@@ -11,6 +11,8 @@ import { track } from "../../../lib/analytics";
 import { api } from "../../../lib/api";
 import { StarRating, InteractiveStars } from "../../../components/star-rating";
 import { HeartButton } from "../../../components/heart-button";
+import { ProductCard } from "../../../components/product-card";
+import { recordView } from "../../../lib/recently-viewed";
 
 type ReviewAggregate = { averageRating: number; count: number };
 
@@ -292,10 +294,11 @@ export function ProductDetailClient({ product }: { product: Product }) {
 
   useEffect(() => {
     track("product_viewed", { id: product.id, slug: product.slug, title: product.title });
+    recordView(product);
     return () => {
       if (addedTimer.current) clearTimeout(addedTimer.current);
     };
-  }, [product.id, product.slug, product.title]);
+  }, [product.id, product.slug, product.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sizes = [...new Set(product.variants.map((v) => v.size))];
   const colors = [...new Set(product.variants.map((v) => v.color))];
@@ -583,6 +586,50 @@ export function ProductDetailClient({ product }: { product: Product }) {
       </div>
 
       <ReviewsSection slug={product.slug} productId={product.id} />
+      <RelatedProducts slug={product.slug} />
     </div>
+  );
+}
+
+// ─── Related products ────────────────────────────────────────────────────────
+function RelatedProducts({ slug }: { slug: string }) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .get<{ data: Product[] }>(`/api/v1/products/${slug}/related`)
+      .then((r) => setProducts(r.data ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  if (!loading && products.length === 0) return null;
+
+  return (
+    <section style={{ padding: "2.5rem 0 1rem" }}>
+      <h2 style={{ margin: "0 0 1.25rem", fontSize: "1.1rem", fontWeight: 800, letterSpacing: "-0.01em" }}>
+        You may also like
+      </h2>
+      {loading ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "1rem" }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton-card">
+              <div className="skeleton skeleton-image" />
+              <div className="skeleton-body">
+                <div className="skeleton skeleton-line-sm" />
+                <div className="skeleton skeleton-line" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "1rem" }}>
+          {products.map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

@@ -2,7 +2,7 @@ import type { RequestHandler } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
-import { getProductBySlug, searchProducts } from "../services/product.service";
+import { getProductBySlug, getRelatedProducts, searchProducts } from "../services/product.service";
 
 const listQuerySchema = z.object({
   q: z.string().optional(),
@@ -47,4 +47,10 @@ export const getProductController: RequestHandler = asyncHandler(async (req, res
     return;
   }
   sendSuccess(res, product, "Product fetched");
+});
+
+export const relatedProductsController: RequestHandler = asyncHandler(async (req, res) => {
+  const slug = Array.isArray(req.params.slug) ? req.params.slug[0] : req.params.slug;
+  const products = await getRelatedProducts(slug);
+  sendSuccess(res, products, "Related products fetched");
 });

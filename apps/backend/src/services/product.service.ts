@@ -11,3 +11,7 @@ export async function searchProducts(params: ProductSearchParams) {
 export async function getProductBySlug(slug: string) {
   return productRepository.findBySlug(slug);
 }
+
+export async function getRelatedProducts(slug: string, limit = 4) {
+  return productRepository.related(slug, limit);
+}
