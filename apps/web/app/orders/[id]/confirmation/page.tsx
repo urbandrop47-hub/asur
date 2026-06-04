@@ -209,9 +209,9 @@ export default function OrderConfirmationPage() {
         <div style={{ padding: "0.9rem 1rem", display: "grid", gap: "0.45rem", background: "rgba(255,255,255,0.01)" }}>
           {[
             { label: "Subtotal", value: formatCurrency(order.subtotal) },
+            ...(order.discount && order.discount > 0 ? [{ label: `Discount${order.couponCode ? ` (${order.couponCode})` : ""}`, value: `−${formatCurrency(order.discount)}`, green: true }] : []),
             { label: "Shipping", value: order.shipping === 0 ? "Free" : formatCurrency(order.shipping), green: order.shipping === 0 },
-            { label: "GST (18%)", value: formatCurrency(order.tax) },
-            ...(order.discount && order.discount > 0 ? [{ label: `Discount${order.couponCode ? ` (${order.couponCode})` : ""}`, value: `−${formatCurrency(order.discount)}`, green: true }] : [])
+            { label: "GST (18%)", value: formatCurrency(order.tax) }
           ].map(({ label, value, green }) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
               <span style={{ color: "var(--text-muted)" }}>{label}</span>

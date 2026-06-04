@@ -10,14 +10,17 @@ import { mockStore } from "../repositories/mock-store";
 const PAID_STATUSES = ["paid", "processing", "packed", "shipped", "delivered"];
 
 function daysAgo(n: number): Date {
+  // Use UTC arithmetic so the cutoff and isoDay both operate in the same timezone.
+  // setHours(0,0,0,0) uses local time which misaligns with toISOString() (UTC) on
+  // non-UTC servers — use setUTCHours instead to keep everything in UTC.
   const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - n);
+  d.setUTCHours(0, 0, 0, 0);
   return d;
 }
 
 function isoDay(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return date.toISOString().slice(0, 10); // already UTC
 }
 
 // ── GET /api/v1/admin/analytics ───────────────────────────────────────────────
@@ -137,11 +140,11 @@ export const getAnalyticsController: RequestHandler = asyncHandler(async (_req, 
 
 // ── GET /api/v1/admin/analytics/revenue-chart ─────────────────────────────────
 export const getRevenueChartController: RequestHandler = asyncHandler(async (_req, res) => {
-  // Build list of the last 30 day labels
+  // Build list of the last 30 UTC day labels (matches isoDay which uses UTC)
   const days: string[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date();
-    d.setDate(d.getDate() - i);
+    d.setUTCDate(d.getUTCDate() - i);
     days.push(isoDay(d));
   }
 
@@ -248,7 +251,8 @@ export const exportOrdersCsvController: RequestHandler = asyncHandler(async (_re
     ].join(",");
   });
 
-  const csv = [header.join(","), ...rows].join("\n");
+  // RFC 4180 requires CRLF line endings for broad compatibility (Excel on Windows)
+  const csv = [header.join(","), ...rows].join("\r\n");
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", `attachment; filename="asur-orders-${isoDay(new Date())}.csv"`);
   res.status(200).send(csv);

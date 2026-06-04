@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatCurrency } from "@asur/utils";
 import { useCartStore } from "../../store/cart-store";
+import { useSiteConfigStore } from "../../store/site-config-store";
 
 export default function CartPage() {
   const items = useCartStore((s) => s.items);
@@ -12,14 +13,15 @@ export default function CartPage() {
   const removeItem = useCartStore((s) => s.removeItem);
   const clear = useCartStore((s) => s.clear);
   const subtotal = useCartStore((s) => s.subtotal());
+  const { config, fetch: fetchConfig } = useSiteConfigStore();
 
   // Avoid hydration mismatch from localStorage rehydration
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => { setMounted(true); fetchConfig(); }, [fetchConfig]);
 
-  // Same rupee-unit thresholds as checkout page and backend repository
-  const shipping = subtotal > 0 ? (subtotal >= 1500 ? 0 : 250) : 0;
-  const tax = subtotal > 0 ? Math.round(subtotal * 0.18) : 0;
+  const { freeShippingThreshold, shippingFee, gstRate } = config;
+  const shipping = subtotal > 0 ? (subtotal >= freeShippingThreshold ? 0 : shippingFee) : 0;
+  const tax = subtotal > 0 ? Math.round(subtotal * gstRate) : 0;
   const total = subtotal + shipping + tax;
 
   if (!mounted) {
@@ -204,14 +206,14 @@ export default function CartPage() {
             <div style={{ padding: "0.75rem 0.9rem", borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                 <span style={{ fontSize: "0.78rem", color: "var(--success)", fontWeight: 600 }}>
-                  🚚 Add {formatCurrency(1500 - subtotal)} more for free shipping
+                  🚚 Add {formatCurrency(freeShippingThreshold - subtotal)} more for free shipping
                 </span>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{Math.round((subtotal / 1500) * 100)}%</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{Math.round((subtotal / freeShippingThreshold) * 100)}%</span>
               </div>
               <div style={{ height: 5, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
                 <div style={{
                   height: "100%", borderRadius: 999,
-                  width: `${Math.min(100, Math.round((subtotal / 1500) * 100))}%`,
+                  width: `${Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100))}%`,
                   background: "linear-gradient(90deg, #22c55e, #4ade80)",
                   transition: "width 500ms cubic-bezier(0.22,1,0.36,1)"
                 }} />

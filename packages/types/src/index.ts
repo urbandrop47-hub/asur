@@ -212,6 +212,9 @@ export type Order = {
   vendorTaskId?: ID;
   couponCode?: string;
   discountAmount?: number;
+  loyaltyPointsRedeemed?: number;
+  loyaltyPointsEarned?: number;
+  referralCode?: string;
   shippingAddress: Address;
   createdAt: string;
   updatedAt: string;

@@ -43,6 +43,10 @@ import {
   upsertSizeChartController,
   deleteSizeChartController
 } from "../controllers/size-chart.controller";
+import {
+  getAdminConfigController,
+  updateAdminConfigController
+} from "../controllers/site-config.controller";
 
 export const adminRouter: ExpressRouter = Router();
 
@@ -90,6 +94,10 @@ adminRouter.get("/coupons", adminOnlyMiddleware, listCouponsController);
 adminRouter.post("/coupons", adminOnlyMiddleware, createCouponController);
 adminRouter.patch("/coupons/:code", adminOnlyMiddleware, updateCouponController);
 adminRouter.delete("/coupons/:code", adminOnlyMiddleware, deleteCouponController);
+
+// Site config
+adminRouter.get("/config", adminOnlyMiddleware, getAdminConfigController);
+adminRouter.patch("/config", adminOnlyMiddleware, updateAdminConfigController);
 
 // Size chart management
 adminRouter.get("/size-guide", adminOnlyMiddleware, listSizeChartsController);

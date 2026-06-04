@@ -8,6 +8,9 @@ import { markOrderPaid } from "../services/order.service";
 import { orderRepository } from "../repositories/order.repository";
 import { userRepository } from "../repositories/user.repository";
 import { sendPaymentReceiptEmail } from "../services/email.service";
+import { loyaltyRepository, EARN_RATE } from "../repositories/loyalty.repository";
+import { referralRepository } from "../repositories/referral.repository";
+import { notificationRepository } from "../repositories/notification.repository";
 
 /**
  * @swagger
@@ -119,6 +122,13 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
     return;
   }
 
+  // Reject verification on terminal statuses — prevents a Razorpay payment from
+  // silently resurrecting a cancelled or already-paid order.
+  if (order.status === "cancelled") {
+    res.status(422).json({ success: false, message: "This order has been cancelled and cannot be paid" });
+    return;
+  }
+
   // The Razorpay order must have been created for this ASUR order first.
   // An absent providerOrderId means payment was never initiated — reject immediately
   // to prevent replay of a valid signature from a different order.
@@ -157,7 +167,7 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
     providerPaymentId: payload.razorpayPaymentId
   });
 
-  // Fire-and-forget receipt — a failed email must never surface as a payment error
+  // Fire-and-forget: receipt email + loyalty points earn
   if (paidOrder) {
     void (async () => {
       const customer = await userRepository.findById(order.customerId);
@@ -165,6 +175,38 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
       const customerName = customer?.name ?? "there";
       if (customerEmail) {
         await sendPaymentReceiptEmail(paidOrder, captured.payment, customerEmail, customerName);
+      }
+
+      // Earn 1pt per ₹10 spent (on the amount actually paid after all discounts)
+      const paidAmount = paidOrder.total ?? 0;
+      const pointsEarned = Math.floor(paidAmount / EARN_RATE);
+      if (pointsEarned > 0) {
+        await loyaltyRepository.earnPoints(
+          order.customerId,
+          pointsEarned,
+          `Earned for order #${paidOrder.orderNumber}`,
+          paidOrder.id
+        );
+        await notificationRepository.create({
+          userId: order.customerId,
+          type: "loyalty",
+          title: `You earned ${pointsEarned} points!`,
+          body: `${pointsEarned} loyalty points credited for order #${paidOrder.orderNumber}.`,
+          link: "/account/loyalty"
+        });
+      }
+
+      // Credit referral bonus now that payment is confirmed — avoids farming via create+cancel
+      const orderReferralCode = (paidOrder as typeof paidOrder & { referralCode?: string }).referralCode;
+      if (orderReferralCode) {
+        const referral = await referralRepository.findByCode(orderReferralCode);
+        if (referral && referral.userId !== order.customerId) {
+          const wasNew = await referralRepository.markUsed(orderReferralCode, order.customerId);
+          if (wasNew) {
+            await loyaltyRepository.earnPoints(referral.userId, 100, `Referral bonus — ${orderReferralCode}`, paidOrder.id, "referral_bonus");
+            await loyaltyRepository.earnPoints(order.customerId, 50, "Referral signup bonus", paidOrder.id, "referral_bonus");
+          }
+        }
       }
     })();
   }

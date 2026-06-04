@@ -9,6 +9,8 @@ import { firebaseAuth } from "../lib/firebase";
 import { useCartStore } from "../store/cart-store";
 import { useAuthStore } from "../store/auth-store";
 import { useWishlistStore } from "../store/wishlist-store";
+import { useNotificationStore } from "../store/notification-store";
+import { NotificationDrawer } from "./notification-drawer";
 
 type SuggestItem = {
   slug: string;
@@ -223,8 +225,20 @@ export function SiteHeader() {
   const wishlistCount = useWishlistStore((s) => s.items.length);
   const session = useAuthStore((s) => s.session);
   const clearSession = useAuthStore((s) => s.clearSession);
+  const { unreadCount, fetch: fetchNotifications, openDrawer: openNotifDrawer } =
+    useNotificationStore();
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Poll notifications every 60s when signed in and tab is focused
+  useEffect(() => {
+    if (!session) return;
+    fetchNotifications();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") fetchNotifications();
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [session, fetchNotifications]);
 
   // Shadow on scroll
   useEffect(() => {
@@ -374,6 +388,36 @@ export function SiteHeader() {
               )}
             </Link>
 
+            {/* Notification bell */}
+            {session && mounted && (
+              <button
+                onClick={openNotifDrawer}
+                aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+                style={{
+                  position: "relative", background: "none", border: "none",
+                  cursor: "pointer", color: "var(--text-muted)", display: "flex",
+                  alignItems: "center", padding: "0.45rem", borderRadius: 8
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                  <path d="M9 2a5.5 5.5 0 0 1 5.5 5.5c0 2.5.8 4 2 5H1.5c1.2-1 2-2.5 2-5A5.5 5.5 0 0 1 9 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                  <path d="M7 15a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: "absolute", top: 2, right: 2,
+                    background: "#f97316", color: "#130f0b",
+                    fontSize: "0.62rem", fontWeight: 800, lineHeight: 1,
+                    minWidth: 16, height: 16, borderRadius: 999,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    padding: "0 3px"
+                  }}>
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Desktop search — inline expand with autocomplete */}
             {searchOpen ? (
               <div ref={searchWrapRef} style={{ position: "relative" }}>
@@ -508,6 +552,9 @@ export function SiteHeader() {
         )}
       </div>
 
+      {/* Notification slide-over */}
+      <NotificationDrawer />
+
       {/* Mobile nav overlay */}
       <div
         className={`nav-overlay${drawerOpen ? " open" : ""}`}
@@ -577,6 +624,26 @@ export function SiteHeader() {
             <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </Link>
+
+        {session && (
+          <button
+            className="nav-drawer-link"
+            onClick={() => { setDrawerOpen(false); openNotifDrawer(); }}
+            style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+          >
+            <span>
+              Notifications
+              {mounted && unreadCount > 0 && (
+                <span style={{ marginLeft: "0.5rem", background: "#f97316", color: "#130f0b", borderRadius: 999, padding: "1px 7px", fontSize: "0.72rem", fontWeight: 700 }}>
+                  {unreadCount}
+                </span>
+              )}
+            </span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.35 }} aria-hidden="true">
+              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
 
         <div style={{ marginTop: "auto", paddingTop: "1.5rem" }}>
           {session ? (

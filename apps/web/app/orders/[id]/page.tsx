@@ -41,7 +41,9 @@ const TIMELINE_STEPS: { key: Order["status"]; label: string }[] = [
 const STEP_ORDER = TIMELINE_STEPS.map((s) => s.key);
 
 function OrderTimeline({ status }: { status: Order["status"] }) {
-  const currentIdx = STEP_ORDER.indexOf(status);
+  // "draft" and any future statuses not in STEP_ORDER default to step 0 (order placed)
+  const rawIdx = STEP_ORDER.indexOf(status);
+  const currentIdx = rawIdx === -1 ? 0 : rawIdx;
 
   return (
     <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: "1rem" }}>

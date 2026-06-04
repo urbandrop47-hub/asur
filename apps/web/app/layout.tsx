@@ -4,6 +4,7 @@ import Script from "next/script";
 import { AppProviders } from "../providers";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
+import { AnnouncementBar } from "../components/announcement-bar";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://asur.in";
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <body suppressHydrationWarning>
         <a href="#main-content" className="skip-link">Skip to content</a>
         <AppProviders>
+          <AnnouncementBar />
           <SiteHeader />
           <main id="main-content">{children}</main>
           <SiteFooter />

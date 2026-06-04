@@ -65,9 +65,11 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
       // may be stale when onAuthStateChanged fires after setPendingLink was called.
       const link = pendingLinkRef.current;
       if (link) {
-        await linkWithCredential(user, link.credential);
+        // Clear the ref BEFORE attempting — if linkWithCredential throws, a
+        // subsequent onAuthStateChanged won't retry with the same stale credential.
         pendingLinkRef.current = null;
         setPendingLink(null);
+        await linkWithCredential(user, link.credential);
       }
       setProviders(user.providerData.map((p) => p.providerId));
       const idToken = await user.getIdToken(true);

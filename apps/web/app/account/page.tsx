@@ -473,12 +473,14 @@ export default function AccountPage() {
       </div>
 
       {/* Quick links */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.6rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
         {[
           { href: "/orders", label: "Orders", icon: "📦" },
           { href: "/wishlist", label: "Wishlist", icon: "♡" },
-          { href: "/orders", label: "Returns", icon: "↩" },
-          { href: "/account/notifications", label: "Privacy", icon: "🔔" },
+          { href: "/returns", label: "Returns", icon: "↩" },
+          { href: "/account/loyalty", label: "Loyalty", icon: "⭐" },
+          { href: "/account/referrals", label: "Refer", icon: "👥" },
+          { href: "/account/notifications", label: "Notifications", icon: "🔔" },
         ].map(({ href, label, icon }) => (
           <Link
             key={label}

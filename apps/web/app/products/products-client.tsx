@@ -140,9 +140,19 @@ function ProductsPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const categories = useMemo(() => [...new Set(products.map((p) => p.category))].sort(), [products]);
-  const sizes = useMemo(() => [...new Set(products.flatMap((p) => p.variants.map((v) => v.size)))].sort(), [products]);
-  const colors = useMemo(() => [...new Set(products.flatMap((p) => p.variants.map((v) => v.color)))].sort(), [products]);
+  // Facets are fetched once (unfiltered, page 1 large limit) so filter options
+  // remain complete across all pages — not just the current page's products.
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  useEffect(() => {
+    api
+      .get<{ data: Product[] }>("/api/v1/products?limit=100&sort=newest")
+      .then((res) => setAllProducts(res.data ?? []))
+      .catch(() => {}); // non-critical — filter options degrade gracefully
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const categories = useMemo(() => [...new Set(allProducts.map((p) => p.category))].sort(), [allProducts]);
+  const sizes = useMemo(() => [...new Set(allProducts.flatMap((p) => p.variants.map((v) => v.size)))].sort(), [allProducts]);
+  const colors = useMemo(() => [...new Set(allProducts.flatMap((p) => p.variants.map((v) => v.color)))].sort(), [allProducts]);
 
   useEffect(() => {
     setLoading(true);

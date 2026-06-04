@@ -173,6 +173,87 @@ function ProductSkeleton() {
   );
 }
 
+// ─── Testimonials ────────────────────────────────────────────────────────────
+
+const TESTIMONIALS = [
+  {
+    quote: "The Void Season drop is something else. Oversized fit, premium fabric, ships fast. I've bought from plenty of Indian streetwear brands — ASUR is on a different level.",
+    author: "Aryan M.",
+    location: "Mumbai",
+    rating: 5,
+    initials: "AM"
+  },
+  {
+    quote: "Ordered the Black Mirror tee at midnight, had it in two days. The 230 GSM fabric is insane for the price. Sizing is true to guide. Already recommended it to my whole crew.",
+    author: "Priya K.",
+    location: "Bangalore",
+    rating: 5,
+    initials: "PK"
+  },
+  {
+    quote: "Returns were painless when I needed to exchange sizes. Customer support actually replied in 2 hours. The quality keeps me coming back drop after drop.",
+    author: "Rohan S.",
+    location: "Delhi",
+    rating: 5,
+    initials: "RS"
+  }
+];
+
+function Testimonials() {
+  return (
+    <section style={{ marginBottom: "3rem" }}>
+      <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+        <p style={{ margin: "0 0 0.4rem", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--accent)", fontFamily: "var(--f-mono)" }}>
+          Social proof
+        </p>
+        <h2 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 800 }}>What the culture says</h2>
+      </div>
+      <div className="grid-3" style={{ gap: "0.85rem" }}>
+        {TESTIMONIALS.map((t) => (
+          <div
+            key={t.author}
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 20,
+              padding: "1.4rem 1.25rem",
+              background: "linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
+              display: "flex", flexDirection: "column", gap: "1rem"
+            }}
+          >
+            {/* Stars */}
+            <div style={{ display: "flex", gap: 2 }}>
+              {Array.from({ length: t.rating }).map((_, i) => (
+                <svg key={i} width="14" height="14" viewBox="0 0 14 14" fill="#fbbf24" aria-hidden="true">
+                  <path d="M7 1l1.75 3.6L13 5.24l-3 2.95.7 4.1L7 10.4l-3.7 1.9.7-4.1L1 5.24l4.25-.64L7 1z" />
+                </svg>
+              ))}
+            </div>
+            {/* Quote */}
+            <p style={{ margin: 0, fontSize: "0.88rem", lineHeight: 1.7, color: "rgba(246,241,234,0.75)", flex: 1 }}>
+              "{t.quote}"
+            </p>
+            {/* Author */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                background: "linear-gradient(135deg, #f97316, #fb7185)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 800, fontSize: "0.72rem", color: "#130f0b", letterSpacing: "0.05em"
+              }}>
+                {t.initials}
+              </div>
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: "0.85rem" }}>{t.author}</p>
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>{t.location}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── Value props ──────────────────────────────────────────────────────────────
 
 const VALUE_PROPS = [
@@ -364,6 +445,9 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {/* Testimonials */}
+      <Testimonials />
 
       {/* Value props */}
       <section style={{ marginBottom: "1rem" }}>

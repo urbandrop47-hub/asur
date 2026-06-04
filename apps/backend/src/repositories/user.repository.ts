@@ -111,23 +111,26 @@ export const userRepository = {
     return profile;
   },
 
-  async saveAddress(firebaseUid: string, address: Address) {
+  /** Add an address, enforcing `maxAddresses` atomically.
+   *  Returns the updated address array, or null if the limit was already reached. */
+  async saveAddress(firebaseUid: string, address: Address, maxAddresses = 10) {
     if (hasMongoConnection) {
+      // Atomic: only push when current array length is below the limit.
       const user = await UserModel.findOneAndUpdate(
-        { firebaseUid },
+        { firebaseUid, $expr: { $lt: [{ $size: { $ifNull: ["$addresses", []] } }, maxAddresses] } },
         { $push: { addresses: address }, $set: { updatedAt: new Date().toISOString() } },
         { new: true }
       ).lean<UserProfile>().exec();
-      return user?.addresses ?? [];
+      if (!user) return null; // either user not found or limit already reached
+      return user.addresses;
     }
 
     const existing = mockStore.users.find((u) => u.firebaseUid === firebaseUid);
-    if (existing) {
-      existing.addresses = [...(existing.addresses ?? []), address];
-      existing.updatedAt = new Date().toISOString();
-      return existing.addresses;
-    }
-    return [];
+    if (!existing) return null;
+    if ((existing.addresses?.length ?? 0) >= maxAddresses) return null;
+    existing.addresses = [...(existing.addresses ?? []), address];
+    existing.updatedAt = new Date().toISOString();
+    return existing.addresses;
   },
 
   async updateProfile(firebaseUid: string, patch: { name?: string; phoneNumber?: string }) {
