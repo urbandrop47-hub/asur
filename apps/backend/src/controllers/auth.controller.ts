@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { RequestHandler } from "express";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
@@ -5,6 +6,13 @@ import { createSession, resolveUserFromIdToken } from "../services/auth.service"
 import { authSessionSchema } from "../validators/auth.validators";
 import { addressSchema } from "../shared/validations";
 import { userRepository } from "../repositories/user.repository";
+
+const updateProfileSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  phoneNumber: z.string().regex(/^\+?[\d\s\-]{8,15}$/).optional()
+}).refine((d) => d.name !== undefined || d.phoneNumber !== undefined, {
+  message: "At least one of name or phoneNumber is required"
+});
 
 /**
  * @swagger
@@ -126,4 +134,30 @@ export const saveAddressController: RequestHandler = asyncHandler(async (req, re
 
   const updated = await userRepository.saveAddress(user.firebaseUid, address);
   sendSuccess(res, updated, "Address saved");
+});
+
+export const updateProfileController: RequestHandler = asyncHandler(async (req, res) => {
+  const user = res.locals.user;
+  const patch = updateProfileSchema.parse(req.body);
+  const updated = await userRepository.updateProfile(user.firebaseUid, patch);
+  if (!updated) {
+    res.status(404).json({ success: false, message: "User not found" });
+    return;
+  }
+  sendSuccess(res, { name: updated.name, phoneNumber: updated.phoneNumber }, "Profile updated");
+});
+
+export const deleteAddressController: RequestHandler = asyncHandler(async (req, res) => {
+  const user = res.locals.user;
+  const index = parseInt(String(req.params.index), 10);
+  if (isNaN(index) || index < 0) {
+    res.status(400).json({ success: false, message: "Invalid address index" });
+    return;
+  }
+  const updated = await userRepository.removeAddress(user.firebaseUid, index);
+  if (updated === null) {
+    res.status(404).json({ success: false, message: "User not found" });
+    return;
+  }
+  sendSuccess(res, updated, "Address removed");
 });

@@ -130,6 +130,49 @@ export const userRepository = {
     return [];
   },
 
+  async updateProfile(firebaseUid: string, patch: { name?: string; phoneNumber?: string }) {
+    if (hasMongoConnection) {
+      const update: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+      if (patch.name !== undefined) update.name = patch.name;
+      if (patch.phoneNumber !== undefined) update.phoneNumber = patch.phoneNumber;
+      const user = await UserModel.findOneAndUpdate(
+        { firebaseUid },
+        { $set: update },
+        { new: true }
+      ).lean<UserProfile>().exec();
+      return user;
+    }
+
+    const existing = mockStore.users.find((u) => u.firebaseUid === firebaseUid);
+    if (!existing) return null;
+    if (patch.name !== undefined) existing.name = patch.name;
+    if (patch.phoneNumber !== undefined) existing.phoneNumber = patch.phoneNumber;
+    existing.updatedAt = new Date().toISOString();
+    return existing;
+  },
+
+  async removeAddress(firebaseUid: string, index: number) {
+    if (hasMongoConnection) {
+      const user = await UserModel.findOne({ firebaseUid }).exec();
+      if (!user) return null;
+      const addresses = user.addresses ?? [];
+      if (index < 0 || index >= addresses.length) return addresses;
+      addresses.splice(index, 1);
+      user.addresses = addresses;
+      user.updatedAt = new Date().toISOString();
+      await user.save();
+      return user.addresses;
+    }
+
+    const existing = mockStore.users.find((u) => u.firebaseUid === firebaseUid);
+    if (!existing) return null;
+    const addresses = existing.addresses ?? [];
+    if (index < 0 || index >= addresses.length) return addresses;
+    existing.addresses = addresses.filter((_, i) => i !== index);
+    existing.updatedAt = new Date().toISOString();
+    return existing.addresses;
+  },
+
   async setRole(input: UpdateUserRoleInput) {
     if (hasMongoConnection) {
       const user = await UserModel.findOne({ firebaseUid: input.firebaseUid }).exec();
