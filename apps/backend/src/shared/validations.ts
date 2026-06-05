@@ -152,7 +152,9 @@ export const createOrderSchema = z.object({
   customerId: z.string().min(1),
   items: z.array(cartItemSchema).min(1),
   shippingAddress: addressSchema,
-  couponCode: z.string().trim().toUpperCase().optional()
+  couponCode: z.string().trim().toUpperCase().optional(),
+  loyaltyPointsToRedeem: z.number().int().nonnegative().optional().default(0),
+  referralCode: z.string().trim().toUpperCase().optional()
 });
 
 // amount is intentionally omitted — the server derives it from order.total

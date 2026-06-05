@@ -8,7 +8,9 @@ import { cancelOrder, createOrder, getOrderById, listOrdersByCustomer } from "..
 const createOrderBodySchema = z.object({
   items: z.array(cartItemSchema).min(1),
   shippingAddress: addressSchema,
-  couponCode: z.string().trim().toUpperCase().optional()
+  couponCode: z.string().trim().toUpperCase().optional(),
+  loyaltyPointsToRedeem: z.number().int().nonnegative().optional().default(0),
+  referralCode: z.string().trim().toUpperCase().optional()
 });
 
 /**
@@ -42,9 +44,9 @@ const createOrderBodySchema = z.object({
  *         description: Not authenticated
  */
 export const createOrderController: RequestHandler = asyncHandler(async (req, res) => {
-  const { items, shippingAddress, couponCode } = createOrderBodySchema.parse(req.body);
+  const { items, shippingAddress, couponCode, loyaltyPointsToRedeem, referralCode } = createOrderBodySchema.parse(req.body);
   const customerId: string = res.locals.user.id;
-  const result = await createOrder({ customerId, items, shippingAddress, couponCode });
+  const result = await createOrder({ customerId, items, shippingAddress, couponCode, loyaltyPointsToRedeem, referralCode });
   sendSuccess(res, result, "Order created", 201);
 });
 

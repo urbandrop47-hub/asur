@@ -116,9 +116,19 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
     }
   }
 
-  // When completed, also advance the order's overall status to "shipped"
+  // When completed, advance the order's overall status to "shipped" —
+  // but only if the order is currently in a shippable state to avoid
+  // accidentally re-opening a cancelled or still-pending order.
+  const SHIPPABLE_STATUSES = ["paid", "processing", "packed"];
   if (body.status === "completed" && updated) {
-    await orderRepository.updateStatus(updated.orderId, "shipped");
+    const order = await orderRepository.findByIdAdmin(updated.orderId);
+    if (order && SHIPPABLE_STATUSES.includes(order.status)) {
+      await orderRepository.updateStatus(updated.orderId, "shipped");
+    }
+    if (!order || !SHIPPABLE_STATUSES.includes(order.status)) {
+      // Log the mismatch but don't fail the vendor task update
+      console.warn(`[vendor] task ${id} completed but order ${updated.orderId} is in status "${order?.status}" — skipping ship transition`);
+    }
 
     // Fire-and-forget shipping email — never breaks the vendor flow on failure
     void (async () => {

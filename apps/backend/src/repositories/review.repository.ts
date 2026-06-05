@@ -113,5 +113,12 @@ export const reviewRepository = {
     if (idx === -1) return false;
     mockReviews.splice(idx, 1);
     return true;
+  },
+
+  async findByCustomer(customerId: string): Promise<Review[]> {
+    if (hasMongoConnection) {
+      return ReviewModel.find({ customerId }).sort({ createdAt: -1 }).lean<Review[]>().exec();
+    }
+    return mockReviews.filter((r) => r.customerId === customerId);
   }
 };

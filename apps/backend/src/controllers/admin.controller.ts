@@ -77,7 +77,9 @@ export const createAdminInviteController: RequestHandler = asyncHandler(async (r
     sendSuccess(res, invite, "Admin invite created", 201);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create invite";
-    res.status(409).json({ success: false, message: msg });
+    // A pending-invite conflict has a specific message; other errors are server faults
+    const isConflict = msg.includes("pending invite already exists");
+    res.status(isConflict ? 409 : 500).json({ success: false, message: msg });
   }
 });
 
@@ -132,11 +134,20 @@ export const getAdminProductController: RequestHandler = asyncHandler(async (req
 
 export const createAdminProductController: RequestHandler = asyncHandler(async (req, res) => {
   const body = createProductSchema.parse(req.body);
+  const slug = body.slug ?? slugify(body.title);
+
+  // Check for slug conflicts before inserting — avoids a raw MongoDB unique-index error (500)
+  const existing = await productRepository.findBySlug(slug);
+  if (existing) {
+    res.status(409).json({ success: false, message: `A product with slug "${slug}" already exists` });
+    return;
+  }
+
   const now = new Date().toISOString();
   const product: Product = {
     id: createId("prd"),
     title: body.title,
-    slug: body.slug ?? slugify(body.title),
+    slug,
     description: body.description,
     category: body.category,
     tags: body.tags,

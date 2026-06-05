@@ -7,6 +7,7 @@ import { sendAdminNewOrderEmail, sendOrderConfirmationEmail, sendLowStockAlertEm
 import { triggerBackInStockNotifications } from "./inventory.service";
 import { validateCoupon, applyCoupon } from "./coupon.service";
 import { couponRepository } from "../repositories/coupon.repository";
+import { loyaltyRepository, REDEEM_RATE, MIN_REDEEM, MAX_REDEEM_PCT } from "../repositories/loyalty.repository";
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -32,14 +33,27 @@ export async function createOrder(input: CreateOrderInput) {
     })
   );
 
+  const subtotal = verifiedItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+
   // Validate coupon before creating the order (so we never create an order with a bad code)
   let couponResult: Awaited<ReturnType<typeof validateCoupon>> | null = null;
   if (input.couponCode) {
-    couponResult = await validateCoupon(
-      input.couponCode,
-      verifiedItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
-      input.customerId
-    );
+    couponResult = await validateCoupon(input.couponCode, subtotal, input.customerId);
+  }
+
+  // Validate loyalty point redemption
+  const pointsToRedeem = input.loyaltyPointsToRedeem ?? 0;
+  let actualPointsRedeemed = 0;
+  let loyaltyDiscount = 0;
+  if (pointsToRedeem >= MIN_REDEEM) {
+    const account = await loyaltyRepository.getAccount(input.customerId);
+    const available = account?.points ?? 0;
+    const capped = Math.min(pointsToRedeem, available);
+    const maxDiscount = Math.floor(subtotal * MAX_REDEEM_PCT);
+    const desiredDiscount = Math.floor(capped / REDEEM_RATE);
+    const finalDiscount = Math.min(desiredDiscount, maxDiscount);
+    actualPointsRedeemed = finalDiscount * REDEEM_RATE;
+    loyaltyDiscount = finalDiscount;
   }
 
   // Strip internal cache fields before passing to repository
@@ -52,7 +66,9 @@ export async function createOrder(input: CreateOrderInput) {
     fulfillmentStatus: "unassigned",
     couponCode: couponResult ? couponResult.coupon.code : undefined,
     discountAmount: couponResult ? couponResult.discountAmount : 0,
-    freeShipping: couponResult ? couponResult.freeShipping : false
+    freeShipping: couponResult ? couponResult.freeShipping : false,
+    loyaltyPointsRedeemed: actualPointsRedeemed,
+    loyaltyDiscount
   });
 
   // Atomically decrement stock for each variant. Because a concurrent order may have
@@ -101,6 +117,27 @@ export async function createOrder(input: CreateOrderInput) {
     }
   }
 
+  // Deduct loyalty points optimistically — restored if order is cancelled before payment
+  if (actualPointsRedeemed > 0) {
+    const redeemed = await loyaltyRepository.redeemPoints(
+      input.customerId,
+      actualPointsRedeemed,
+      `Redeemed for order #${order.orderNumber}`,
+      order.id
+    );
+    if (!redeemed.success) {
+      // Concurrent depletion — cancel order, release stock, and undo coupon usage
+      await orderRepository.updateStatus(order.id, "cancelled");
+      await Promise.all(
+        decrementResults.map((r) => productRepository.incrementVariantStock(r.productId, r.variantSku, r.quantity))
+      );
+      if (couponResult) {
+        await couponRepository.decrementUsedCount(couponResult.coupon.code);
+      }
+      throw new AppError(409, "Insufficient loyalty points — another redemption was processed simultaneously");
+    }
+  }
+
   const vendorTask = await orderRepository.createVendorTask(order.id);
 
   // Fire-and-forget — email failures must never break the order flow
@@ -139,7 +176,16 @@ export async function cancelOrder(orderId: string, requesterId: string, isAdmin 
     throw new AppError(422, `Cannot cancel an order in status: ${order.status}`);
   }
 
-  await orderRepository.updateStatus(orderId, "cancelled");
+  // Atomically transition to cancelled only if still in a cancellable status —
+  // prevents a race where the order moves to "shipped" between our check and this write.
+  const cancelled = await orderRepository.updateStatusConditional(
+    orderId,
+    "cancelled",
+    nonCancellableStatuses
+  );
+  if (!cancelled) {
+    throw new AppError(409, "Order status changed concurrently — please refresh and try again");
+  }
 
   // Release stock back to each variant
   await Promise.all(
@@ -151,6 +197,17 @@ export async function cancelOrder(orderId: string, requesterId: string, isAdmin 
   // Refund the coupon redemption so the code can be reused
   if (order.couponCode) {
     await couponRepository.decrementUsedCount(order.couponCode);
+  }
+
+  // Restore redeemed loyalty points
+  const orderWithLoyalty = order as typeof order & { loyaltyPointsRedeemed?: number };
+  if (orderWithLoyalty.loyaltyPointsRedeemed && orderWithLoyalty.loyaltyPointsRedeemed > 0) {
+    await loyaltyRepository.restorePoints(
+      order.customerId,
+      orderWithLoyalty.loyaltyPointsRedeemed,
+      `Refund — cancelled order #${order.orderNumber}`,
+      orderId
+    );
   }
 
   // Check for back-in-stock alerts on any variant that was restocked

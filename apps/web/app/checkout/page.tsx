@@ -7,6 +7,8 @@ import type { Address, Order } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { useAuthStore } from "../../store/auth-store";
 import { useCartStore } from "../../store/cart-store";
+import { useSiteConfigStore } from "../../store/site-config-store";
+import { useLoyaltyStore } from "../../store/loyalty-store";
 import { api } from "../../lib/api";
 import { openRazorpayCheckout, mockRazorpayCheckout } from "../../lib/razorpay";
 import { track } from "../../lib/analytics";
@@ -282,27 +284,46 @@ function ReviewStep({
   confirming,
   coupon,
   onCouponChange,
+  loyaltyPointsToRedeem,
+  onLoyaltyChange
 }: {
   address: Address;
   onBack: () => void;
-  onConfirm: (coupon: AppliedCoupon | null) => void;
+  onConfirm: (coupon: AppliedCoupon | null, loyaltyPts: number) => void;
   confirming?: boolean;
   coupon: AppliedCoupon | null;
   onCouponChange: (c: AppliedCoupon | null) => void;
+  loyaltyPointsToRedeem: number;
+  onLoyaltyChange: (pts: number) => void;
 }) {
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal());
+  const { config } = useSiteConfigStore();
+  const { points: availablePoints, redeemRate, minRedeem, loaded: loyaltyLoaded, fetchBalance } = useLoyaltyStore();
 
   const [couponInput, setCouponInput] = useState(coupon?.code ?? "");
   const [couponError, setCouponError] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
+  const [usePoints, setUsePoints] = useState(loyaltyPointsToRedeem > 0);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
+
+  const maxRedeemable = Math.min(availablePoints, Math.floor(subtotal * 0.2 * redeemRate));
+  const pointsToUse = usePoints ? maxRedeemable : 0;
+  const loyaltyDiscount = Math.floor(pointsToUse / redeemRate);
+
+  useEffect(() => {
+    onLoyaltyChange(usePoints ? pointsToUse : 0);
+  }, [usePoints, pointsToUse, onLoyaltyChange]);
 
   const discount = coupon?.discountAmount ?? 0;
   const taxableAmount = Math.max(0, subtotal - discount);
-  const baseShipping = subtotal >= 1500 ? 0 : 250;
+  const baseShipping = subtotal >= config.freeShippingThreshold ? 0 : config.shippingFee;
   const shipping = coupon?.freeShipping ? 0 : baseShipping;
-  const tax = Math.round(taxableAmount * 0.18);
-  const total = taxableAmount + shipping + tax;
+  const tax = Math.round(taxableAmount * config.gstRate);
+  const total = Math.max(0, taxableAmount + shipping + tax - loyaltyDiscount);
 
   async function applyCoupon() {
     const code = couponInput.trim().toUpperCase();
@@ -410,6 +431,43 @@ function ReviewStep({
         )}
       </div>
 
+      {/* Loyalty points redemption */}
+      {loyaltyLoaded && availablePoints >= minRedeem && (
+        <div style={{ border: `1px solid ${usePoints ? "rgba(249,115,22,0.4)" : "var(--border)"}`, borderRadius: 16, padding: "1rem", transition: "border-color 0.2s" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+            <div>
+              <p style={{ margin: "0 0 0.2rem", fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>
+                Use loyalty points
+              </p>
+              <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                {availablePoints} pts available · Save ₹{Math.floor(maxRedeemable / redeemRate)} with {maxRedeemable} pts
+              </p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={usePoints}
+              onClick={() => setUsePoints((v) => !v)}
+              style={{
+                flexShrink: 0, width: 44, height: 24, borderRadius: 99,
+                background: usePoints ? "#f97316" : "rgba(255,255,255,0.12)",
+                border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s"
+              }}
+            >
+              <span style={{
+                position: "absolute", top: 2, left: usePoints ? 22 : 2,
+                width: 20, height: 20, borderRadius: "50%", background: "#fff",
+                transition: "left 0.2s", display: "block"
+              }} />
+            </button>
+          </div>
+          {usePoints && loyaltyDiscount > 0 && (
+            <p style={{ margin: "0.6rem 0 0", fontSize: "0.8rem", color: "#f97316", fontWeight: 600 }}>
+              −₹{loyaltyDiscount} applied using {pointsToUse} points
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Shipping address */}
       <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: "1rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
@@ -445,6 +503,12 @@ function ReviewStep({
           <span style={{ color: "var(--text-muted)" }}>GST (18%)</span>
           <span>{formatCurrency(tax)}</span>
         </div>
+        {loyaltyDiscount > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+            <span style={{ color: "#f97316" }}>Loyalty points ({pointsToUse} pts)</span>
+            <span style={{ color: "#f97316" }}>−{formatCurrency(loyaltyDiscount)}</span>
+          </div>
+        )}
         <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "0.2rem 0" }} />
         <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "1.05rem" }}>
           <span>Total</span>
@@ -453,7 +517,7 @@ function ReviewStep({
       </div>
 
       <button
-        onClick={() => onConfirm(coupon)}
+        onClick={() => onConfirm(coupon, pointsToUse)}
         disabled={confirming}
         style={{
           width: "100%", borderRadius: 999, padding: "0.95rem", fontSize: "1rem", fontWeight: 700,
@@ -485,6 +549,7 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [loyaltyPtsToRedeem, setLoyaltyPtsToRedeem] = useState(0);
   // Tracks the pending order created before Razorpay opens — reused on retry
   // so we don't create a second orphaned order if the user dismisses the modal.
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
@@ -527,7 +592,13 @@ export default function CheckoutPage() {
     );
   }
 
-  async function handlePayment(confirmedAddress: Address, coupon: AppliedCoupon | null) {
+  function getReferralCodeFromCookie(): string | undefined {
+    if (typeof document === "undefined") return undefined;
+    const match = document.cookie.match(/(?:^|;\s*)referral_code=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : undefined;
+  }
+
+  async function handlePayment(confirmedAddress: Address, coupon: AppliedCoupon | null, loyaltyPts = 0) {
     if (!session) return;
     setProcessing(true);
     setError(null);
@@ -539,6 +610,7 @@ export default function CheckoutPage() {
         const existingRes = await api.get<{ data: Order }>(`/api/v1/orders/${pendingOrderId}`);
         order = existingRes.data;
       } else {
+        const referralCode = getReferralCodeFromCookie();
         const orderRes = await api.post<{ data: { order: Order } }>("/api/v1/orders", {
           items: cartItems.map((i) => ({
             productId: i.productId,
@@ -547,7 +619,9 @@ export default function CheckoutPage() {
             unitPrice: i.unitPrice
           })),
           shippingAddress: confirmedAddress,
-          ...(coupon ? { couponCode: coupon.code } : {})
+          ...(coupon ? { couponCode: coupon.code } : {}),
+          ...(loyaltyPts > 0 ? { loyaltyPointsToRedeem: loyaltyPts } : {}),
+          ...(referralCode ? { referralCode } : {})
         });
         order = orderRes.data.order;
         setPendingOrderId(order.id);
@@ -665,12 +739,18 @@ export default function CheckoutPage() {
           onBack={() => setStep(1)}
           confirming={processing}
           coupon={appliedCoupon}
-          onCouponChange={setAppliedCoupon}
-          onConfirm={(coupon) => {
+          onCouponChange={(c) => { setPendingOrderId(null); setAppliedCoupon(c); }}
+          loyaltyPointsToRedeem={loyaltyPtsToRedeem}
+          onLoyaltyChange={(pts) => {
+            // Changing the loyalty toggle invalidates any pending order (different total)
+            if (pts !== loyaltyPtsToRedeem) setPendingOrderId(null);
+            setLoyaltyPtsToRedeem(pts);
+          }}
+          onConfirm={(coupon, loyaltyPts) => {
             if (processing) return; // guard against double-click
             track("checkout_review_complete");
             setStep(3);
-            handlePayment(address, coupon);
+            handlePayment(address, coupon, loyaltyPts);
           }}
         />
       )}

@@ -5,6 +5,7 @@ import { createId } from "../lib/id";
 import { OrderModel } from "../models/order.model";
 import { PaymentModel } from "../models/payment.model";
 import { VendorTaskModel } from "../models/vendor-task.model";
+import { getOrderPricingConfig } from "../models/site-config.model";
 import { mockStore } from "./mock-store";
 
 function toOrderNumber() {
@@ -40,24 +41,33 @@ export const orderRepository = {
     couponCode?: string;
     discountAmount?: number;
     freeShipping?: boolean;
+    loyaltyPointsRedeemed?: number;
+    loyaltyDiscount?: number;
+    referralCode?: string;
   }) {
     const now = new Date().toISOString();
     const items = createLineItems(input.items);
     const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-    const baseShipping = subtotal >= 1500 ? 0 : 250;
+
+    // Read live pricing constants from site config so admin changes take effect immediately.
+    // Falls back to hardcoded defaults if MongoDB is unavailable.
+    const { freeShippingThreshold, shippingFee, gstRate } = await getOrderPricingConfig();
+
+    const baseShipping = subtotal >= freeShippingThreshold ? 0 : shippingFee;
     const shipping = input.freeShipping ? 0 : baseShipping;
     // For free_shipping coupons the monetary saving is the shipping amount waived;
     // for percent/fixed coupons it's the explicit discountAmount passed in.
     const discountAmount = input.freeShipping
       ? baseShipping                         // e.g. ₹250 shipping waived
       : (input.discountAmount ?? 0);
-    // GST is computed on subtotal after any subtotal discount (not shipping discount)
+    // GST is computed on subtotal after coupon discount (loyalty discount applied post-tax)
     const subtotalDiscount = input.freeShipping ? 0 : discountAmount;
     const taxableAmount = Math.max(0, subtotal - subtotalDiscount);
-    const tax = Math.round(taxableAmount * 0.18);
-    const total = taxableAmount + shipping + tax;
+    const tax = Math.round(taxableAmount * gstRate);
+    const loyaltyDiscount = input.loyaltyDiscount ?? 0;
+    const total = Math.max(0, taxableAmount + shipping + tax - loyaltyDiscount);
 
-    const orderData: Order = {
+    const orderData: Order & { loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; referralCode?: string } = {
       id: createId("ord"),
       orderNumber: toOrderNumber(),
       customerId: input.customerId,
@@ -65,14 +75,17 @@ export const orderRepository = {
       subtotal,
       shipping,
       tax,
-      discount: discountAmount,
+      discount: discountAmount + loyaltyDiscount,
       total,
-      currency: "INR",
+      currency: "INR" as const,
       status: "pending_payment",
       paymentStatus: input.paymentStatus ?? "pending",
       fulfillmentStatus: input.fulfillmentStatus ?? "unassigned",
       couponCode: input.couponCode,
       discountAmount,
+      loyaltyPointsRedeemed: input.loyaltyPointsRedeemed ?? 0,
+      loyaltyPointsEarned: 0,
+      referralCode: input.referralCode,
       shippingAddress: input.shippingAddress as Address,
       createdAt: now,
       updatedAt: now
@@ -128,6 +141,27 @@ export const orderRepository = {
       order.updatedAt = new Date().toISOString();
     }
     return order ?? null;
+  },
+
+  /** Conditionally update status only when current status is NOT in `excludedStatuses`.
+   *  Returns the updated order, or null if the condition wasn't met (concurrent transition). */
+  async updateStatusConditional(id: string, status: Order["status"], excludedStatuses: string[]) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOneAndUpdate(
+        { id, status: { $nin: excludedStatuses } },
+        { status, updatedAt: new Date().toISOString() },
+        { new: true }
+      ).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order;
+    }
+    const order = mockStore.orders.find((o) => o.id === id);
+    if (!order || excludedStatuses.includes(order.status)) return null;
+    order.status = status;
+    order.updatedAt = new Date().toISOString();
+    return order;
   },
 
   async updatePaymentStatus(id: string, paymentStatus: PaymentStatus) {

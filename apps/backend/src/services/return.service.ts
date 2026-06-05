@@ -4,6 +4,7 @@ import type { Return, ReturnItem } from "../shared/types";
 import type { UserProfile, Payment } from "@asur/types";
 import { env, hasRazorpayCredentials } from "../config/env";
 import { createId } from "../lib/id";
+import { AppError } from "../lib/errors";
 import { orderRepository } from "../repositories/order.repository";
 import { returnRepository } from "../repositories/return.repository";
 import { PaymentModel } from "../models/payment.model";
@@ -18,23 +19,24 @@ export async function requestReturn(
   input: { items: ReturnItem[]; reason: string }
 ): Promise<Return> {
   const order = await orderRepository.findById(orderId, customerId);
-  if (!order) throw Object.assign(new Error("Order not found"), { status: 404 });
-  if (order.status !== "delivered") throw Object.assign(new Error("Only delivered orders can be returned"), { status: 400 });
+  if (!order) throw new AppError(404, "Order not found");
+  if (order.status !== "delivered") throw new AppError(400, "Only delivered orders can be returned");
 
-  // Use deliveredAt if set; fall back to updatedAt only when the field is absent
+  // Use deliveredAt if set; fall back to createdAt as a safe lower bound
+  // (avoids the updatedAt pitfall: admin edits after delivery would extend the window)
   const deliveryTimestamp = (order as Record<string, unknown>).deliveredAt as string | undefined;
-  const deliveredAt = new Date(deliveryTimestamp ?? order.updatedAt);
+  const deliveredAt = new Date(deliveryTimestamp ?? order.createdAt);
   const cutoff = new Date(deliveredAt.getTime() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  if (new Date() > cutoff) throw Object.assign(new Error("Return window of 7 days has passed"), { status: 400 });
+  if (new Date() > cutoff) throw new AppError(422, "Return window of 7 days has passed");
 
   const existing = await returnRepository.findByOrderAndCustomer(orderId, customerId);
-  if (existing) throw Object.assign(new Error("A return request already exists for this order"), { status: 409 });
+  if (existing) throw new AppError(409, "A return request already exists for this order");
 
   // Validate requested items exist on the order
   for (const ri of input.items) {
     const orderItem = order.items.find((i) => i.variantSku === ri.variantSku);
-    if (!orderItem) throw Object.assign(new Error(`Item ${ri.variantSku} not found in order`), { status: 400 });
-    if (ri.quantity > orderItem.quantity) throw Object.assign(new Error(`Return quantity exceeds ordered quantity for ${ri.variantSku}`), { status: 400 });
+    if (!orderItem) throw new AppError(400, `Item ${ri.variantSku} not found in order`);
+    if (ri.quantity > orderItem.quantity) throw new AppError(400, `Return quantity exceeds ordered quantity for ${ri.variantSku}`);
   }
 
   const now = new Date().toISOString();
@@ -79,12 +81,12 @@ export async function listReturnsByCustomer(customerId: string): Promise<Return[
 
 export async function approveReturn(id: string, adminNote?: string): Promise<Return> {
   const ret = await returnRepository.findById(id);
-  if (!ret) throw Object.assign(new Error("Return not found"), { status: 404 });
-  if (ret.status !== "requested") throw Object.assign(new Error("Return is not in requested state"), { status: 400 });
+  if (!ret) throw new AppError(404, "Return not found");
+  if (ret.status !== "requested") throw new AppError(400, "Return is not in requested state");
 
   // Calculate refund amount from return items vs order
   const order = await orderRepository.findByIdAdmin(ret.orderId);
-  if (!order) throw Object.assign(new Error("Original order not found"), { status: 500 });
+  if (!order) throw new AppError(500, "Original order not found");
 
   let refundAmount = 0;
   for (const ri of ret.items) {
@@ -109,11 +111,8 @@ export async function approveReturn(id: string, adminNote?: string): Promise<Ret
     } catch (err) {
       // Razorpay refund failed — mark as approved without refundId so admin can retry
       const updated = await returnRepository.updateStatus(id, "approved", { refundAmount, adminNote });
-      if (!updated) throw new Error("Failed to update return");
-      throw Object.assign(
-        new Error(`Return approved but Razorpay refund failed: ${err instanceof Error ? err.message : "unknown error"}`),
-        { status: 502, return: updated }
-      );
+      if (!updated) throw new AppError(500, "Failed to update return");
+      throw new AppError(502, `Return approved but Razorpay refund failed: ${err instanceof Error ? err.message : "unknown error"}`);
     }
   }
 
@@ -123,7 +122,7 @@ export async function approveReturn(id: string, adminNote?: string): Promise<Ret
     adminNote
   });
 
-  if (!updated) throw new Error("Failed to update return");
+  if (!updated) throw new AppError(500, "Failed to update return");
 
   // Fire-and-forget email
   void (async () => {
@@ -140,11 +139,11 @@ export async function approveReturn(id: string, adminNote?: string): Promise<Ret
 
 export async function rejectReturn(id: string, adminNote?: string): Promise<Return> {
   const ret = await returnRepository.findById(id);
-  if (!ret) throw Object.assign(new Error("Return not found"), { status: 404 });
-  if (ret.status !== "requested") throw Object.assign(new Error("Return is not in requested state"), { status: 400 });
+  if (!ret) throw new AppError(404, "Return not found");
+  if (ret.status !== "requested") throw new AppError(400, "Return is not in requested state");
 
   const updated = await returnRepository.updateStatus(id, "rejected", { adminNote });
-  if (!updated) throw new Error("Failed to update return");
+  if (!updated) throw new AppError(500, "Failed to update return");
   return updated;
 }
 

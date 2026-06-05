@@ -7,9 +7,11 @@ import { createSession, resolveUserFromIdToken } from "../services/auth.service"
 import { authSessionSchema } from "../validators/auth.validators";
 import { addressSchema } from "../shared/validations";
 import { userRepository } from "../repositories/user.repository";
+import { reviewRepository } from "../repositories/review.repository";
+import { wishlistRepository } from "../repositories/wishlist.repository";
 import { OrderModel } from "../models/order.model";
-import { ReviewModel } from "../models/review.model";
 import { WishlistModel } from "../models/wishlist.model";
+// ReviewModel no longer used directly — access via reviewRepository
 import { hasMongoConnection } from "../config/env";
 import { env } from "../config/env";
 import { mockStore } from "../repositories/mock-store";
@@ -153,13 +155,13 @@ export const saveAddressController: RequestHandler = asyncHandler(async (req, re
   const user = res.locals.user;
   const address = addressSchema.parse(req.body);
 
-  const profile = await userRepository.findByFirebaseUid(user.firebaseUid);
-  if ((profile?.addresses?.length ?? 0) >= 10) {
+  // saveAddress enforces the 10-address limit atomically inside the repository
+  // (avoids a TOCTOU race between the read-check and the push).
+  const updated = await userRepository.saveAddress(user.firebaseUid, address, 10);
+  if (updated === null) {
     res.status(400).json({ success: false, message: "You can save up to 10 addresses. Remove one before adding another." });
     return;
   }
-
-  const updated = await userRepository.saveAddress(user.firebaseUid, address);
   sendSuccess(res, updated, "Address saved");
 });
 
@@ -226,8 +228,8 @@ export const unsubscribeController: RequestHandler = asyncHandler(async (req, re
     return;
   }
   await userRepository.updateEmailPrefsByUserId(userId, { marketing: false });
-  // Redirect to web confirmation page
-  const webUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  // Redirect to web confirmation page — use backend env var, not Next.js NEXT_PUBLIC_ prefix
+  const webUrl = process.env.WEB_BASE_URL ?? process.env.SITE_URL ?? "http://localhost:3000";
   res.redirect(`${webUrl}/unsubscribed`);
 });
 
@@ -243,12 +245,13 @@ export const dataExportController: RequestHandler = asyncHandler(async (req, res
   if (hasMongoConnection) {
     [orders, reviews, wishlist] = await Promise.all([
       OrderModel.find({ customerId: user.id }).lean(),
-      ReviewModel.find({ customerId: user.id }).lean(),
-      WishlistModel.find({ userId: user.id }).lean()
+      reviewRepository.findByCustomer(user.id),
+      WishlistModel.find({ customerId: user.id }).lean()
     ]);
   } else {
     orders = mockStore.orders.filter((o) => o.customerId === user.id);
-    reviews = (mockStore as Record<string, unknown[]>).reviews?.filter((r: unknown) => (r as { customerId: string }).customerId === user.id) ?? [];
+    reviews = await reviewRepository.findByCustomer(user.id);
+    wishlist = await wishlistRepository.listForCustomer(user.id);
   }
 
   const exportData = {

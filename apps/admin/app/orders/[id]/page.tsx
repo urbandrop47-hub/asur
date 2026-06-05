@@ -102,6 +102,12 @@ export default function AdminOrderDetailPage() {
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--text-muted)" }}>
             <span>Subtotal</span><span>{formatCurrency(order.subtotal)}</span>
           </div>
+          {(order.discount ?? 0) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--success)" }}>
+              <span>Discount{order.couponCode ? ` (${order.couponCode})` : ""}</span>
+              <span>−{formatCurrency(order.discount ?? 0)}</span>
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--text-muted)" }}>
             <span>Shipping</span>
             <span style={{ color: order.shipping === 0 ? "var(--success)" : "inherit" }}>

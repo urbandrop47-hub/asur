@@ -6,7 +6,8 @@ const MAX = 8;
 type StoredItem = { slug: string; title: string; category: string; image?: string; price: number };
 
 function fromProduct(p: Product): StoredItem {
-  const minPrice = Math.min(...p.variants.map((v) => v.price));
+  // Math.min(...[]) returns Infinity for empty arrays — guard against it
+  const minPrice = p.variants.length > 0 ? Math.min(...p.variants.map((v) => v.price)) : 0;
   return { slug: p.slug, title: p.title, category: p.category, image: p.media[0]?.url, price: minPrice };
 }
 
