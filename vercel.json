@@ -1,6 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "buildCommand": "pnpm build",
-  "installCommand": "pnpm install --no-frozen-lockfile"
+  "ignoreCommand": "echo 'Root-level vercel.json — each app in apps/* has its own vercel.json and a dedicated Vercel project with Root Directory set to that folder. This file is intentionally minimal.'"
 }
