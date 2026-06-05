@@ -214,7 +214,10 @@ export type Order = {
   discountAmount?: number;
   loyaltyPointsRedeemed?: number;
   loyaltyPointsEarned?: number;
+  loyaltyDiscount?: number;
   referralCode?: string;
+  giftCardCode?: string;
+  giftCardAmount?: number;
   shippingAddress: Address;
   createdAt: string;
   updatedAt: string;
@@ -310,6 +313,22 @@ export type Return = {
   refundId?: string;
   refundAmount?: number;
   adminNote?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GiftCard = {
+  id: ID;
+  code: string;
+  initialAmount: number;
+  balance: number;
+  purchasedBy?: ID;
+  recipientEmail?: string;
+  recipientName?: string;
+  message?: string;
+  orderId?: ID;
+  isActive: boolean;
+  expiresAt: string;
   createdAt: string;
   updatedAt: string;
 };

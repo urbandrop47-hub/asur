@@ -29,7 +29,7 @@ const orderItemSchema = new Schema(
   { _id: false }
 );
 
-const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string }>(
+const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number }>(
   {
     id: { type: String, required: true, index: true },
     orderNumber: { type: String, required: true, unique: true, index: true },
@@ -46,6 +46,8 @@ const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPoints
     loyaltyPointsEarned: { type: Number, default: 0 },
     loyaltyDiscount: { type: Number, default: 0 },
     referralCode: { type: String },
+    giftCardCode: { type: String },
+    giftCardAmount: { type: Number, default: 0 },
     currency: { type: String, required: true, default: "INR" },
     status: { type: String, required: true, default: "pending_payment", index: true },
     paymentStatus: { type: String, required: true, default: "pending" },
@@ -59,4 +61,4 @@ const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPoints
   { versionKey: false }
 );
 
-export const OrderModel = models.Order ?? model<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string }>("Order", orderSchema);
+export const OrderModel = models.Order ?? model<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number }>("Order", orderSchema);

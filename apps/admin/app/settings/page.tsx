@@ -8,6 +8,9 @@ type SiteConfig = {
   freeShippingThreshold: number;
   shippingFee: number;
   gstRate: number;
+  gstin?: string;
+  businessName?: string;
+  businessAddress?: string;
   updatedAt?: string;
 };
 
@@ -15,7 +18,10 @@ const DEFAULT: SiteConfig = {
   announcementBar: { text: "", link: "", bgColor: "rgba(249,115,22,0.9)", isActive: true },
   freeShippingThreshold: 1500,
   shippingFee: 250,
-  gstRate: 0.18
+  gstRate: 0.18,
+  gstin: "",
+  businessName: "",
+  businessAddress: ""
 };
 
 const inputStyle: React.CSSProperties = {
@@ -83,7 +89,10 @@ export default function SettingsPage() {
         },
         freeShippingThreshold: config.freeShippingThreshold,
         shippingFee: config.shippingFee,
-        gstRate: config.gstRate
+        gstRate: config.gstRate,
+        gstin: config.gstin || undefined,
+        businessName: config.businessName || undefined,
+        businessAddress: config.businessAddress || undefined
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -226,6 +235,55 @@ export default function SettingsPage() {
           <strong style={{ color: "var(--text)" }}>Summary:</strong>{" "}
           Orders above ₹{config.freeShippingThreshold.toLocaleString("en-IN")} get free shipping. Orders below pay ₹{config.shippingFee}. GST at {(config.gstRate * 100).toFixed(0)}% applied on order subtotal after discounts.
         </div>
+      </div>
+
+      {/* GST Invoice Settings */}
+      <div style={card}>
+        <h2 style={{ margin: "0 0 1rem", fontSize: "0.95rem", fontWeight: 700 }}>GST Invoice</h2>
+        <div style={{ display: "grid", gap: "0.85rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+            <div>
+              <label style={labelStyle}>GSTIN</label>
+              <input
+                style={inputStyle}
+                value={config.gstin ?? ""}
+                onChange={(e) => setConfig((c) => ({ ...c, gstin: e.target.value }))}
+                placeholder="22AAAAA0000A1Z5"
+                maxLength={15}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Business Name</label>
+              <input
+                style={inputStyle}
+                value={config.businessName ?? ""}
+                onChange={(e) => setConfig((c) => ({ ...c, businessName: e.target.value }))}
+                placeholder="ASUR Apparel Pvt Ltd"
+              />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Business Address</label>
+            <input
+              style={inputStyle}
+              value={config.businessAddress ?? ""}
+              onChange={(e) => setConfig((c) => ({ ...c, businessAddress: e.target.value }))}
+              placeholder="123 Fashion Street, Mumbai, Maharashtra 400001"
+            />
+            <p style={{ margin: "0.25rem 0 0", fontSize: "0.72rem", color: "var(--text-muted)" }}>Printed on tax invoices for delivered orders</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Admin tools */}
+      <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h2 style={{ margin: "0 0 0.2rem", fontSize: "0.95rem", fontWeight: 700 }}>Audit Log</h2>
+          <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--text-muted)" }}>View all admin mutations — product changes, bulk ops, config updates.</p>
+        </div>
+        <a href="/settings/audit-log" style={{ padding: "0.45rem 1rem", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text)", fontSize: "0.82rem", textDecoration: "none", whiteSpace: "nowrap" }}>
+          View logs
+        </a>
       </div>
 
       {/* Save */}

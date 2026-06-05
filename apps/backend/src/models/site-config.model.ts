@@ -13,6 +13,9 @@ export type ISiteConfig = {
   freeShippingThreshold: number;  // rupees — default 1500
   shippingFee: number;            // rupees — default 250
   gstRate: number;                // decimal — default 0.18
+  gstin?: string;                 // GST Identification Number for invoices
+  businessName?: string;
+  businessAddress?: string;
   updatedAt: string;
 };
 
@@ -48,6 +51,9 @@ const siteConfigSchema = new Schema<ISiteConfig>(
     freeShippingThreshold: { type: Number, default: 1500 },
     shippingFee:           { type: Number, default: 250 },
     gstRate:               { type: Number, default: 0.18 },
+    gstin:                 { type: String },
+    businessName:          { type: String },
+    businessAddress:       { type: String },
     updatedAt:             { type: String, required: true }
   },
   { versionKey: false, _id: false }

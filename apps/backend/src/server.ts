@@ -3,10 +3,13 @@ import { connectDatabase } from "./config/database";
 import { createApp } from "./app";
 import { initSentry } from "./lib/sentry";
 import { logger } from "./lib/logger";
+import { startAbandonedCartCron } from "./services/abandoned-cart.cron";
 
 export async function startServer() {
   initSentry();
   await connectDatabase();
+
+  startAbandonedCartCron();
 
   const app = createApp();
   app.listen(env.PORT, "0.0.0.0", () => {

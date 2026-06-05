@@ -8,6 +8,11 @@ import { paymentReceiptHtml, paymentReceiptText } from "./email-templates/paymen
 import { shippingUpdateHtml, shippingUpdateText } from "./email-templates/shipping-update";
 import { returnConfirmationHtml, returnConfirmationText } from "./email-templates/return-confirmation";
 import { refundInitiatedHtml, refundInitiatedText } from "./email-templates/refund-initiated";
+import { giftCardDeliveryHtml, giftCardDeliveryText } from "./email-templates/gift-card-delivery";
+import { abandonedCart1Html, abandonedCart1Text } from "./email-templates/abandoned-cart-1";
+import { abandonedCart2Html, abandonedCart2Text } from "./email-templates/abandoned-cart-2";
+import { newsletterConfirmHtml, newsletterConfirmText } from "./email-templates/newsletter-confirm";
+import type { AbandonedCartDoc } from "../models/abandoned-cart.model";
 
 const FROM_ADDRESS = "ASUR <noreply@asur.in>";
 const WEB_BASE_URL = process.env.WEB_BASE_URL ?? "https://asur.in";
@@ -88,6 +93,23 @@ export async function sendAdminNewOrderEmail(order: Order, customerEmail: string
   });
 }
 
+export async function sendGiftCardEmail(params: {
+  recipientEmail: string;
+  recipientName: string;
+  senderName: string;
+  code: string;
+  amount: number;
+  message?: string;
+  expiresAt: string;
+}): Promise<void> {
+  await queueEmail({
+    to: params.recipientEmail,
+    subject: `You've received a ₹${params.amount} ASUR Gift Card!`,
+    html: giftCardDeliveryHtml({ ...params, webBaseUrl: WEB_BASE_URL }),
+    text: giftCardDeliveryText({ ...params, webBaseUrl: WEB_BASE_URL })
+  });
+}
+
 export async function sendLowStockAlertEmail(productTitle: string, sku: string, remaining: number): Promise<void> {
   const adminEmail = env.ADMIN_EMAIL;
   if (!adminEmail) return;
@@ -124,6 +146,36 @@ export async function sendRefundInitiatedEmail(ret: Return, customerEmail: strin
     subject,
     html: refundInitiatedHtml(ret, customerName),
     text: refundInitiatedText(ret, customerName)
+  });
+}
+
+export async function sendAbandonedCartEmail1(cart: AbandonedCartDoc): Promise<void> {
+  await queueEmail({
+    to: cart.email,
+    subject: "You left something in your cart — it's waiting for you",
+    html: abandonedCart1Html(cart, WEB_BASE_URL),
+    text: abandonedCart1Text(cart, WEB_BASE_URL),
+  });
+}
+
+export async function sendAbandonedCartEmail2(cart: AbandonedCartDoc, couponCode: string): Promise<void> {
+  await queueEmail({
+    to: cart.email,
+    subject: `Here's 5% off your ASUR cart — code: ${couponCode}`,
+    html: abandonedCart2Html(cart, couponCode, WEB_BASE_URL),
+    text: abandonedCart2Text(cart, couponCode, WEB_BASE_URL),
+  });
+}
+
+export async function sendNewsletterConfirmEmail(email: string, confirmToken: string): Promise<void> {
+  // Confirm link points to the Next.js frontend page which calls the backend API.
+  // This avoids Next.js routing the /api/v1/... path (which it doesn't own).
+  const confirmUrl = `${WEB_BASE_URL}/newsletter/confirm?token=${confirmToken}`;
+  await queueEmail({
+    to: email,
+    subject: "Confirm your ASUR subscription",
+    html: newsletterConfirmHtml(confirmUrl, WEB_BASE_URL),
+    text: newsletterConfirmText(confirmUrl),
   });
 }
 

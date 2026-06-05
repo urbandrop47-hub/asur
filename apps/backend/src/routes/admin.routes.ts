@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Router as ExpressRouter } from "express";
 import { adminOnlyMiddleware } from "../middlewares/admin-only";
+import { requirePermission } from "../middlewares/require-permission";
 import {
   acceptAdminInviteController,
   createAdminInviteController,
@@ -12,8 +13,12 @@ import {
   listAdminInvitesController,
   listAdminOrdersController,
   listAdminProductsController,
-  updateAdminProductController
+  updateAdminProductController,
+  bulkProductActionController
 } from "../controllers/admin.controller";
+import { bulkOrderStatusController } from "../controllers/order.controller";
+import { listAuditLogsController } from "../controllers/audit-log.controller";
+import { downloadInvoiceController } from "../controllers/invoice.controller";
 import { listAdminReviewsController, moderateReviewController } from "../controllers/review.controller";
 import {
   listInventoryController,
@@ -47,25 +52,43 @@ import {
   getAdminConfigController,
   updateAdminConfigController
 } from "../controllers/site-config.controller";
+import {
+  listAdminGiftCardsController,
+  adminCreateGiftCardController,
+  adminUpdateGiftCardController,
+  adminAdjustBalanceController,
+  adminResendEmailController
+} from "../controllers/gift-card.controller";
+import { adminListSubscribers, adminNewsletterStats } from "../controllers/newsletter.controller";
+import {
+  adminListArticlesController,
+  adminGetArticleController,
+  adminCreateArticleController,
+  adminUpdateArticleController,
+  adminDeleteArticleController,
+} from "../controllers/article.controller";
 
 export const adminRouter: ExpressRouter = Router();
 
 // Invite management
 adminRouter.get("/access-model", adminOnlyMiddleware, getAdminAccessController);
 adminRouter.get("/invites", adminOnlyMiddleware, listAdminInvitesController);
-adminRouter.post("/invites", adminOnlyMiddleware, createAdminInviteController);
+adminRouter.post("/invites", adminOnlyMiddleware, requirePermission("users:invite"), createAdminInviteController);
 adminRouter.post("/invites/accept", acceptAdminInviteController);
 
 // Product management
 adminRouter.get("/products", adminOnlyMiddleware, listAdminProductsController);
-adminRouter.post("/products", adminOnlyMiddleware, createAdminProductController);
+adminRouter.post("/products", adminOnlyMiddleware, requirePermission("catalog:write"), createAdminProductController);
+adminRouter.patch("/products/bulk", adminOnlyMiddleware, requirePermission("catalog:write"), bulkProductActionController);
 adminRouter.get("/products/:id", adminOnlyMiddleware, getAdminProductController);
-adminRouter.patch("/products/:id", adminOnlyMiddleware, updateAdminProductController);
-adminRouter.delete("/products/:id", adminOnlyMiddleware, deleteAdminProductController);
+adminRouter.patch("/products/:id", adminOnlyMiddleware, requirePermission("catalog:write"), updateAdminProductController);
+adminRouter.delete("/products/:id", adminOnlyMiddleware, requirePermission("catalog:write"), deleteAdminProductController);
 
 // Order monitoring
 adminRouter.get("/orders", adminOnlyMiddleware, listAdminOrdersController);
+adminRouter.post("/orders/bulk-status", adminOnlyMiddleware, requirePermission("orders:read"), bulkOrderStatusController);
 adminRouter.get("/orders/:id", adminOnlyMiddleware, getAdminOrderController);
+adminRouter.get("/orders/:id/invoice", adminOnlyMiddleware, downloadInvoiceController);
 
 // Review moderation
 adminRouter.get("/reviews", adminOnlyMiddleware, listAdminReviewsController);
@@ -97,9 +120,30 @@ adminRouter.delete("/coupons/:code", adminOnlyMiddleware, deleteCouponController
 
 // Site config
 adminRouter.get("/config", adminOnlyMiddleware, getAdminConfigController);
-adminRouter.patch("/config", adminOnlyMiddleware, updateAdminConfigController);
+adminRouter.patch("/config", adminOnlyMiddleware, requirePermission("settings:write"), updateAdminConfigController);
+
+// Gift card management
+adminRouter.get("/gift-cards", adminOnlyMiddleware, listAdminGiftCardsController);
+adminRouter.post("/gift-cards", adminOnlyMiddleware, adminCreateGiftCardController);
+adminRouter.patch("/gift-cards/:id", adminOnlyMiddleware, adminUpdateGiftCardController);
+adminRouter.post("/gift-cards/:id/adjust-balance", adminOnlyMiddleware, adminAdjustBalanceController);
+adminRouter.post("/gift-cards/:id/resend-email", adminOnlyMiddleware, adminResendEmailController);
 
 // Size chart management
 adminRouter.get("/size-guide", adminOnlyMiddleware, listSizeChartsController);
 adminRouter.post("/size-guide/:category", adminOnlyMiddleware, upsertSizeChartController);
 adminRouter.delete("/size-guide/:category", adminOnlyMiddleware, deleteSizeChartController);
+
+// Newsletter management
+adminRouter.get("/newsletter/subscribers", adminOnlyMiddleware, adminListSubscribers);
+adminRouter.get("/newsletter/stats", adminOnlyMiddleware, adminNewsletterStats);
+
+// Editorial / Articles management
+adminRouter.get("/articles", adminOnlyMiddleware, adminListArticlesController);
+adminRouter.post("/articles", adminOnlyMiddleware, requirePermission("content:write"), adminCreateArticleController);
+adminRouter.get("/articles/:id", adminOnlyMiddleware, adminGetArticleController);
+adminRouter.patch("/articles/:id", adminOnlyMiddleware, requirePermission("content:write"), adminUpdateArticleController);
+adminRouter.delete("/articles/:id", adminOnlyMiddleware, requirePermission("content:write"), adminDeleteArticleController);
+
+// Audit log
+adminRouter.get("/audit-log", adminOnlyMiddleware, listAuditLogsController);

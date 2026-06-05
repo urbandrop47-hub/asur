@@ -5,6 +5,7 @@ import { AppProviders } from "../providers";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
 import { AnnouncementBar } from "../components/announcement-bar";
+import { ExitIntentPopup } from "../components/exit-intent-popup";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://asur.in";
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           <SiteHeader />
           <main id="main-content">{children}</main>
           <SiteFooter />
+          <ExitIntentPopup />
         </AppProviders>
         {/* Razorpay checkout SDK — loaded lazily, only used on /checkout */}
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />

@@ -13,7 +13,10 @@ const NAV = [
   { href: "/orders", label: "Orders", icon: "◫" },
   { href: "/reviews", label: "Reviews", icon: "★" },
   { href: "/coupons", label: "Coupons", icon: "%" },
+  { href: "/gift-cards", label: "Gift Cards", icon: "🎁" },
   { href: "/returns", label: "Returns", icon: "↩" },
+  { href: "/newsletter", label: "Newsletter", icon: "✉" },
+  { href: "/articles", label: "Articles", icon: "✍" },
   { href: "/settings", label: "Settings", icon: "⚙" }
 ];
 

@@ -8,6 +8,8 @@ import { triggerBackInStockNotifications } from "./inventory.service";
 import { validateCoupon, applyCoupon } from "./coupon.service";
 import { couponRepository } from "../repositories/coupon.repository";
 import { loyaltyRepository, REDEEM_RATE, MIN_REDEEM, MAX_REDEEM_PCT } from "../repositories/loyalty.repository";
+import { validateGiftCard, applyGiftCard, restoreGiftCard } from "./gift-card.service";
+import { getOrderPricingConfig } from "../models/site-config.model";
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -56,6 +58,19 @@ export async function createOrder(input: CreateOrderInput) {
     loyaltyDiscount = finalDiscount;
   }
 
+  // Validate gift card before creating the order
+  let giftCardResult: Awaited<ReturnType<typeof validateGiftCard>> | null = null;
+  if (input.giftCardCode) {
+    // Compute estimated order total for capping (coupon + loyalty already factored)
+    const { freeShippingThreshold, shippingFee, gstRate } = await getOrderPricingConfig();
+    const couponDiscount = couponResult ? couponResult.discountAmount : 0;
+    const taxable = Math.max(0, subtotal - couponDiscount);
+    const baseShip = subtotal >= freeShippingThreshold ? 0 : shippingFee;
+    const ship = couponResult?.freeShipping ? 0 : baseShip;
+    const estimatedTotal = Math.max(0, taxable + ship + Math.round(taxable * gstRate) - loyaltyDiscount);
+    giftCardResult = await validateGiftCard(input.giftCardCode, estimatedTotal);
+  }
+
   // Strip internal cache fields before passing to repository
   const orderItems = verifiedItems.map(({ _product: _p, _variant: _v, ...rest }) => { void _p; void _v; return rest; });
 
@@ -68,7 +83,9 @@ export async function createOrder(input: CreateOrderInput) {
     discountAmount: couponResult ? couponResult.discountAmount : 0,
     freeShipping: couponResult ? couponResult.freeShipping : false,
     loyaltyPointsRedeemed: actualPointsRedeemed,
-    loyaltyDiscount
+    loyaltyDiscount,
+    giftCardCode: giftCardResult ? giftCardResult.card.code : undefined,
+    giftCardAmount: giftCardResult ? giftCardResult.applicableAmount : 0
   });
 
   // Atomically decrement stock for each variant. Because a concurrent order may have
@@ -117,6 +134,21 @@ export async function createOrder(input: CreateOrderInput) {
     }
   }
 
+  // Deduct gift card balance atomically — restored if order is cancelled
+  if (giftCardResult) {
+    const gcApplied = await applyGiftCard(giftCardResult.card.code, giftCardResult.applicableAmount);
+    if (!gcApplied) {
+      await orderRepository.updateStatus(order.id, "cancelled");
+      await Promise.all(
+        decrementResults.map((r) => productRepository.incrementVariantStock(r.productId, r.variantSku, r.quantity))
+      );
+      if (couponResult) {
+        await couponRepository.decrementUsedCount(couponResult.coupon.code);
+      }
+      throw new AppError(409, "Gift card balance was just used by another order — please try without it");
+    }
+  }
+
   // Deduct loyalty points optimistically — restored if order is cancelled before payment
   if (actualPointsRedeemed > 0) {
     const redeemed = await loyaltyRepository.redeemPoints(
@@ -126,13 +158,16 @@ export async function createOrder(input: CreateOrderInput) {
       order.id
     );
     if (!redeemed.success) {
-      // Concurrent depletion — cancel order, release stock, and undo coupon usage
+      // Concurrent depletion — cancel order, release stock, undo coupon + gift card
       await orderRepository.updateStatus(order.id, "cancelled");
       await Promise.all(
         decrementResults.map((r) => productRepository.incrementVariantStock(r.productId, r.variantSku, r.quantity))
       );
       if (couponResult) {
         await couponRepository.decrementUsedCount(couponResult.coupon.code);
+      }
+      if (giftCardResult) {
+        await restoreGiftCard(giftCardResult.card.code, giftCardResult.applicableAmount);
       }
       throw new AppError(409, "Insufficient loyalty points — another redemption was processed simultaneously");
     }
@@ -200,14 +235,19 @@ export async function cancelOrder(orderId: string, requesterId: string, isAdmin 
   }
 
   // Restore redeemed loyalty points
-  const orderWithLoyalty = order as typeof order & { loyaltyPointsRedeemed?: number };
-  if (orderWithLoyalty.loyaltyPointsRedeemed && orderWithLoyalty.loyaltyPointsRedeemed > 0) {
+  const orderWithExtras = order as typeof order & { loyaltyPointsRedeemed?: number; giftCardCode?: string; giftCardAmount?: number };
+  if (orderWithExtras.loyaltyPointsRedeemed && orderWithExtras.loyaltyPointsRedeemed > 0) {
     await loyaltyRepository.restorePoints(
       order.customerId,
-      orderWithLoyalty.loyaltyPointsRedeemed,
+      orderWithExtras.loyaltyPointsRedeemed,
       `Refund — cancelled order #${order.orderNumber}`,
       orderId
     );
+  }
+
+  // Restore gift card balance
+  if (orderWithExtras.giftCardCode && orderWithExtras.giftCardAmount && orderWithExtras.giftCardAmount > 0) {
+    await restoreGiftCard(orderWithExtras.giftCardCode, orderWithExtras.giftCardAmount);
   }
 
   // Check for back-in-stock alerts on any variant that was restocked

@@ -14,6 +14,10 @@ import { sizeChartRouter } from "./size-chart.routes";
 import { siteConfigRouter } from "./site-config.routes";
 import { notificationRouter } from "./notification.routes";
 import { loyaltyRouter } from "./loyalty.routes";
+import { giftCardRouter } from "./gift-card.routes";
+import { abandonedCartRouter } from "./abandoned-cart.routes";
+import { newsletterRouter } from "./newsletter.routes";
+import { articleRouter } from "./article.routes";
 
 export const apiRouter: Router = Router();
 
@@ -31,3 +35,7 @@ apiRouter.use(`${API_BASE_PATH}/size-guide`, sizeChartRouter);
 apiRouter.use(`${API_BASE_PATH}/config`, siteConfigRouter);
 apiRouter.use(`${API_BASE_PATH}/notifications`, notificationRouter);
 apiRouter.use(`${API_BASE_PATH}/loyalty`, loyaltyRouter);
+apiRouter.use(`${API_BASE_PATH}/gift-cards`, giftCardRouter);
+apiRouter.use(`${API_BASE_PATH}/abandoned-cart`, abandonedCartRouter);
+apiRouter.use(`${API_BASE_PATH}/newsletter`, newsletterRouter);
+apiRouter.use(`${API_BASE_PATH}/articles`, articleRouter);

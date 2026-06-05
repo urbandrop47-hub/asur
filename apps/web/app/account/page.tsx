@@ -480,6 +480,7 @@ export default function AccountPage() {
           { href: "/returns", label: "Returns", icon: "↩" },
           { href: "/account/loyalty", label: "Loyalty", icon: "⭐" },
           { href: "/account/referrals", label: "Refer", icon: "👥" },
+          { href: "/account/gift-cards", label: "Gift Cards", icon: "🎁" },
           { href: "/account/notifications", label: "Notifications", icon: "🔔" },
         ].map(({ href, label, icon }) => (
           <Link
