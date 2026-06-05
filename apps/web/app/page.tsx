@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Product } from "@asur/types";
 import { ProductCard } from "../components/product-card";
 import { api } from "../lib/api";
@@ -170,6 +171,65 @@ function ProductSkeleton() {
         <div className="skeleton skeleton-line" style={{ height: 44, borderRadius: 999, marginTop: 4 }} />
       </div>
     </div>
+  );
+}
+
+// ─── Journal Preview ─────────────────────────────────────────────────────────
+
+type JournalArticle = {
+  _id: string;
+  slug: string;
+  title: string;
+  type: "blog" | "lookbook" | "drop";
+  heroImage?: string;
+  excerpt?: string;
+  publishedAt: string;
+};
+
+function JournalPreview() {
+  const [articles, setArticles] = useState<JournalArticle[]>([]);
+
+  useEffect(() => {
+    void api.get<{ data: JournalArticle[] }>("/api/v1/articles/latest?limit=3")
+      .then((r) => setArticles(r.data ?? []))
+      .catch(() => {});
+  }, []);
+
+  if (articles.length === 0) return null;
+
+  return (
+    <section style={{ marginBottom: "3rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.5rem" }}>
+        <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, letterSpacing: "-0.01em" }}>Latest from the Journal</h2>
+        <Link href="/journal" style={{ fontSize: "0.82rem", color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>View all →</Link>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1rem" }}>
+        {articles.map((a) => (
+          <Link key={a._id} href={a.type === "drop" ? `/drops/${a.slug}` : `/journal/${a.slug}`} style={{ display: "block", textDecoration: "none" }}>
+            <article style={{ border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", background: "rgba(255,255,255,0.02)", transition: "border-color 0.2s, transform 0.2s" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(249,115,22,0.3)"; (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.transform = ""; }}>
+              <div style={{ position: "relative", aspectRatio: "16/9", background: "rgba(255,255,255,0.04)" }}>
+                {a.heroImage
+                  ? <Image src={a.heroImage} alt={a.title} fill sizes="320px" style={{ objectFit: "cover" }} />
+                  : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, rgba(249,115,22,0.1), rgba(139,92,246,0.1))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: "1.5rem", opacity: 0.25 }}>◈</span>
+                    </div>
+                }
+              </div>
+              <div style={{ padding: "0.9rem 1rem" }}>
+                <p style={{ margin: "0 0 0.3rem", fontSize: "0.68rem", color: "var(--text-muted)", fontFamily: "var(--f-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  {a.type} · {new Date(a.publishedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                </p>
+                <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  {a.title}
+                </h3>
+              </div>
+            </article>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -445,6 +505,9 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {/* Journal preview */}
+      <JournalPreview />
 
       {/* Testimonials */}
       <Testimonials />

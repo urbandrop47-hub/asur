@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { Address, Order } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
@@ -277,6 +277,12 @@ type AppliedCoupon = {
   value: number;
 };
 
+type AppliedGiftCard = {
+  code: string;
+  balance: number;
+  applicableAmount: number;
+};
+
 function ReviewStep({
   address,
   onBack,
@@ -285,26 +291,54 @@ function ReviewStep({
   coupon,
   onCouponChange,
   loyaltyPointsToRedeem,
-  onLoyaltyChange
+  onLoyaltyChange,
+  giftCard,
+  onGiftCardChange,
+  initialCouponCode,
 }: {
   address: Address;
   onBack: () => void;
-  onConfirm: (coupon: AppliedCoupon | null, loyaltyPts: number) => void;
+  onConfirm: (coupon: AppliedCoupon | null, loyaltyPts: number, gc: AppliedGiftCard | null) => void;
   confirming?: boolean;
   coupon: AppliedCoupon | null;
   onCouponChange: (c: AppliedCoupon | null) => void;
   loyaltyPointsToRedeem: number;
   onLoyaltyChange: (pts: number) => void;
+  giftCard: AppliedGiftCard | null;
+  onGiftCardChange: (gc: AppliedGiftCard | null) => void;
+  initialCouponCode?: string;
 }) {
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal());
   const { config } = useSiteConfigStore();
   const { points: availablePoints, redeemRate, minRedeem, loaded: loyaltyLoaded, fetchBalance } = useLoyaltyStore();
 
-  const [couponInput, setCouponInput] = useState(coupon?.code ?? "");
+  const [couponInput, setCouponInput] = useState(coupon?.code ?? initialCouponCode ?? "");
   const [couponError, setCouponError] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
+
+  // Auto-apply a coupon passed via URL (e.g. from recovery email)
+  useEffect(() => {
+    if (initialCouponCode && !coupon) {
+      setCouponInput(initialCouponCode);
+      void (async () => {
+        setValidating(true);
+        try {
+          const res = await api.post<{ data: AppliedCoupon }>("/api/v1/coupons/validate", {
+            code: initialCouponCode,
+            subtotal
+          });
+          onCouponChange(res.data);
+        } catch { /* invalid or expired — leave input filled, user can see the error */ }
+        setValidating(false);
+      })();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [usePoints, setUsePoints] = useState(loyaltyPointsToRedeem > 0);
+  const [gcInput, setGcInput] = useState(giftCard?.code.match(/.{1,4}/g)?.join("-") ?? "");
+  const [gcError, setGcError] = useState<string | null>(null);
+  const [gcValidating, setGcValidating] = useState(false);
 
   useEffect(() => {
     fetchBalance();
@@ -323,7 +357,8 @@ function ReviewStep({
   const baseShipping = subtotal >= config.freeShippingThreshold ? 0 : config.shippingFee;
   const shipping = coupon?.freeShipping ? 0 : baseShipping;
   const tax = Math.round(taxableAmount * config.gstRate);
-  const total = Math.max(0, taxableAmount + shipping + tax - loyaltyDiscount);
+  const gcDiscount = giftCard?.applicableAmount ?? 0;
+  const total = Math.max(0, taxableAmount + shipping + tax - loyaltyDiscount - gcDiscount);
 
   async function applyCoupon() {
     const code = couponInput.trim().toUpperCase();
@@ -349,6 +384,32 @@ function ReviewStep({
     onCouponChange(null);
     setCouponInput("");
     setCouponError(null);
+  }
+
+  async function applyGiftCard() {
+    const code = gcInput.trim().toUpperCase().replace(/-/g, "");
+    if (!code) return;
+    setGcValidating(true);
+    setGcError(null);
+    try {
+      const res = await api.post<{ data: AppliedGiftCard }>("/api/v1/gift-cards/validate", {
+        code,
+        orderTotal: total
+      });
+      onGiftCardChange(res.data);
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message ?? "Invalid gift card";
+      setGcError(msg);
+      onGiftCardChange(null);
+    } finally {
+      setGcValidating(false);
+    }
+  }
+
+  function removeGiftCard() {
+    onGiftCardChange(null);
+    setGcInput("");
+    setGcError(null);
   }
 
   return (
@@ -431,6 +492,67 @@ function ReviewStep({
         )}
       </div>
 
+      {/* ── Gift card field ── */}
+      <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: "1rem" }}>
+        <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Gift card
+        </p>
+
+        {giftCard ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ padding: "3px 10px", borderRadius: 999, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", fontFamily: "monospace", fontWeight: 700, fontSize: "0.85rem" }}>
+                {giftCard.code.match(/.{1,4}/g)?.join("-")}
+              </span>
+              <span style={{ fontSize: "0.83rem", color: "var(--success)" }}>
+                −{formatCurrency(giftCard.applicableAmount)}
+              </span>
+            </div>
+            <button onClick={removeGiftCard} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.8rem", padding: "2px 6px" }}>
+              Remove
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input
+              type="text"
+              value={gcInput}
+              onChange={(e) => { setGcInput(e.target.value.toUpperCase()); setGcError(null); }}
+              onKeyDown={(e) => e.key === "Enter" && applyGiftCard()}
+              placeholder="XXXX-XXXX-XXXX-XXXX"
+              style={{
+                flex: 1, padding: "0.65rem 0.9rem", borderRadius: 999,
+                border: `1px solid ${gcError ? "var(--danger)" : "rgba(255,255,255,0.14)"}`,
+                background: "rgba(255,255,255,0.05)", color: "var(--text)",
+                fontFamily: "monospace", fontSize: "0.88rem", letterSpacing: "0.1em", outline: "none"
+              }}
+            />
+            <button
+              onClick={applyGiftCard}
+              disabled={!gcInput.trim() || gcValidating}
+              style={{
+                padding: "0.65rem 1.1rem", borderRadius: 999, fontWeight: 700, fontSize: "0.85rem",
+                background: gcInput.trim() ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(249,115,22,0.3)", color: "var(--accent)",
+                cursor: gcInput.trim() && !gcValidating ? "pointer" : "not-allowed", flexShrink: 0
+              }}
+            >
+              {gcValidating ? "…" : "Apply"}
+            </button>
+          </div>
+        )}
+
+        {gcError && (
+          <p style={{ margin: "0.45rem 0 0", fontSize: "0.8rem", color: "var(--danger)", display: "flex", alignItems: "center", gap: 5 }}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+              <circle cx="6.5" cy="6.5" r="6" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M6.5 4v3.5M6.5 9.5h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+            {gcError}
+          </p>
+        )}
+      </div>
+
       {/* Loyalty points redemption */}
       {loyaltyLoaded && availablePoints >= minRedeem && (
         <div style={{ border: `1px solid ${usePoints ? "rgba(249,115,22,0.4)" : "var(--border)"}`, borderRadius: 16, padding: "1rem", transition: "border-color 0.2s" }}>
@@ -509,6 +631,12 @@ function ReviewStep({
             <span style={{ color: "#f97316" }}>−{formatCurrency(loyaltyDiscount)}</span>
           </div>
         )}
+        {gcDiscount > 0 && giftCard && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+            <span style={{ color: "var(--success)" }}>Gift card ({giftCard.code.match(/.{1,4}/g)?.join("-")})</span>
+            <span style={{ color: "var(--success)" }}>−{formatCurrency(gcDiscount)}</span>
+          </div>
+        )}
         <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "0.2rem 0" }} />
         <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "1.05rem" }}>
           <span>Total</span>
@@ -517,7 +645,7 @@ function ReviewStep({
       </div>
 
       <button
-        onClick={() => onConfirm(coupon, pointsToUse)}
+        onClick={() => onConfirm(coupon, pointsToUse, giftCard)}
         disabled={confirming}
         style={{
           width: "100%", borderRadius: 999, padding: "0.95rem", fontSize: "1rem", fontWeight: 700,
@@ -536,7 +664,17 @@ function ReviewStep({
 // ─── Main checkout page ──────────────────────────────────────
 
 export default function CheckoutPage() {
+  return (
+    <Suspense>
+      <CheckoutPageContent />
+    </Suspense>
+  );
+}
+
+function CheckoutPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlCoupon = searchParams.get("coupon")?.toUpperCase() ?? undefined;
   const session = useAuthStore((s) => s.session);
   const cartItems = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clear);
@@ -550,6 +688,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [loyaltyPtsToRedeem, setLoyaltyPtsToRedeem] = useState(0);
+  const [appliedGiftCard, setAppliedGiftCard] = useState<AppliedGiftCard | null>(null);
   // Tracks the pending order created before Razorpay opens — reused on retry
   // so we don't create a second orphaned order if the user dismisses the modal.
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
@@ -592,13 +731,33 @@ export default function CheckoutPage() {
     );
   }
 
+  function syncAbandonedCart(email: string) {
+    if (!email || cartItems.length === 0) return;
+    void api.post("/api/v1/abandoned-cart/sync", {
+      email,
+      customerName: session?.user.name ?? undefined,
+      items: cartItems.map((i) => ({
+        productId: i.productId,
+        variantSku: i.variantSku,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        productTitle: i.productTitle,
+        productSlug: i.productSlug,
+        imageUrl: i.imageUrl,
+        size: i.size,
+        color: i.color,
+      })),
+      subtotal,
+    }).catch(() => {});
+  }
+
   function getReferralCodeFromCookie(): string | undefined {
     if (typeof document === "undefined") return undefined;
     const match = document.cookie.match(/(?:^|;\s*)referral_code=([^;]+)/);
     return match ? decodeURIComponent(match[1]) : undefined;
   }
 
-  async function handlePayment(confirmedAddress: Address, coupon: AppliedCoupon | null, loyaltyPts = 0) {
+  async function handlePayment(confirmedAddress: Address, coupon: AppliedCoupon | null, loyaltyPts = 0, gc: AppliedGiftCard | null = null) {
     if (!session) return;
     setProcessing(true);
     setError(null);
@@ -621,7 +780,8 @@ export default function CheckoutPage() {
           shippingAddress: confirmedAddress,
           ...(coupon ? { couponCode: coupon.code } : {}),
           ...(loyaltyPts > 0 ? { loyaltyPointsToRedeem: loyaltyPts } : {}),
-          ...(referralCode ? { referralCode } : {})
+          ...(referralCode ? { referralCode } : {}),
+          ...(gc ? { giftCardCode: gc.code } : {})
         });
         order = orderRes.data.order;
         setPendingOrderId(order.id);
@@ -630,11 +790,23 @@ export default function CheckoutPage() {
       // which may differ if the catalogue changed between add-to-cart and checkout.
       const totalPaise = Math.round((order.total ?? 0) * 100);
 
-      // 2. Create Razorpay payment order (amount in paise)
-      const payRes = await api.post<{ data: { providerOrderId?: string; id?: string; amount: number } }>(
+      // 2. Create Razorpay payment order (amount in paise).
+      //    If the server returns zeroCost=true the order was already completed
+      //    (gift card / loyalty covered 100%) — skip straight to confirmation.
+      const payRes = await api.post<{ data: { providerOrderId?: string | null; id?: string; amount: number; zeroCost?: boolean } }>(
         "/api/v1/payments/razorpay/order",
         { orderId: order.id }
       );
+
+      if (payRes.data.zeroCost) {
+        setPendingOrderId(null);
+        clearCart();
+        if (session?.user.email) {
+          void api.post("/api/v1/abandoned-cart/convert", { email: session.user.email }).catch(() => {});
+        }
+        router.push(`/orders/${order.id}/confirmation`);
+        return;
+      }
 
       const providerOrderId = payRes.data.providerOrderId ?? payRes.data.id ?? `rzp_mock_${Date.now()}`;
       const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY ?? "";
@@ -668,6 +840,9 @@ export default function CheckoutPage() {
             });
             setPendingOrderId(null);
             clearCart();
+            if (session?.user.email) {
+              void api.post("/api/v1/abandoned-cart/convert", { email: session.user.email }).catch(() => {});
+            }
             router.push(`/orders/${order.id}/confirmation`);
           } catch {
             setError("Payment succeeded but verification failed. Please contact support with your order ID: " + order.id);
@@ -729,6 +904,7 @@ export default function CheckoutPage() {
             track("checkout_address_complete");
             setAddress(addr);
             setStep(2);
+            if (session?.user.email) syncAbandonedCart(session.user.email);
           }}
         />
       )}
@@ -739,18 +915,20 @@ export default function CheckoutPage() {
           onBack={() => setStep(1)}
           confirming={processing}
           coupon={appliedCoupon}
-          onCouponChange={(c) => { setPendingOrderId(null); setAppliedCoupon(c); }}
+          onCouponChange={(c) => { setPendingOrderId(null); setAppliedCoupon(c); setAppliedGiftCard(null); }}
           loyaltyPointsToRedeem={loyaltyPtsToRedeem}
           onLoyaltyChange={(pts) => {
-            // Changing the loyalty toggle invalidates any pending order (different total)
-            if (pts !== loyaltyPtsToRedeem) setPendingOrderId(null);
+            if (pts !== loyaltyPtsToRedeem) { setPendingOrderId(null); setAppliedGiftCard(null); }
             setLoyaltyPtsToRedeem(pts);
           }}
-          onConfirm={(coupon, loyaltyPts) => {
-            if (processing) return; // guard against double-click
+          giftCard={appliedGiftCard}
+          onGiftCardChange={(gc) => { setPendingOrderId(null); setAppliedGiftCard(gc); }}
+          initialCouponCode={urlCoupon}
+          onConfirm={(coupon, loyaltyPts, gc) => {
+            if (processing) return;
             track("checkout_review_complete");
             setStep(3);
-            handlePayment(address, coupon, loyaltyPts);
+            handlePayment(address, coupon, loyaltyPts, gc);
           }}
         />
       )}

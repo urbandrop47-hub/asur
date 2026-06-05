@@ -6,6 +6,9 @@ import Link from "next/link";
 import type { Order } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { api } from "../../../lib/api";
+import { readAdminToken } from "../../../lib/auth-storage";
+
+const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft", pending_payment: "Pending payment", paid: "Paid",
@@ -68,6 +71,31 @@ export default function AdminOrderDetailPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
           <h1 style={{ margin: 0, fontSize: "1.3rem" }}>{order.orderNumber}</h1>
           <span className={STATUS_CLASS[order.status] ?? "badge"}>{STATUS_LABEL[order.status] ?? order.status}</span>
+          {["shipped", "delivered", "processing", "packed"].includes(order.status) && (
+            <button
+              onClick={async () => {
+                const token = readAdminToken();
+                const r = await fetch(`${BACKEND}/api/v1/admin/orders/${order.id}/invoice`, {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {}
+                });
+                if (!r.ok) { alert("Could not generate invoice"); return; }
+                const blob = await r.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `ASUR-Invoice-${order.orderNumber}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              style={{
+                marginLeft: "auto", padding: "0.35rem 0.85rem", borderRadius: 8,
+                border: "1px solid var(--border)", background: "transparent",
+                color: "var(--text)", fontSize: "0.8rem", cursor: "pointer", fontFamily: "inherit"
+              }}
+            >
+              Download Invoice
+            </button>
+          )}
         </div>
         <p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem", color: "var(--text-muted)" }}>{date}</p>
       </div>

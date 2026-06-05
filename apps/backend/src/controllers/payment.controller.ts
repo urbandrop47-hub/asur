@@ -65,9 +65,51 @@ export const createPaymentOrderController: RequestHandler = asyncHandler(async (
     return;
   }
 
+  // Guard: cancelled orders cannot be paid
+  if (existingOrder.status === "cancelled") {
+    res.status(422).json({ success: false, message: "This order has been cancelled and cannot be paid" });
+    return;
+  }
+
   // Always derive the Razorpay amount from the server-computed order total — never
   // trust the client-supplied amount, which could be tampered to pay ₹0.01.
   const amountPaise = Math.round((existingOrder.total ?? 0) * 100);
+
+  // When a gift card or loyalty discount covers the full order, the total is ₹0.
+  // Razorpay doesn't accept zero-amount orders, so we complete the order directly.
+  if (amountPaise === 0) {
+    // Idempotency: if already fully settled, return early without re-firing side effects.
+    if (existingOrder.status === "paid" && existingOrder.paymentStatus === "captured") {
+      sendSuccess(res, { providerOrderId: null, amount: 0, currency: "INR", zeroCost: true, order: existingOrder }, "Order already completed");
+      return;
+    }
+
+    const paidOrder = await markOrderPaid(orderId);
+
+    // Fire post-payment side effects.
+    // NOTE: sendOrderConfirmationEmail is NOT sent here — createOrder() already sent it.
+    // We only send the receipt/loyalty/referral effects that normally fire in verifyPaymentController.
+    if (paidOrder) {
+      void (async () => {
+        // Zero-amount orders earn 0 loyalty points (nothing paid), but referral bonus still applies.
+        const orderReferralCode = (paidOrder as typeof paidOrder & { referralCode?: string }).referralCode;
+        if (orderReferralCode) {
+          const referral = await referralRepository.findByCode(orderReferralCode);
+          if (referral && referral.userId !== existingOrder.customerId) {
+            const wasNew = await referralRepository.markUsed(orderReferralCode, existingOrder.customerId);
+            if (wasNew) {
+              await loyaltyRepository.earnPoints(referral.userId, 100, `Referral bonus — ${orderReferralCode}`, paidOrder.id, "referral_bonus");
+              await loyaltyRepository.earnPoints(existingOrder.customerId, 50, "Referral signup bonus", paidOrder.id, "referral_bonus");
+            }
+          }
+        }
+      })();
+    }
+
+    sendSuccess(res, { providerOrderId: null, amount: 0, currency: "INR", zeroCost: true, order: paidOrder }, "Order completed — no payment required");
+    return;
+  }
+
   const providerOrder = await createRazorpayOrder({ orderId, amount: amountPaise, currency: "INR" });
   sendSuccess(res, providerOrder, "Payment order created");
 });

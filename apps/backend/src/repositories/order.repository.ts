@@ -44,6 +44,8 @@ export const orderRepository = {
     loyaltyPointsRedeemed?: number;
     loyaltyDiscount?: number;
     referralCode?: string;
+    giftCardCode?: string;
+    giftCardAmount?: number;
   }) {
     const now = new Date().toISOString();
     const items = createLineItems(input.items);
@@ -65,9 +67,10 @@ export const orderRepository = {
     const taxableAmount = Math.max(0, subtotal - subtotalDiscount);
     const tax = Math.round(taxableAmount * gstRate);
     const loyaltyDiscount = input.loyaltyDiscount ?? 0;
-    const total = Math.max(0, taxableAmount + shipping + tax - loyaltyDiscount);
+    const giftCardAmount = input.giftCardAmount ?? 0;
+    const total = Math.max(0, taxableAmount + shipping + tax - loyaltyDiscount - giftCardAmount);
 
-    const orderData: Order & { loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; referralCode?: string } = {
+    const orderData: Order & { loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number } = {
       id: createId("ord"),
       orderNumber: toOrderNumber(),
       customerId: input.customerId,
@@ -75,7 +78,7 @@ export const orderRepository = {
       subtotal,
       shipping,
       tax,
-      discount: discountAmount + loyaltyDiscount,
+      discount: discountAmount + loyaltyDiscount + giftCardAmount,
       total,
       currency: "INR" as const,
       status: "pending_payment",
@@ -85,7 +88,10 @@ export const orderRepository = {
       discountAmount,
       loyaltyPointsRedeemed: input.loyaltyPointsRedeemed ?? 0,
       loyaltyPointsEarned: 0,
+      loyaltyDiscount,
       referralCode: input.referralCode,
+      giftCardCode: input.giftCardCode,
+      giftCardAmount,
       shippingAddress: input.shippingAddress as Address,
       createdAt: now,
       updatedAt: now

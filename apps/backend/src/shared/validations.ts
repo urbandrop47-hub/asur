@@ -154,7 +154,8 @@ export const createOrderSchema = z.object({
   shippingAddress: addressSchema,
   couponCode: z.string().trim().toUpperCase().optional(),
   loyaltyPointsToRedeem: z.number().int().nonnegative().optional().default(0),
-  referralCode: z.string().trim().toUpperCase().optional()
+  referralCode: z.string().trim().toUpperCase().optional(),
+  giftCardCode: z.string().trim().toUpperCase().optional()
 });
 
 // amount is intentionally omitted — the server derives it from order.total

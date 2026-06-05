@@ -9,6 +9,7 @@ import { sendSuccess } from "../lib/response";
 import { acceptAdminInvite, createAdminInvite, getAdminAccessModel, listAdminInvites } from "../services/admin.service";
 import { productRepository } from "../repositories/product.repository";
 import { orderRepository } from "../repositories/order.repository";
+import { logAudit } from "../repositories/audit-log.repository";
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -161,6 +162,7 @@ export const createAdminProductController: RequestHandler = asyncHandler(async (
     updatedAt: now
   };
   const created = await productRepository.create(product);
+  logAudit("product.create", "product", product.id, req.ip, { title: product.title });
   sendSuccess(res, created, "Product created", 201);
 });
 
@@ -183,6 +185,7 @@ export const updateAdminProductController: RequestHandler = asyncHandler(async (
     res.status(404).json({ success: false, message: "Product not found" });
     return;
   }
+  logAudit("product.update", "product", id, req.ip, body as Record<string, unknown>);
   sendSuccess(res, updated, "Product updated");
 });
 
@@ -193,7 +196,44 @@ export const deleteAdminProductController: RequestHandler = asyncHandler(async (
     res.status(404).json({ success: false, message: "Product not found" });
     return;
   }
+  logAudit("product.delete", "product", id, req.ip);
   sendSuccess(res, null, "Product deleted");
+});
+
+const bulkProductActionSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(200),
+  action: z.enum(["active", "draft", "archived", "delete"])
+});
+
+// ── PATCH /api/v1/admin/products/bulk ────────────────────────────────────────
+export const bulkProductActionController: RequestHandler = asyncHandler(async (req, res) => {
+  const parsed = bulkProductActionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: "Invalid payload", errors: parsed.error.flatten() });
+    return;
+  }
+
+  const { ids, action } = parsed.data;
+  let updated = 0;
+  const failed: string[] = [];
+
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        if (action === "delete") {
+          await productRepository.deleteById(id);
+        } else {
+          await productRepository.update(id, { status: action } as Partial<Product>);
+        }
+        updated++;
+      } catch {
+        failed.push(id);
+      }
+    })
+  );
+
+  logAudit(`product.bulk-${action}`, "product", ids.join(","), req.ip, { count: updated });
+  sendSuccess(res, { updated, failed }, `${updated} product(s) ${action === "delete" ? "deleted" : `set to "${action}"`}`);
 });
 
 // ─── Order controllers ────────────────────────────────────────

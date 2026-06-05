@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { APP_NAME } from "@asur/constants";
+import { NewsletterSignup } from "./newsletter-signup";
 
 const SHOP_LINKS = [
   { label: "Products", href: "/products" },
@@ -105,6 +106,26 @@ export function SiteFooter() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* ── Newsletter row ───────────────────────────────────── */}
+        <div style={{
+          padding: "1.75rem",
+          borderRadius: 16,
+          background: "rgba(249,115,22,0.05)",
+          border: "1px solid rgba(249,115,22,0.12)",
+          display: "grid",
+          gap: "1rem",
+        }}>
+          <div>
+            <p style={{ margin: "0 0 0.25rem", fontWeight: 700, fontSize: "0.88rem", color: "var(--text)", letterSpacing: "0.02em" }}>
+              Drop alerts &amp; exclusive offers
+            </p>
+            <p style={{ margin: 0, fontSize: "0.78rem", color: "rgba(246,241,234,0.45)" }}>
+              No spam. First-access invites only. Unsubscribe any time.
+            </p>
+          </div>
+          <NewsletterSignup source="footer" />
         </div>
 
         {/* ── Bottom row ───────────────────────────────────────── */}

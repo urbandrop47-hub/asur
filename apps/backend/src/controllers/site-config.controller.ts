@@ -43,7 +43,10 @@ const patchConfigSchema = z.object({
   }).optional(),
   freeShippingThreshold: z.coerce.number().nonnegative().max(100000).optional(),
   shippingFee:           z.coerce.number().nonnegative().max(10000).optional(),
-  gstRate:               z.coerce.number().min(0).max(1).optional()
+  gstRate:               z.coerce.number().min(0).max(1).optional(),
+  gstin:                 z.string().max(15).optional(),
+  businessName:          z.string().max(200).optional(),
+  businessAddress:       z.string().max(500).optional()
 }).refine((d) => Object.keys(d).length > 0, { message: "At least one field required" });
 
 // ── PATCH /api/v1/admin/config ────────────────────────────────────────────────
@@ -67,6 +70,9 @@ export const updateAdminConfigController: RequestHandler = asyncHandler(async (r
     if (parsed.data.freeShippingThreshold !== undefined) updateFields.freeShippingThreshold = parsed.data.freeShippingThreshold;
     if (parsed.data.shippingFee !== undefined) updateFields.shippingFee = parsed.data.shippingFee;
     if (parsed.data.gstRate !== undefined) updateFields.gstRate = parsed.data.gstRate;
+    if (parsed.data.gstin !== undefined) updateFields.gstin = parsed.data.gstin;
+    if (parsed.data.businessName !== undefined) updateFields.businessName = parsed.data.businessName;
+    if (parsed.data.businessAddress !== undefined) updateFields.businessAddress = parsed.data.businessAddress;
 
     const doc = await SiteConfigModel.findByIdAndUpdate(
       "singleton",
@@ -82,6 +88,9 @@ export const updateAdminConfigController: RequestHandler = asyncHandler(async (r
   if (parsed.data.freeShippingThreshold !== undefined) mockConfig.freeShippingThreshold = parsed.data.freeShippingThreshold;
   if (parsed.data.shippingFee !== undefined) mockConfig.shippingFee = parsed.data.shippingFee;
   if (parsed.data.gstRate !== undefined) mockConfig.gstRate = parsed.data.gstRate;
+  if (parsed.data.gstin !== undefined) mockConfig.gstin = parsed.data.gstin;
+  if (parsed.data.businessName !== undefined) mockConfig.businessName = parsed.data.businessName;
+  if (parsed.data.businessAddress !== undefined) mockConfig.businessAddress = parsed.data.businessAddress;
   mockConfig.updatedAt = now;
   sendSuccess(res, mockConfig, "Config updated (mock)");
 });
