@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Script from "next/script";
 import { Anton, Archivo, JetBrains_Mono, Noto_Serif_Devanagari } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppProviders } from "../providers";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
@@ -108,6 +109,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         {/* Razorpay checkout SDK — loaded lazily, only used on /checkout */}
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
