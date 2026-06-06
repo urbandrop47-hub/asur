@@ -29,7 +29,7 @@ const orderItemSchema = new Schema(
   { _id: false }
 );
 
-const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number }>(
+const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number; reviewEmailSentAt?: string }>(
   {
     id: { type: String, required: true, index: true },
     orderNumber: { type: String, required: true, unique: true, index: true },
@@ -53,6 +53,9 @@ const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPoints
     paymentStatus: { type: String, required: true, default: "pending" },
     fulfillmentStatus: { type: String, required: true, default: "unassigned" },
     vendorTaskId: { type: String },
+    trackingNumber: { type: String },
+    courierName: { type: String },
+    reviewEmailSentAt: { type: String }, // set by review-request cron; guards against re-sending
     providerOrderId: { type: String },
     shippingAddress: { type: addressSchema, required: true },
     createdAt: { type: String, required: true },
@@ -61,4 +64,4 @@ const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPoints
   { versionKey: false }
 );
 
-export const OrderModel = models.Order ?? model<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number }>("Order", orderSchema);
+export const OrderModel = models.Order ?? model<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number; reviewEmailSentAt?: string }>("Order", orderSchema);

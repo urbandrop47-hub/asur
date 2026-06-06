@@ -1,8 +1,12 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   experimental: {
     externalDir: true
   },
@@ -14,6 +18,7 @@ const nextConfig = {
     "@asur/utils"
   ],
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       // Cloudflare R2 public bucket (set R2_PUBLIC_URL in .env to enable)
       {
@@ -44,8 +49,10 @@ const nextConfig = {
   }
 };
 
+const configWithAnalyzer = withBundleAnalyzer(nextConfig);
+
 export default process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN
-  ? withSentryConfig(nextConfig, {
+  ? withSentryConfig(configWithAnalyzer, {
       silent: true,
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
@@ -53,4 +60,4 @@ export default process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN
       hideSourceMaps: true,
       disableLogger: true
     })
-  : nextConfig;
+  : configWithAnalyzer;

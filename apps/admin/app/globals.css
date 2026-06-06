@@ -9,7 +9,29 @@
   --warning: #f59e0b;
   --danger: #ef4444;
   --sidebar-w: 220px;
+  --palette-bg: #0d1321;
+  --palette-border: rgba(255,255,255,0.13);
 }
+
+/* ── Light mode ───────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f0f4fa;
+  --text: #0c111d;
+  --text-muted: rgba(12, 17, 29, 0.55);
+  --border: rgba(0, 0, 0, 0.1);
+  --accent: #0284c7;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --palette-bg: #ffffff;
+  --palette-border: rgba(0,0,0,0.12);
+}
+[data-theme="light"] body,
+[data-theme="light"] .admin-main { background: var(--bg); color: var(--text); }
+[data-theme="light"] .admin-sidebar { background: rgba(240,244,250,0.97); }
+[data-theme="light"] .table-card { background: #fff; }
+[data-theme="light"] .table-card > div { border-color: var(--border); }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -346,3 +368,123 @@ table tr:hover td { background: rgba(255,255,255,0.02); }
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: 1fr; }
 }
+
+/* ── S36: Sidebar cmd + theme buttons ────────────────────────────────────── */
+
+.sidebar-cmd-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-bottom: 0.4rem;
+  text-align: left;
+  font-family: inherit;
+  transition: color 150ms, border-color 150ms;
+}
+.sidebar-cmd-btn:hover { color: var(--accent); border-color: rgba(56,189,248,0.3); }
+
+.sidebar-theme-btn {
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 150ms;
+  flex-shrink: 0;
+}
+.sidebar-theme-btn:hover { color: var(--text); }
+
+/* ── S36: Order Kanban ────────────────────────────────────────────────────── */
+
+.kanban-board {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  min-height: 400px;
+}
+
+.kanban-col {
+  flex: 0 0 220px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.02);
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+  transition: border-color 150ms, background 150ms;
+}
+
+.kanban-col.drag-over {
+  border-color: rgba(56,189,248,0.45);
+  background: rgba(56,189,248,0.06);
+}
+
+.kanban-col-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.kanban-cards {
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.kanban-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  min-height: 80px;
+  opacity: 0.5;
+}
+
+.kanban-card {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  cursor: grab;
+  transition: border-color 150ms, opacity 150ms, transform 150ms;
+  user-select: none;
+}
+.kanban-card:hover { border-color: rgba(56,189,248,0.25); }
+.kanban-card.dragging { opacity: 0.45; transform: scale(0.97); cursor: grabbing; }
+
+.kanban-advance-btn {
+  margin-top: 0.5rem;
+  display: block;
+  width: 100%;
+  padding: 0.3rem 0;
+  border: 1px solid rgba(56,189,248,0.2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: capitalize;
+  font-family: inherit;
+  transition: background 150ms;
+}
+.kanban-advance-btn:hover { background: rgba(56,189,248,0.08); }

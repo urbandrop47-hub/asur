@@ -1,0 +1,45 @@
+{
+  "name": "ASUR — Neither Divine. Nor Damned.",
+  "short_name": "ASUR",
+  "description": "Premium Indian streetwear. Single price. No restock. No apology.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#06070b",
+  "theme_color": "#f97316",
+  "lang": "en-IN",
+  "categories": ["shopping", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Shop",
+      "url": "/products",
+      "description": "Browse all products"
+    },
+    {
+      "name": "Cart",
+      "url": "/cart",
+      "description": "View your cart"
+    },
+    {
+      "name": "Orders",
+      "url": "/orders",
+      "description": "Track your orders"
+    }
+  ]
+}

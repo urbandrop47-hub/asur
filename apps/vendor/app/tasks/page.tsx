@@ -94,6 +94,23 @@ export default function TasksPage() {
         <h1 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 800 }}>Fulfillment tasks</h1>
       </div>
 
+      {/* Stats bar */}
+      {!loading && !error && tasks.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.6rem", marginBottom: "1.25rem" }}>
+          {[
+            { label: "Pending",  value: counts.pending,      color: "var(--warning)" },
+            { label: "Packing",  value: counts.in_progress,  color: "#38bdf8" },
+            { label: "Ready",    value: counts.ready_to_ship, color: "#a78bfa" },
+            { label: "Shipped",  value: counts.completed,    color: "var(--success)" },
+          ].map((s) => (
+            <div key={s.label} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: "0.75rem 0.85rem", background: "rgba(255,255,255,0.02)", textAlign: "center" }}>
+              <p style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800, color: s.color, fontVariantNumeric: "tabular-nums" }}>{s.value}</p>
+              <p style={{ margin: "0.1rem 0 0", fontSize: "0.65rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Filter tabs */}
       <div style={{ display: "flex", gap: "0.4rem", marginBottom: "1.25rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
         {(["all", "pending", "in_progress", "ready_to_ship", "completed"] as Filter[]).map((f) => (

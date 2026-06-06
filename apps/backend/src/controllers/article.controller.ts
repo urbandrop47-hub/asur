@@ -3,13 +3,19 @@ import { z } from "zod";
 import { asyncHandler } from "../lib/async-handler";
 import { articleRepository } from "../repositories/article.repository";
 
+function parsePageParam(value: unknown, fallback: number, max = Number.POSITIVE_INFINITY) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(1, Math.floor(parsed)));
+}
+
 // ── Public endpoints ──────────────────────────────────────────────────────────
 
 export const listArticlesController: RequestHandler = asyncHandler(async (req, res) => {
   const type = typeof req.query.type === "string" ? req.query.type : undefined;
   const tag = typeof req.query.tag === "string" ? req.query.tag : undefined;
-  const page = Math.max(1, parseInt(typeof req.query.page === "string" ? req.query.page : "1") || 1);
-  const limit = Math.min(24, parseInt(typeof req.query.limit === "string" ? req.query.limit : "12") || 12);
+  const page = parsePageParam(req.query.page, 1);
+  const limit = parsePageParam(req.query.limit, 12, 24);
 
   const { docs, total } = await articleRepository.list({ type: type as never, tag, page, limit });
   res.json({ success: true, data: docs, total, page, limit });
@@ -36,7 +42,7 @@ export const getDropBySlugController: RequestHandler = asyncHandler(async (req, 
 });
 
 export const getLatestArticlesController: RequestHandler = asyncHandler(async (req, res) => {
-  const limit = Math.min(10, parseInt(typeof req.query.limit === "string" ? req.query.limit : "3") || 3);
+  const limit = parsePageParam(req.query.limit, 3, 10);
   const docs = await articleRepository.findLatest(limit);
   res.json({ success: true, data: docs });
 });
@@ -55,8 +61,8 @@ export const getRelatedArticlesController: RequestHandler = asyncHandler(async (
 // ── Admin endpoints ───────────────────────────────────────────────────────────
 
 export const adminListArticlesController: RequestHandler = asyncHandler(async (req, res) => {
-  const page = Math.max(1, parseInt(typeof req.query.page === "string" ? req.query.page : "1") || 1);
-  const limit = Math.min(50, parseInt(typeof req.query.limit === "string" ? req.query.limit : "20") || 20);
+  const page = parsePageParam(req.query.page, 1);
+  const limit = parsePageParam(req.query.limit, 20, 50);
   const { docs, total } = await articleRepository.adminList({ page, limit });
   res.json({ success: true, data: docs, total, page, limit });
 });

@@ -206,3 +206,33 @@ export async function sendBackInStockEmail(
     text
   });
 }
+
+export async function sendReviewRequestEmail(
+  order: { orderNumber: string; items: Array<{ title: string }> },
+  customerEmail: string,
+  customerName: string
+): Promise<void> {
+  const productList = order.items.map((i) => `• ${i.title}`).join("\n");
+  const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#06070b;color:#f6f1ea;padding:32px">
+    <p style="font-size:22px;font-weight:800;margin:0 0 8px;color:#f97316">ASUR</p>
+    <h1 style="font-size:18px;font-weight:700;margin:0 0 20px">How did we do?</h1>
+    <p style="font-size:14px;color:rgba(246,241,234,0.75);line-height:1.6">
+      Hi ${customerName}, your order <strong>#${order.orderNumber}</strong> arrived a week ago.
+      We'd love to hear what you think of your pieces.
+    </p>
+    <p style="font-size:13px;color:rgba(246,241,234,0.5);line-height:1.6">${productList.replace(/\n/g, "<br>")}</p>
+    <a href="${WEB_BASE_URL}/orders" style="display:inline-block;margin:20px 0;padding:12px 28px;border-radius:999px;background:linear-gradient(135deg,#f97316,#fb7185);color:#130f0b;font-weight:700;font-size:14px;text-decoration:none">
+      Write a review
+    </a>
+    <p style="font-size:12px;color:rgba(246,241,234,0.4);line-height:1.6;margin-top:24px">
+      Your honest feedback helps us improve every drop.
+    </p>
+  </div>`;
+  const text = `Hi ${customerName},\n\nYour ASUR order #${order.orderNumber} arrived a week ago. Share your thoughts:\n\n${productList}\n\nReview at: ${WEB_BASE_URL}/orders\n\n— ASUR`;
+  await queueEmail({
+    to: customerEmail,
+    subject: `How was your ASUR order? #${order.orderNumber}`,
+    html,
+    text
+  });
+}

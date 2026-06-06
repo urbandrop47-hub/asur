@@ -11,8 +11,8 @@ import { getRecent } from "../lib/recently-viewed";
 // ─── Marquee strip ────────────────────────────────────────────────────────────
 
 const MARQUEE_ITEMS = [
-  "NEW DROP", "LIMITED STOCK", "FREE SHIPPING ₹1500+", "STREETWEAR REDEFINED",
-  "PREMIUM FABRICS", "NO RESTOCK", "MADE FOR THE CULTURE", "ASUR ◆"
+  "ASUR", "230 GSM combed cotton", "Free shipping ₹1,500+", "Made in India",
+  "Limited quantities", "Easy returns", "Water-based print", "ASUR ◆"
 ];
 
 function MarqueeStrip() {
@@ -56,102 +56,50 @@ function MarqueeStrip() {
 
 function Hero() {
   return (
-    <section style={{ position: "relative", overflow: "hidden", padding: "clamp(3.5rem, 10vw, 7rem) 0 clamp(2.5rem, 6vw, 5rem)" }}>
-      {/* Ambient orbs */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }} aria-hidden="true">
-        <div style={{
-          position: "absolute", width: "55vw", height: "55vw", maxWidth: 640, maxHeight: 640,
-          top: "-20%", left: "-10%",
-          background: "radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 70%)",
-          animation: "drift 22s ease-in-out infinite"
-        }} />
-        <div style={{
-          position: "absolute", width: "40vw", height: "40vw", maxWidth: 480, maxHeight: 480,
-          top: "10%", right: "-8%",
-          background: "radial-gradient(circle, rgba(251,113,133,0.12) 0%, transparent 70%)",
-          animation: "drift 18s ease-in-out infinite reverse 3s"
-        }} />
-        <div style={{
-          position: "absolute", width: "30vw", height: "30vw", maxWidth: 360, maxHeight: 360,
-          bottom: "0%", left: "30%",
-          background: "radial-gradient(circle, rgba(56,189,248,0.08) 0%, transparent 70%)",
-          animation: "drift 26s ease-in-out infinite 8s"
-        }} />
-      </div>
+    <section style={{ position: "relative", overflow: "hidden", padding: "clamp(4rem, 11vw, 8rem) 0 clamp(3rem, 7vw, 6rem)" }}>
+      {/* Single subtle ambient — one is intentional, three is noise */}
+      <div
+        style={{
+          position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0,
+          background: "radial-gradient(ellipse 60% 45% at 50% 0%, rgba(249,115,22,0.09) 0%, transparent 70%)",
+        }}
+        aria-hidden="true"
+      />
 
-      {/* Content */}
       <div className="hero" style={{ position: "relative", zIndex: 1 }}>
         <span className="hero-eyebrow">
-          <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", animation: "pulse-ring 2s ease-in-out infinite" }} />
           New drop — limited quantities
         </span>
 
         <h1 style={{ margin: 0, fontSize: "clamp(3rem, 9vw, 6.5rem)", fontWeight: 800, lineHeight: 1.0, letterSpacing: "-0.03em", textAlign: "center" }}>
           Neither<br />
-          <span style={{
-            background: "linear-gradient(135deg, #f97316 0%, #fb7185 50%, #f97316 100%)",
-            backgroundSize: "200% auto",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            animation: "shimmer-text 4s linear infinite"
-          }}>
-            Divine.
-          </span>
+          <span style={{ color: "#f97316" }}>Divine.</span>
           <br />Nor Damned.
         </h1>
 
-        <p style={{ margin: 0, maxWidth: 480, color: "var(--text-muted)", fontSize: "clamp(1rem, 2.2vw, 1.15rem)", lineHeight: 1.75, textAlign: "center" }}>
-          Premium Indian streetwear built for the culture. Limited drops. Single price. No restocks. No apology.
+        <p style={{ margin: 0, maxWidth: 440, color: "var(--text-muted)", fontSize: "clamp(0.95rem, 2vw, 1.1rem)", lineHeight: 1.75, textAlign: "center" }}>
+          Premium Indian streetwear. Limited drops. Single price.
         </p>
 
-        <div className="hero-actions">
+        <div className="hero-actions" style={{ justifyContent: "center" }}>
           <Link
             href="/products"
             style={{
               display: "inline-flex", alignItems: "center", gap: 10,
-              borderRadius: 999, padding: "1rem 2rem",
-              background: "linear-gradient(135deg, #f97316, #fb7185)",
+              borderRadius: 999, padding: "1rem 2.25rem",
+              background: "#f97316",
               color: "#130f0b", fontWeight: 800, fontSize: "0.95rem",
               textDecoration: "none", minHeight: 52,
-              boxShadow: "0 8px 32px rgba(249,115,22,0.35)",
-              transition: "transform 160ms ease, box-shadow 160ms ease",
+              transition: "background 200ms ease, transform 200ms ease",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 40px rgba(249,115,22,0.45)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 8px 32px rgba(249,115,22,0.35)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#ea6c0a"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#f97316"; e.currentTarget.style.transform = ""; }}
           >
             Shop the drop
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </Link>
-          <Link
-            href="/collections"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              borderRadius: 999, padding: "1rem 1.8rem",
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.16)",
-              color: "var(--text)", fontWeight: 600, fontSize: "0.95rem",
-              textDecoration: "none", minHeight: 52,
-              backdropFilter: "blur(8px)",
-              transition: "background 160ms ease, border-color 160ms ease",
-            }}
-          >
-            View collections
-          </Link>
-        </div>
-
-        {/* Social proof */}
-        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", marginTop: "0.5rem", flexWrap: "wrap", justifyContent: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.82rem", color: "var(--text-muted)" }}>
-            <span style={{ color: "#fbbf24", letterSpacing: 2 }}>★★★★★</span>
-            <span>Rated 4.9 / 5 by early members</span>
-          </div>
-          <span style={{ width: 1, height: 16, background: "rgba(255,255,255,0.12)" }} aria-hidden="true" />
-          <div style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-            <strong style={{ color: "var(--text)" }}>500+</strong> orders shipped
-          </div>
         </div>
       </div>
     </section>
@@ -348,6 +296,113 @@ const VALUE_PROPS = [
   }
 ];
 
+// ─── Editorial Grid ───────────────────────────────────────────────────────────
+
+const EDITORIAL_CARDS = [
+  {
+    slug: "nocturne",
+    eyebrow: "New drop",
+    title: "NOCTURNE",
+    sub: "Limited run. Void-washed streetwear for the after-hours.",
+    gradient: "linear-gradient(135deg, rgba(212,90,26,0.55) 0%, rgba(10,10,15,0.7) 60%)",
+    tall: true,
+  },
+  {
+    slug: "oversized-essentials",
+    eyebrow: "Always stocked",
+    title: "ESSENTIALS",
+    sub: "12 core pieces. Premium 230 GSM. Never on sale.",
+    gradient: "linear-gradient(135deg, rgba(56,189,248,0.35) 0%, rgba(10,10,15,0.75) 60%)",
+    tall: false,
+  },
+];
+
+function EditorialGrid({ collections }: { collections: string[] }) {
+  // Use real collection slugs if available, else fall back to static cards
+  const cards = collections.length >= 2
+    ? collections.slice(0, 2).map((slug, i) => ({
+        ...EDITORIAL_CARDS[i % EDITORIAL_CARDS.length],
+        slug,
+        title: slug.replace(/-/g, " ").toUpperCase(),
+        eyebrow: i === 0 ? "New drop" : "Collection",
+      }))
+    : EDITORIAL_CARDS;
+
+  if (cards.length === 0) return null;
+
+  return (
+    <section aria-label="Collections" style={{ marginBottom: "3rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <span className="eyebrow eyebrow-fire">Explore collections</span>
+        <Link href="/collections" style={{
+          fontFamily: "var(--f-mono)", fontSize: "9px", letterSpacing: "0.18em",
+          textTransform: "uppercase", color: "var(--bone-q)", textDecoration: "none",
+          display: "flex", alignItems: "center", gap: 5,
+          transition: "color 150ms ease",
+        }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--bone-q)")}
+        >
+          All collections
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+            <path d="M2 5h6M5 2l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+      </div>
+      <div className="editorial-grid">
+        {cards.map((card) => (
+          <Link
+            key={card.slug}
+            href={`/products?collection=${card.slug}`}
+            className={`editorial-card${card.tall ? " tall" : ""}`}
+          >
+            {/* Gradient background — real image would go here when available */}
+            <div
+              className="editorial-card-bg"
+              style={{ background: card.gradient + ", var(--card)" }}
+            />
+            <div className="editorial-card-overlay" />
+            <div className="editorial-card-content">
+              <div className="editorial-card-eyebrow">{card.eyebrow}</div>
+              <h2 className="editorial-card-title">{card.title}</h2>
+              <p className="editorial-card-sub">{card.sub}</p>
+              <span className="editorial-card-cta">
+                Shop now
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden="true">
+                  <path d="M1.5 4.5h6M4.5 1.5l3 3-3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── Value strip ──────────────────────────────────────────────────────────────
+
+function ValueStrip() {
+  const items = [
+    { icon: "🚚", label: "Delivery", value: "Free above ₹1,500" },
+    { icon: "♻️", label: "Returns", value: "7-day easy returns" },
+    { icon: "🔒", label: "Payments", value: "Razorpay secured" },
+    { icon: "🧵", label: "Fabric", value: "230 GSM combed cotton" },
+    { icon: "🌍", label: "Shipping", value: "Pan-India delivery" },
+  ];
+  return (
+    <div className="value-strip" role="list" aria-label="Store promises">
+      {items.map((item) => (
+        <div key={item.label} className="value-strip-item" role="listitem">
+          <span className="value-strip-icon" aria-hidden="true">{item.icon}</span>
+          <span className="value-strip-label">{item.label}</span>
+          <span className="value-strip-value">{item.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -379,44 +434,8 @@ export default function HomePage() {
       {/* Hero */}
       <Hero />
 
-      {/* Collection pills */}
-      {collections.length > 0 && (
-        <section style={{ marginBottom: "2.5rem" }}>
-          <div style={{ display: "flex", gap: "0.55rem", flexWrap: "wrap" }}>
-            <Link
-              href="/collections"
-              style={{
-                display: "inline-flex", alignItems: "center", padding: "0.45rem 1rem",
-                borderRadius: 999, border: "1px solid rgba(249,115,22,0.35)",
-                background: "rgba(249,115,22,0.08)", color: "var(--accent)",
-                fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.1em",
-                textDecoration: "none", textTransform: "uppercase", fontFamily: "var(--f-mono)",
-                transition: "background 150ms ease",
-              }}
-            >
-              All collections ↗
-            </Link>
-            {collections.map((slug) => (
-              <Link
-                key={slug}
-                href={`/products?collection=${slug}`}
-                style={{
-                  display: "inline-flex", alignItems: "center", padding: "0.45rem 1rem",
-                  borderRadius: 999, border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.04)", color: "var(--text-muted)",
-                  fontSize: "0.78rem", fontWeight: 600, letterSpacing: "0.08em",
-                  textDecoration: "none", textTransform: "uppercase", fontFamily: "var(--f-mono)",
-                  transition: "border-color 150ms ease, color 150ms ease",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(249,115,22,0.35)"; e.currentTarget.style.color = "var(--accent)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "var(--text-muted)"; }}
-              >
-                {slug.replace(/-/g, " ")}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Editorial story grid — replaces flat collection pills */}
+      <EditorialGrid collections={collections} />
 
       {/* Latest drops grid */}
       <section style={{ marginBottom: "3rem" }}>
@@ -450,7 +469,7 @@ export default function HomePage() {
             ? Array.from({ length: 3 }).map((_, i) => <ProductSkeleton key={i} />)
             : products.map((product, i) => (
                 <div key={product.slug} className="animate-in" style={{ animationDelay: `${i * 0.07}s` }}>
-                  <ProductCard product={product} />
+                  <ProductCard product={product} priority={i < 2} />
                 </div>
               ))}
         </div>
@@ -484,11 +503,13 @@ export default function HomePage() {
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
                 >
                   {item.image ? (
-                    <div style={{ aspectRatio: "3/4", overflow: "hidden", background: "rgba(255,255,255,0.04)" }}>
-                      <img
+                    <div style={{ aspectRatio: "3/4", overflow: "hidden", background: "rgba(255,255,255,0.04)", position: "relative" }}>
+                      <Image
                         src={item.image}
                         alt={item.title}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        fill
+                        sizes="(max-width: 640px) 50vw, 180px"
+                        style={{ objectFit: "cover" }}
                       />
                     </div>
                   ) : (
@@ -512,38 +533,8 @@ export default function HomePage() {
       {/* Testimonials */}
       <Testimonials />
 
-      {/* Value props */}
-      <section style={{ marginBottom: "1rem" }}>
-        <div className="grid-3" style={{ gap: "0.85rem" }}>
-          {VALUE_PROPS.map((prop) => (
-            <div
-              key={prop.title}
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: 20,
-                padding: "1.4rem 1.25rem",
-                background: "linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))",
-                display: "flex", flexDirection: "column", gap: "0.6rem",
-                transition: "border-color 200ms ease, transform 200ms ease",
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(249,115,22,0.25)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLDivElement).style.transform = ""; }}
-            >
-              <div style={{
-                width: 42, height: 42, borderRadius: 12,
-                background: "rgba(249,115,22,0.1)",
-                border: "1px solid rgba(249,115,22,0.2)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "var(--accent)"
-              }}>
-                {prop.icon}
-              </div>
-              <strong style={{ display: "block", fontSize: "0.95rem", fontWeight: 700 }}>{prop.title}</strong>
-              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem", lineHeight: 1.65 }}>{prop.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Value props strip */}
+      <ValueStrip />
     </div>
   );
 }

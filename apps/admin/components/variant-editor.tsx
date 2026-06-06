@@ -21,6 +21,7 @@ export function VariantEditor({ variants, onChange }: Props) {
   }
 
   function removeRow(i: number) {
+    if (variants.length <= 1) return;
     onChange(variants.filter((_, idx) => idx !== i));
   }
 
@@ -60,6 +61,7 @@ export function VariantEditor({ variants, onChange }: Props) {
             }} />
           <button
             onClick={() => removeRow(i)}
+            disabled={variants.length <= 1}
             style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid rgba(239,68,68,0.3)", background: "transparent", color: "var(--danger)", cursor: "pointer", fontSize: "0.85rem", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
             ×

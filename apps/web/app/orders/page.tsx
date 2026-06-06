@@ -1,12 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Order } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { useAuthStore } from "../../store/auth-store";
 import { api } from "../../lib/api";
+
+const PTR_THRESHOLD = 72; // px to pull before triggering refresh
+
+function usePullToRefresh(onRefresh: () => void) {
+  const startY = useRef<number | null>(null); // null = gesture not started; 0 is a valid y coord
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleTouchStart = (e: TouchEvent) => {
+    if (window.scrollY === 0) startY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (startY.current === null) return;
+    const delta = e.touches[0].clientY - startY.current;
+    if (delta > 0 && window.scrollY === 0) {
+      setPullDistance(Math.min(delta * 0.45, PTR_THRESHOLD + 16));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance >= PTR_THRESHOLD && !refreshing) {
+      setRefreshing(true);
+      Promise.resolve(onRefresh()).finally(() => {
+        setRefreshing(false);
+      });
+    }
+    startY.current = null;
+    setPullDistance(0);
+  };
+
+  useEffect(() => {
+    document.addEventListener("touchstart", handleTouchStart, { passive: true });
+    document.addEventListener("touchmove", handleTouchMove, { passive: true });
+    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+  }); // intentionally no deps — reads live state via closure via refs
+
+  return { pullDistance, refreshing };
+}
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -80,6 +124,16 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  function loadOrders() {
+    return api
+      .get<{ data: Order[] }>("/api/v1/orders")
+      .then((r) => { setOrders(r.data ?? []); setError(false); })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }
+
+  const { pullDistance, refreshing } = usePullToRefresh(loadOrders);
+
   useEffect(() => {
     // Wait for localStorage to hydrate before deciding to redirect
     if (!hydrated) return;
@@ -87,12 +141,8 @@ export default function OrdersPage() {
       router.replace("/auth?next=/orders");
       return;
     }
-    api
-      .get<{ data: Order[] }>("/api/v1/orders")
-      .then((r) => setOrders(r.data ?? []))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [session, hydrated, router]);
+    loadOrders();
+  }, [session, hydrated, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!hydrated || !session) return null;
 
@@ -128,6 +178,28 @@ export default function OrdersPage() {
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", paddingTop: "2rem", padding: "2rem 1rem 4rem" }}>
+      {/* Pull-to-refresh indicator */}
+      {(pullDistance > 0 || refreshing) && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+          display: "flex", justifyContent: "center", alignItems: "center",
+          height: refreshing ? 48 : Math.max(pullDistance, 0),
+          transition: refreshing ? "height 200ms ease" : "none",
+          overflow: "hidden",
+          background: "rgba(249,115,22,0.08)",
+          borderBottom: "1px solid rgba(249,115,22,0.15)",
+        }}>
+          <span style={{
+            fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.1em",
+            textTransform: "uppercase", color: "var(--accent)",
+            fontFamily: "var(--f-mono)",
+            opacity: refreshing || pullDistance >= PTR_THRESHOLD ? 1 : pullDistance / PTR_THRESHOLD,
+            transition: "opacity 150ms",
+          }}>
+            {refreshing ? "Refreshing…" : pullDistance >= PTR_THRESHOLD ? "Release to refresh" : "Pull to refresh"}
+          </span>
+        </div>
+      )}
       <h1 style={{ margin: "0 0 1.5rem", fontSize: "1.5rem", fontWeight: 800 }}>Your orders</h1>
       <div style={{ display: "grid", gap: "0.75rem" }}>
         {orders.map((order) => (

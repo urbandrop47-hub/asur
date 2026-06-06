@@ -12,14 +12,29 @@ type AuditLog = {
   resourceId?: string;
   diff?: Record<string, unknown>;
   ip?: string;
-  createdAt: string;
+  createdAt: string | Date;
 };
 
 const ACTION_COLOR: Record<string, string> = {
-  "product.create": "var(--success, #22c55e)",
-  "product.update": "var(--accent)",
-  "product.delete": "var(--danger, #ef4444)",
-  "order.bulk-status": "var(--accent)",
+  "product.create": "#22c55e",
+  "product.update": "#38bdf8",
+  "product.delete": "#ef4444",
+  "product.bulk-active": "#22c55e",
+  "product.bulk-draft": "#f59e0b",
+  "product.bulk-archived": "#94a3b8",
+  "product.bulk-delete": "#ef4444",
+  "order.bulk-status": "#38bdf8",
+};
+
+const ACTION_LABEL: Record<string, string> = {
+  "product.create": "Product created",
+  "product.update": "Product updated",
+  "product.delete": "Product deleted",
+  "product.bulk-active": "Products → Active",
+  "product.bulk-draft": "Products → Draft",
+  "product.bulk-archived": "Products → Archived",
+  "product.bulk-delete": "Products deleted",
+  "order.bulk-status": "Orders status updated",
 };
 
 export default function AuditLogPage() {
@@ -109,7 +124,8 @@ export default function AuditLogPage() {
             const isExpanded = expanded === log._id;
             const t = new Date(log.createdAt);
             const timeStr = t.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-            const color = ACTION_COLOR[log.action] ?? "var(--text-muted)";
+            const color = ACTION_COLOR[log.action] ?? "#94a3b8";
+            const label = ACTION_LABEL[log.action] ?? log.action.replace(/\./g, " › ");
 
             return (
               <div key={log._id}>
@@ -122,7 +138,10 @@ export default function AuditLogPage() {
                     cursor: log.diff ? "pointer" : "default"
                   }}
                 >
-                  <span style={{ fontSize: "0.82rem", fontWeight: 600, fontFamily: "monospace", color }}>{log.action}</span>
+                  <div>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color, display: "block" }}>{label}</span>
+                    <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontFamily: "monospace" }}>{log.action}</span>
+                  </div>
                   <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "capitalize" }}>{log.resourceType}</span>
                   <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {log.resourceId ? log.resourceId.slice(0, 12) + "…" : "—"}

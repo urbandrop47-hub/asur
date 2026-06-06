@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "../../lib/api";
 
 type SiteConfig = {
@@ -281,9 +282,9 @@ export default function SettingsPage() {
           <h2 style={{ margin: "0 0 0.2rem", fontSize: "0.95rem", fontWeight: 700 }}>Audit Log</h2>
           <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--text-muted)" }}>View all admin mutations — product changes, bulk ops, config updates.</p>
         </div>
-        <a href="/settings/audit-log" style={{ padding: "0.45rem 1rem", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text)", fontSize: "0.82rem", textDecoration: "none", whiteSpace: "nowrap" }}>
+        <Link href="/settings/audit-log" style={{ padding: "0.45rem 1rem", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text)", fontSize: "0.82rem", textDecoration: "none", whiteSpace: "nowrap" }}>
           View logs
-        </a>
+        </Link>
       </div>
 
       {/* Save */}

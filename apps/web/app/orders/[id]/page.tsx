@@ -346,6 +346,38 @@ export default function OrderDetailPage() {
       {/* Timeline */}
       {order.status !== "cancelled" && <OrderTimeline status={order.status} />}
 
+      {/* Tracking card — shown once order is shipped */}
+      {(order.status === "shipped" || order.status === "delivered") && order.trackingNumber && (
+        <div style={{
+          border: "1px solid rgba(34,197,94,0.25)", borderRadius: 16, padding: "1rem",
+          background: "rgba(34,197,94,0.04)"
+        }}>
+          <p style={{ margin: "0 0 0.6rem", fontSize: "0.72rem", fontWeight: 600, color: "var(--success)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Shipment details
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+            {order.courierName && (
+              <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 600 }}>{order.courierName}</p>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+              <p style={{ margin: 0, fontSize: "0.85rem", fontFamily: "monospace", color: "var(--text-muted)" }}>
+                {order.trackingNumber}
+              </p>
+              <button
+                onClick={() => navigator.clipboard.writeText(order.trackingNumber!)}
+                style={{
+                  padding: "2px 8px", borderRadius: 6, border: "1px solid var(--border)",
+                  background: "transparent", color: "var(--text-muted)", fontSize: "0.72rem",
+                  cursor: "pointer", fontFamily: "inherit"
+                }}
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Items */}
       <div style={{ border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
         <p style={{ margin: 0, padding: "0.85rem 1rem", borderBottom: "1px solid var(--border)", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>

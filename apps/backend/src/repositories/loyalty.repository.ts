@@ -76,6 +76,9 @@ export const loyaltyRepository = {
     description: string,
     orderId?: string
   ): Promise<{ success: boolean; account: LoyaltyAccountDoc | null }> {
+    // Enforce minimum redemption at the repository level so direct API callers
+    // can't bypass the MIN_REDEEM check that order.service.ts performs.
+    if (points < MIN_REDEEM) return { success: false, account: null };
     const now = new Date().toISOString();
     const updated = await LoyaltyAccountModel.findOneAndUpdate(
       { userId, points: { $gte: points } },

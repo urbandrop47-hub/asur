@@ -238,6 +238,27 @@ export default function OrderConfirmationPage() {
         </p>
       </div>
 
+      {/* What happens next */}
+      <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: "1.1rem 1.25rem" }}>
+        <p style={{ margin: "0 0 0.75rem", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+          What happens next
+        </p>
+        <div style={{ display: "grid", gap: "0.75rem" }}>
+          {[
+            { step: "1", text: "We'll pack your order within 1–2 business days and send a shipping confirmation." },
+            { step: "2", text: "Delivery typically takes 3–7 business days across India." },
+            { step: "3", text: "If anything isn't right, you have 7 days from delivery to request a return." },
+          ].map(({ step, text }) => (
+            <div key={step} style={{ display: "flex", gap: "0.85rem", alignItems: "flex-start" }}>
+              <div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.68rem", fontWeight: 800, color: "#f97316" }}>
+                {step}
+              </div>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "rgba(246,241,234,0.6)", lineHeight: 1.65 }}>{text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Actions */}
       <div style={{ display: "grid", gap: "0.65rem" }}>
         <Link
@@ -270,6 +291,11 @@ export default function OrderConfirmationPage() {
           Continue shopping
         </Link>
       </div>
+
+      {/* Brand moment */}
+      <p style={{ textAlign: "center", fontSize: "0.78rem", color: "rgba(246,241,234,0.28)", fontFamily: "var(--f-mono)", letterSpacing: "0.06em" }}>
+        ASUR · Neither Divine. Nor Damned.
+      </p>
     </div>
   );
 }

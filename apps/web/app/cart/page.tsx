@@ -271,6 +271,20 @@ export default function CartPage() {
             </svg>
           </Link>
 
+          {/* Trust signals */}
+          <div style={{ display: "flex", justifyContent: "center", gap: "1.25rem", flexWrap: "wrap", padding: "0.25rem 0" }}>
+            {[
+              { icon: <path d="M8 2L3 4v4c0 3.31 2.14 6.41 5 7 2.86-.59 5-3.69 5-7V4L8 2z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />, label: "Secure checkout" },
+              { icon: <><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M16 3H8L6 7h12l-2-4z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /></>, label: "Free 7-day returns", vb: "0 0 24 24" },
+              { icon: <path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />, label: "Quality assured" },
+            ].map(({ icon, label, vb = "0 0 16 16" }) => (
+              <div key={label} style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                <svg width="13" height="13" viewBox={vb} fill="none" aria-hidden="true" style={{ flexShrink: 0, color: "rgba(246,241,234,0.35)" }}>{icon}</svg>
+                <span style={{ fontSize: "0.72rem", color: "rgba(246,241,234,0.38)", whiteSpace: "nowrap" }}>{label}</span>
+              </div>
+            ))}
+          </div>
+
           <Link
             href="/products"
             style={{

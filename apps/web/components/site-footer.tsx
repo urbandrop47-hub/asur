@@ -11,6 +11,7 @@ const SHOP_LINKS = [
 ];
 
 const LEGAL_LINKS = [
+  { label: "About ASUR", href: "/about" },
   { label: "Privacy policy", href: "/privacy" },
   { label: "Terms of use", href: "/terms" },
   { label: "Returns & refunds", href: "/returns" },

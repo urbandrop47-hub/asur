@@ -14,6 +14,7 @@ import { StarRating, InteractiveStars } from "../../../components/star-rating";
 import { HeartButton } from "../../../components/heart-button";
 import { ProductCard } from "../../../components/product-card";
 import { recordView } from "../../../lib/recently-viewed";
+import { getLowestVariantPrice, hasVariants } from "../../../lib/product-utils";
 
 const FIT_DESCRIPTIONS: Record<string, string> = {
   regular:  "Classic silhouette — follows the body without being tight. True to size.",
@@ -110,6 +111,9 @@ function ReviewsSection({ slug, productId }: { slug: string; productId: string }
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Photo upload
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     api.get<{ data: { reviews: Review[]; aggregate: ReviewAggregate } }>(`/api/v1/products/${slug}/reviews`)
@@ -118,6 +122,31 @@ function ReviewsSection({ slug, productId }: { slug: string; productId: string }
       .finally(() => setLoading(false));
   }, [slug]);
 
+  async function handleImageUpload(file: File) {
+    if (imageUrls.length >= 3) return;
+    // Validate type client-side before hitting the backend
+    const ACCEPTED = ["image/jpeg", "image/png", "image/webp"] as const;
+    if (!ACCEPTED.includes(file.type as typeof ACCEPTED[number])) {
+      setError("Only JPEG, PNG, or WebP images are supported.");
+      return;
+    }
+    const contentType = file.type as "image/jpeg" | "image/png" | "image/webp";
+    setUploadingImage(true);
+    try {
+      const { data } = await api.post<{ data: { uploadUrl: string; publicUrl: string } }>(
+        "/api/v1/reviews/upload-url",
+        { contentType }
+      );
+      const resp = await fetch(data.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": contentType } });
+      if (!resp.ok) throw new Error(`Upload failed (${resp.status})`);
+      setImageUrls((prev) => [...prev, data.publicUrl]);
+    } catch {
+      setError("Image upload failed. Try again.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (rating === 0) { setError("Please select a rating"); return; }
@@ -125,7 +154,7 @@ function ReviewsSection({ slug, productId }: { slug: string; productId: string }
     setSubmitting(true);
     setError(null);
     try {
-      await api.post("/api/v1/reviews", { productId, orderId, rating, body });
+      await api.post("/api/v1/reviews", { productId, orderId, rating, body, images: imageUrls });
       setSubmitted(true);
       setShowForm(false);
     } catch (err: unknown) {
@@ -217,6 +246,38 @@ function ReviewsSection({ slug, productId }: { slug: string; productId: string }
                 {body.length}/2000
               </p>
             </div>
+            {/* Photo upload */}
+            <div>
+              <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.5rem" }}>
+                Photos <span style={{ fontWeight: 400, textTransform: "none" }}>(optional, up to 3)</span>
+              </label>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                {imageUrls.map((url, i) => (
+                  <div key={url} style={{ position: "relative", width: 72, height: 72, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`Upload ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <button
+                      type="button"
+                      onClick={() => setImageUrls((p) => p.filter((_, j) => j !== i))}
+                      style={{ position: "absolute", top: 2, right: 2, width: 18, height: 18, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", color: "#fff", cursor: "pointer", fontSize: "10px", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      aria-label="Remove image"
+                    >✕</button>
+                  </div>
+                ))}
+                {imageUrls.length < 3 && (
+                  <label style={{ width: 72, height: 72, borderRadius: 10, border: "1px dashed rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", cursor: uploadingImage ? "wait" : "pointer", color: "var(--text-muted)", fontSize: "1.2rem", background: "rgba(255,255,255,0.02)" }}>
+                    {uploadingImage ? "…" : "+"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: "none" }}
+                      disabled={uploadingImage}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleImageUpload(f); e.target.value = ""; }}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
             {error && <p style={{ margin: 0, fontSize: "0.83rem", color: "var(--danger)" }}>{error}</p>}
             <div style={{ display: "flex", gap: "0.6rem" }}>
               <button
@@ -272,15 +333,156 @@ function ReviewsSection({ slug, productId }: { slug: string; productId: string }
               padding: "1rem 1.25rem", borderRadius: 14,
               border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)",
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+              {/* Header row */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
                 <StarRating rating={review.rating} size={14} />
                 <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                   {new Date(review.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                 </span>
+                {review.verifiedPurchase && (
+                  <span style={{
+                    fontSize: "0.65rem", fontWeight: 700, padding: "1px 7px", borderRadius: 999,
+                    background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)",
+                    color: "var(--success)", letterSpacing: "0.05em", textTransform: "uppercase"
+                  }}>
+                    ✓ Verified
+                  </span>
+                )}
               </div>
+              {/* Body */}
               <p style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.65, color: "var(--text)" }}>{review.body}</p>
+              {/* Photos */}
+              {review.images?.length > 0 && (
+                <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
+                  {review.images.map((url) => (
+                    <div key={url} style={{ width: 72, height: 72, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)", flexShrink: 0 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="Review photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Helpfulness */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginTop: "0.75rem" }}>
+                <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Helpful?</span>
+                <button
+                  onClick={() => session && api.post(`/api/v1/reviews/${review.id}/helpful`, { vote: "up" })
+                    .then((r) => setReviews((prev) => prev.map((rv) => rv.id === review.id ? (r as { data: Review }).data : rv)))
+                    .catch(() => {})}
+                  style={{ display: "flex", alignItems: "center", gap: "0.25rem", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 999, padding: "2px 8px", fontSize: "0.72rem", color: "var(--text-muted)", cursor: session ? "pointer" : "default" }}
+                >
+                  👍 {review.helpfulVotes ?? 0}
+                </button>
+                <button
+                  onClick={() => session && api.post(`/api/v1/reviews/${review.id}/helpful`, { vote: "down" })
+                    .then((r) => setReviews((prev) => prev.map((rv) => rv.id === review.id ? (r as { data: Review }).data : rv)))
+                    .catch(() => {})}
+                  style={{ display: "flex", alignItems: "center", gap: "0.25rem", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 999, padding: "2px 8px", fontSize: "0.72rem", color: "var(--text-muted)", cursor: session ? "pointer" : "default" }}
+                >
+                  👎 {review.unhelpfulVotes ?? 0}
+                </button>
+              </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── AI Size Recommendation ──────────────────────────────────────────────────
+
+function AiSizeRec({ sizes, onSelect }: { sizes: string[]; onSelect: (s: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [fit, setFit] = useState("regular");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ size: string; reason: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await api.post<{ data: { size: string; reason: string } }>("/api/v1/ai/size-rec", {
+        height: Number(height), weight: Number(weight), fit, sizes,
+      });
+      setResult(res.data);
+    } catch {
+      setError("Could not get a recommendation. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const inputSt: React.CSSProperties = {
+    flex: 1, padding: "0.55rem 0.75rem", borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
+    color: "var(--text)", fontSize: "0.88rem", outline: "none", minWidth: 0,
+  };
+
+  return (
+    <div style={{ marginTop: "0.75rem" }}>
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 2 }}
+        >
+          ✦ Not sure of your size? Find it with AI
+        </button>
+      ) : (
+        <div style={{ padding: "0.85rem", borderRadius: 12, background: "rgba(249,115,22,0.05)", border: "1px solid rgba(249,115,22,0.18)", animation: "fadeInUp 0.2s ease both" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.65rem" }}>
+            <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 700, color: "var(--accent)" }}>AI Size Finder</p>
+            <button onClick={() => { setOpen(false); setResult(null); setError(null); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.8rem", padding: 0 }}>✕</button>
+          </div>
+          {result ? (
+            <div>
+              <p style={{ margin: "0 0 0.35rem", fontSize: "0.95rem", fontWeight: 800 }}>
+                Recommended: <span style={{ color: "var(--accent)" }}>{result.size}</span>
+              </p>
+              <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: 1.5 }}>{result.reason}</p>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={() => { onSelect(result.size); setOpen(false); }}
+                  style={{ flex: 1, padding: "0.55rem", borderRadius: 999, fontWeight: 700, fontSize: "0.82rem", background: "linear-gradient(135deg, #f97316, #fb7185)", color: "#130f0b", border: "none", cursor: "pointer" }}
+                >
+                  Select {result.size}
+                </button>
+                <button onClick={() => setResult(null)} style={{ padding: "0.55rem 0.75rem", borderRadius: 999, fontSize: "0.78rem", border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>
+                  Try again
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: "grid", gap: "0.5rem" }}>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", fontSize: "0.68rem", color: "var(--text-muted)", marginBottom: "0.2rem", fontWeight: 600 }}>Height (cm)</label>
+                  <input style={inputSt} type="number" min={140} max={220} value={height} onChange={(e) => setHeight(e.target.value)} placeholder="170" required />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", fontSize: "0.68rem", color: "var(--text-muted)", marginBottom: "0.2rem", fontWeight: 600 }}>Weight (kg)</label>
+                  <input style={inputSt} type="number" min={40} max={200} value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="70" required />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.68rem", color: "var(--text-muted)", marginBottom: "0.2rem", fontWeight: 600 }}>Preferred fit</label>
+                <select value={fit} onChange={(e) => setFit(e.target.value)} style={{ ...inputSt, width: "100%", appearance: "none" as const }}>
+                  <option value="slim">Slim — fitted to body</option>
+                  <option value="regular">Regular — relaxed, not oversized</option>
+                  <option value="loose">Loose — intentionally oversized</option>
+                </select>
+              </div>
+              {error && <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--danger)" }}>{error}</p>}
+              <button type="submit" disabled={loading} style={{ padding: "0.6rem", borderRadius: 999, fontWeight: 700, fontSize: "0.85rem", background: loading ? "rgba(249,115,22,0.4)" : "linear-gradient(135deg, #f97316, #fb7185)", color: "#130f0b", border: "none", cursor: loading ? "wait" : "pointer" }}>
+                {loading ? "Thinking…" : "Find my size"}
+              </button>
+            </form>
+          )}
         </div>
       )}
     </div>
@@ -298,7 +500,9 @@ export function ProductDetailClient({ product }: { product: Product }) {
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  const [stickyVisible, setStickyVisible] = useState(false);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const atcRef = useRef<HTMLDivElement | null>(null);
   const addItem = useCartStore((s) => s.addItem);
 
   useEffect(() => {
@@ -309,8 +513,21 @@ export function ProductDetailClient({ product }: { product: Product }) {
     };
   }, [product.id, product.slug, product.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sticky ATC: show bar when the main ATC button scrolls out of view
+  useEffect(() => {
+    const el = atcRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry.isIntersecting),
+      { threshold: 0, rootMargin: "-80px 0px 0px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const sizes = [...new Set(product.variants.map((v) => v.size))];
   const colors = [...new Set(product.variants.map((v) => v.color))];
+  const productHasVariants = hasVariants(product);
 
   const selectedVariant =
     selectedSize && selectedColor
@@ -320,15 +537,16 @@ export function ProductDetailClient({ product }: { product: Product }) {
   const variantStock = selectedVariant ? selectedVariant.stock : null;
   const displayPrice = selectedVariant
     ? selectedVariant.price
-    : Math.min(...product.variants.map((v) => v.price));
+    : getLowestVariantPrice(product);
   const comparePrice =
     selectedVariant?.compareAtPrice ??
-    (product.variants.every((v) => v.compareAtPrice)
+    (productHasVariants && product.variants.every((v) => v.compareAtPrice)
       ? Math.min(...product.variants.map((v) => v.compareAtPrice!))
       : undefined);
 
   const stockInfo = variantStock !== null ? stockLabel(variantStock) : null;
   const canAddToCart = !!selectedVariant && variantStock !== 0;
+  const comingSoon = !productHasVariants;
 
   function isComboAvailable(size: string, color: string) {
     return product.variants.some((v) => v.size === size && v.color === color && v.stock > 0);
@@ -410,14 +628,45 @@ export function ProductDetailClient({ product }: { product: Product }) {
             </p>
           </div>
 
+          {/* Fabric & craft */}
+          <div style={{
+            padding: "0.9rem 1rem", borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.07)",
+            background: "rgba(255,255,255,0.02)"
+          }}>
+            <p style={{ margin: "0 0 0.7rem", fontSize: "0.68rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+              Fabric &amp; craft
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.55rem 1.25rem" }}>
+              {[
+                { label: "Weight",      value: "230 GSM" },
+                { label: "Composition", value: "100% combed cotton" },
+                { label: "Finish",      value: "Drop-washed" },
+                { label: "Print",       value: "Water-based screen" },
+                { label: "Pre-shrunk",  value: "Yes" },
+                { label: "Wash care",   value: "Cold, inside-out" },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--text-muted)", letterSpacing: "0.04em" }}>{label}</p>
+                  <p style={{ margin: "0.1rem 0 0", fontSize: "0.82rem", fontWeight: 600, color: "var(--text)" }}>{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Price + stock */}
           <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
               <span className="pdp-price">
-                {product.variants.length > 1 && !selectedVariant ? "from " : ""}
-                {formatCurrency(displayPrice)}
+                {comingSoon
+                  ? "Coming soon"
+                  : <>
+                      {product.variants.length > 1 && !selectedVariant ? "from " : ""}
+                      {displayPrice !== null ? formatCurrency(displayPrice) : "Price unavailable"}
+                    </>
+                }
               </span>
-              {comparePrice && comparePrice > displayPrice && (
+              {comparePrice !== undefined && displayPrice !== null && comparePrice > displayPrice && (
                 <s style={{ fontSize: "1rem", color: "var(--text-muted)", fontWeight: 400 }}>
                   {formatCurrency(comparePrice)}
                 </s>
@@ -459,7 +708,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
                     : product.variants.some((v) => v.size === size && v.stock > 0);
                   const selected = selectedSize === size;
                   return (
-                    <button key={size} onClick={() => setSelectedSize(selected ? null : size)} disabled={!available} style={pickerBtn(selected, available)}>
+                    <button key={size} onClick={() => { setSelectedSize(selected ? null : size); if (!selected) track("size_selected", { size, slug: product.slug }); }} disabled={!available} style={pickerBtn(selected, available)}>
                       {size}
                     </button>
                   );
@@ -472,6 +721,8 @@ export function ProductDetailClient({ product }: { product: Product }) {
                   {" — "}{FIT_DESCRIPTIONS[product.fit]}
                 </p>
               )}
+              {/* AI size rec */}
+              <AiSizeRec sizes={sizes} onSelect={(s) => { setSelectedSize(s); track("size_rec_used", { slug: product.slug, result: s }); }} />
             </div>
           )}
 
@@ -491,7 +742,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
                     : product.variants.some((v) => v.color === color && v.stock > 0);
                   const selected = selectedColor === color;
                   return (
-                    <button key={color} onClick={() => setSelectedColor(selected ? null : color)} disabled={!available} style={pickerBtn(selected, available)}>
+                    <button key={color} onClick={() => { setSelectedColor(selected ? null : color); if (!selected) track("color_selected", { color, slug: product.slug }); }} disabled={!available} style={pickerBtn(selected, available)}>
                       {color}
                     </button>
                   );
@@ -514,8 +765,8 @@ export function ProductDetailClient({ product }: { product: Product }) {
 
           <hr className="pdp-divider" />
 
-          {/* Add to cart + Wishlist */}
-          <div style={{ display: "flex", gap: "0.6rem", alignItems: "stretch" }}>
+          {/* Add to cart + Wishlist — observed by IntersectionObserver for sticky bar */}
+          <div ref={atcRef} style={{ display: "flex", gap: "0.6rem", alignItems: "stretch" }}>
           <button
             className="btn-full btn-primary"
             disabled={!canAddToCart}
@@ -544,6 +795,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
                 color: selectedVariant.color,
                 maxStock: selectedVariant.stock,
               });
+              track("add_to_cart", { id: product.id, slug: product.slug, sku: selectedVariant.sku, price: selectedVariant.price });
               setAdded(true);
               if (addedTimer.current) clearTimeout(addedTimer.current);
               addedTimer.current = setTimeout(() => setAdded(false), 2200);
@@ -618,6 +870,46 @@ export function ProductDetailClient({ product }: { product: Product }) {
           onClose={() => setSizeGuideOpen(false)}
         />
       )}
+
+      {/* Sticky ATC bar — slides in when the main ATC scrolls off-screen */}
+          <div className={`sticky-atc${stickyVisible ? " visible" : ""}`} aria-hidden={!stickyVisible}>
+        <div className="sticky-atc-info">
+          <div className="sticky-atc-title">{product.title}</div>
+          <div className="sticky-atc-price">
+            {comingSoon
+              ? "Coming soon"
+              : selectedVariant
+                ? `₹${selectedVariant.price.toLocaleString("en-IN")}`
+                : displayPrice !== null
+                  ? `from ₹${displayPrice.toLocaleString("en-IN")}`
+                  : "Price unavailable"}
+          </div>
+        </div>
+        <button
+          className="sticky-atc-btn"
+          disabled={!canAddToCart}
+          onClick={() => {
+            if (!selectedVariant) return;
+            addItem({
+              productId: product.id,
+              productTitle: product.title,
+              productSlug: product.slug,
+              imageUrl: product.media?.[0]?.url,
+              variantSku: selectedVariant.sku,
+              unitPrice: selectedVariant.price,
+              quantity: 1,
+              size: selectedVariant.size,
+              color: selectedVariant.color,
+              maxStock: selectedVariant.stock,
+            });
+            setAdded(true);
+            if (addedTimer.current) clearTimeout(addedTimer.current);
+            addedTimer.current = setTimeout(() => setAdded(false), 2200);
+          }}
+        >
+          {comingSoon ? "Coming soon" : added ? "✓ Added!" : !selectedSize || !selectedColor ? "Select options" : variantStock === 0 ? "Out of stock" : "Add to cart"}
+        </button>
+      </div>
     </div>
   );
 }

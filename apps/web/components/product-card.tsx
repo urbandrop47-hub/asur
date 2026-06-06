@@ -5,23 +5,21 @@ import Link from "next/link";
 import type { Product } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { HeartButton } from "./heart-button";
-import { useCompareStore } from "../store/compare-store";
+import { getLowestVariantPrice, getTotalStock, hasVariants } from "../lib/product-utils";
 
-export function ProductCard({ product }: { product: Product }) {
-  const { add, remove, has } = useCompareStore();
-  const inCompare = has(product.slug);
+export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
 
-  const lowestPrice = product.variants.length > 0
-    ? Math.min(...product.variants.map((v) => v.price))
-    : 0;
-  const lowestCompare = product.variants.length > 0
+  const lowestPrice = getLowestVariantPrice(product);
+  const lowestCompare = hasVariants(product)
     ? Math.min(...product.variants.map((v) => v.compareAtPrice ?? Infinity))
     : Infinity;
-  const hasDiscount = isFinite(lowestCompare) && lowestCompare > lowestPrice;
-  const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+  const hasDiscount = lowestPrice !== null && isFinite(lowestCompare) && lowestCompare > lowestPrice;
+  const totalStock = getTotalStock(product);
+  const comingSoon = !hasVariants(product);
   const coverImage = product.media?.[0];
-  const isSoldOut = totalStock === 0;
-  const isLowStock = !isSoldOut && totalStock < 5;
+  const hoverImage = product.media?.[1]; // used for hover crossfade
+  const isSoldOut = !comingSoon && totalStock === 0;
+  const isLowStock = !comingSoon && !isSoldOut && totalStock < 5;
 
   return (
     <article className="product-card" style={{ display: "flex", flexDirection: "column" }}>
@@ -32,13 +30,26 @@ export function ProductCard({ product }: { product: Product }) {
           style={{ position: "relative", overflow: "hidden", borderRadius: "20px 20px 0 0" }}
         >
           {coverImage?.url ? (
-            <Image
-              src={coverImage.url}
-              alt={coverImage.alt ?? product.title}
-              fill
-              sizes="(max-width: 640px) 100vw, 360px"
-              style={{ objectFit: "cover" }}
-            />
+            <>
+              <Image
+                src={coverImage.url}
+                alt={coverImage.alt ?? product.title}
+                fill
+                sizes="(max-width: 640px) 100vw, 360px"
+                style={{ objectFit: "cover" }}
+                priority={priority}
+              />
+              {hoverImage?.url && (
+                <Image
+                  src={hoverImage.url}
+                  alt={hoverImage.alt ?? `${product.title} — alternate view`}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 360px"
+                  className="product-image-second"
+                  aria-hidden="true"
+                />
+              )}
+            </>
           ) : (
             /* Placeholder with product initials */
             <div style={{
@@ -140,11 +151,16 @@ export function ProductCard({ product }: { product: Product }) {
         {/* Price row */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
-            <strong style={{ fontSize: "1.05rem", color: isSoldOut ? "var(--text-muted)" : "var(--text)" }}>
-              {product.variants.length > 1 && !isSoldOut ? "from " : ""}
-              {formatCurrency(lowestPrice)}
+            <strong style={{ fontSize: "1.05rem", color: comingSoon ? "var(--text-muted)" : isSoldOut ? "var(--text-muted)" : "var(--text)" }}>
+              {comingSoon
+                ? "Coming soon"
+                : <>
+                    {product.variants.length > 1 && !isSoldOut ? "from " : ""}
+                    {lowestPrice !== null ? formatCurrency(lowestPrice) : "Price unavailable"}
+                  </>
+              }
             </strong>
-            {hasDiscount && (
+            {hasDiscount && lowestPrice !== null && (
               <s style={{ fontSize: "0.82rem", color: "var(--text-muted)", fontWeight: 400 }}>
                 {formatCurrency(lowestCompare)}
               </s>
@@ -152,31 +168,12 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
           <span style={{
             fontSize: "0.72rem", fontWeight: 600,
-            color: isSoldOut ? "var(--danger)" : isLowStock ? "var(--warning)" : "var(--success)",
+            color: comingSoon ? "var(--text-muted)" : isSoldOut ? "var(--danger)" : isLowStock ? "var(--warning)" : "var(--success)",
           }}>
-            {isSoldOut ? "Out of stock" : isLowStock ? `${totalStock} left` : "In stock"}
+            {comingSoon ? "Coming soon" : isSoldOut ? "Out of stock" : isLowStock ? `${totalStock} left` : "In stock"}
           </span>
         </div>
 
-        {/* Compare toggle */}
-        <button
-          onClick={() => inCompare ? remove(product.slug) : add(product)}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem",
-            padding: "0.4rem 0.75rem", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600,
-            border: `1px solid ${inCompare ? "rgba(249,115,22,0.4)" : "rgba(255,255,255,0.12)"}`,
-            background: inCompare ? "rgba(249,115,22,0.08)" : "transparent",
-            color: inCompare ? "var(--accent)" : "var(--text-muted)",
-            cursor: "pointer", transition: "all 0.15s"
-          }}
-          aria-pressed={inCompare}
-          aria-label={inCompare ? `Remove ${product.title} from comparison` : `Add ${product.title} to comparison`}
-        >
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
-            <path d="M1 8h3M1 5.5h5M1 3h9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-          </svg>
-          {inCompare ? "✓ Comparing" : "Compare"}
-        </button>
 
         {/* CTA */}
         <Link
@@ -185,19 +182,19 @@ export function ProductCard({ product }: { product: Product }) {
           style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
             borderRadius: 999, padding: "0.75rem 1rem",
-            background: isSoldOut
+            background: comingSoon || isSoldOut
               ? "rgba(255,255,255,0.07)"
               : "linear-gradient(135deg, #f97316, #fb7185)",
-            color: isSoldOut ? "var(--text-muted)" : "#130f0b",
+            color: comingSoon || isSoldOut ? "var(--text-muted)" : "#130f0b",
             fontWeight: 700, fontSize: "0.88rem", textDecoration: "none",
             minHeight: 44,
-            pointerEvents: isSoldOut ? "none" : "auto",
+            pointerEvents: comingSoon || isSoldOut ? "none" : "auto",
             transition: "opacity 180ms ease, transform 120ms ease",
           }}
-          aria-disabled={isSoldOut}
-          tabIndex={isSoldOut ? -1 : undefined}
+          aria-disabled={comingSoon || isSoldOut}
+          tabIndex={comingSoon || isSoldOut ? -1 : undefined}
         >
-          {isSoldOut ? "Sold out" : (
+          {comingSoon ? "Coming soon" : isSoldOut ? "Sold out" : (
             <>
               Shop now
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { firebaseAuth } from "../../../lib/firebase";
 import { useAuthStore } from "../../../store/auth-store";
 import { api } from "../../../lib/api";
 
@@ -79,7 +80,7 @@ function PreferenceRow({
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { session, hydrated } = useAuthStore();
+  const { session, hydrated, clearSession } = useAuthStore();
 
   const [marketing, setMarketing] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -122,10 +123,12 @@ export default function NotificationsPage() {
   async function handleDataExport() {
     setExporting(true);
     try {
-      const token = session?.accessToken;
+      // Always fetch a fresh Firebase token — the stored accessToken may be expired
+      // (Firebase tokens live ~1 hour and are not auto-refreshed in localStorage).
+      const freshToken = await firebaseAuth?.currentUser?.getIdToken() ?? session?.accessToken;
       const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
       const resp = await fetch(`${baseUrl}/api/v1/auth/data-export`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${freshToken}` }
       });
       if (!resp.ok) throw new Error("Export failed");
       const blob = await resp.blob();
@@ -147,6 +150,8 @@ export default function NotificationsPage() {
     setDeleting(true);
     try {
       await api.del("/api/v1/auth/account");
+      // Clear the local session so the user is not shown as still logged in
+      clearSession();
       router.push("/?account_deleted=1");
     } catch {
       setError("Account deletion failed. Please email privacy@asur.in");

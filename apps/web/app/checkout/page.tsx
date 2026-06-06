@@ -657,6 +657,17 @@ function ReviewStep({
       >
         {confirming ? "Processing…" : `Confirm & Pay ${formatCurrency(total)}`}
       </button>
+
+      {/* Trust signals */}
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+        {[
+          "🔒 Razorpay secured",
+          "7-day returns",
+          "No hidden fees",
+        ].map((t) => (
+          <span key={t} style={{ fontSize: "0.72rem", color: "rgba(246,241,234,0.35)" }}>{t}</span>
+        ))}
+      </div>
     </div>
   );
 }

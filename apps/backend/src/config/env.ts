@@ -39,7 +39,8 @@ const envSchema = z.object({
   R2_ACCOUNT_ID: z.string().optional().default(""),
   R2_PUBLIC_URL: z.string().optional().default(""),
   RESEND_API_KEY: z.string().optional().default(""),
-  ADMIN_EMAIL: z.string().optional().default("")
+  ADMIN_EMAIL: z.string().optional().default(""),
+  ANTHROPIC_API_KEY: z.string().optional().default("")
 });
 
 export const env = envSchema.parse(process.env);
@@ -49,3 +50,4 @@ export const hasFirebaseCredentials =
   env.FIREBASE_PROJECT_ID.length > 0 && env.FIREBASE_CLIENT_EMAIL.length > 0 && env.FIREBASE_PRIVATE_KEY.length > 0;
 export const hasRazorpayCredentials = env.RAZORPAY_KEY.length > 0 && env.RAZORPAY_SECRET.length > 0;
 export const hasResendCredentials = env.RESEND_API_KEY.length > 0;
+export const hasAnthropicKey = env.ANTHROPIC_API_KEY.length > 0;

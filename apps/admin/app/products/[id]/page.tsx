@@ -8,6 +8,21 @@ import { productFits } from "@asur/constants";
 import { VariantEditor } from "../../../components/variant-editor";
 import { api } from "../../../lib/api";
 
+async function generateAiDescription(form: { title: string; category: string; tags: string; fit: string }, variants: ProductVariant[]): Promise<string> {
+  const colors = [...new Set(variants.map((v) => v.color))];
+  const sizes = [...new Set(variants.map((v) => v.size))];
+  const tags = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
+  const res = await api.post<{ data: { description: string } }>("/api/v1/ai/description-gen", {
+    title: form.title,
+    category: form.category,
+    tags,
+    fit: form.fit || "regular",
+    colors,
+    sizes,
+  });
+  return res.data.description;
+}
+
 type FormState = {
   title: string;
   description: string;
@@ -28,6 +43,7 @@ export default function EditProductPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [genLoading, setGenLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -123,6 +139,16 @@ export default function EditProductPage() {
         </button>
       </div>
 
+      {/* Product ID — for copy/reference */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "monospace" }}>ID: {id}</span>
+        <button
+          type="button"
+          onClick={() => navigator.clipboard.writeText(id).catch(() => {})}
+          style={{ padding: "0.15rem 0.45rem", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: "0.68rem", cursor: "pointer", fontFamily: "inherit" }}
+        >Copy</button>
+      </div>
+
       <form onSubmit={handleSave} style={{ display: "grid", gap: "1.25rem" }}>
         {error && (
           <div style={{ padding: "0.75rem 1rem", borderRadius: 10, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", fontSize: "0.85rem", color: "var(--danger)" }}>
@@ -137,7 +163,27 @@ export default function EditProductPage() {
             <input className="form-input" value={form.title} onChange={(e) => set("title", e.target.value)} />
           </div>
           <div className="form-field">
-            <label className="form-label">Description</label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.35rem" }}>
+              <label className="form-label" style={{ margin: 0 }}>Description</label>
+              <button
+                type="button"
+                disabled={genLoading || !form.title.trim()}
+                onClick={async () => {
+                  setGenLoading(true);
+                  try {
+                    const desc = await generateAiDescription(form, variants);
+                    set("description", desc);
+                  } catch {
+                    setError("AI generation failed. Is ANTHROPIC_API_KEY set?");
+                  } finally {
+                    setGenLoading(false);
+                  }
+                }}
+                style={{ padding: "0.25rem 0.65rem", borderRadius: 6, border: "1px solid rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.07)", color: "var(--accent)", fontSize: "0.72rem", fontWeight: 700, cursor: genLoading || !form.title.trim() ? "not-allowed" : "pointer", opacity: genLoading || !form.title.trim() ? 0.5 : 1 }}
+              >
+                {genLoading ? "Generating…" : "✦ Generate with AI"}
+              </button>
+            </div>
             <textarea className="form-input" value={form.description} onChange={(e) => set("description", e.target.value)} rows={3} style={{ resize: "vertical" }} />
           </div>
           <div className="grid-2">

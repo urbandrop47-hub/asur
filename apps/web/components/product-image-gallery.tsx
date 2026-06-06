@@ -10,6 +10,22 @@ type Props = {
 };
 
 // ── Lightbox ──────────────────────────────────────────────────────────────────
+function useTouchSwipe(onSwipeLeft: () => void, onSwipeRight: () => void) {
+  const startX = useCallback((e: React.TouchEvent) => {
+    (e.currentTarget as HTMLElement).dataset.touchX = String(e.touches[0].clientX);
+  }, []);
+
+  const endX = useCallback((e: React.TouchEvent) => {
+    const startVal = Number((e.currentTarget as HTMLElement).dataset.touchX ?? 0);
+    const delta = e.changedTouches[0].clientX - startVal;
+    if (Math.abs(delta) < 40) return;
+    if (delta < 0) onSwipeLeft();
+    else onSwipeRight();
+  }, [onSwipeLeft, onSwipeRight]);
+
+  return { onTouchStart: startX, onTouchEnd: endX };
+}
+
 function Lightbox({
   media,
   title,
@@ -25,6 +41,7 @@ function Lightbox({
 
   const prev = useCallback(() => setIdx((i) => (i > 0 ? i - 1 : media.length - 1)), [media.length]);
   const next = useCallback(() => setIdx((i) => (i < media.length - 1 ? i + 1 : 0)), [media.length]);
+  const swipe = useTouchSwipe(next, prev);
 
   // Keyboard + scroll lock
   useEffect(() => {
@@ -56,9 +73,10 @@ function Lightbox({
       }}
       onClick={onClose}
     >
-      {/* Image container — stops click propagation */}
+      {/* Image container — stops click propagation; swipe left/right on touch */}
       <div
         onClick={(e) => e.stopPropagation()}
+        {...swipe}
         style={{
           position: "relative",
           width: "min(90vw, 700px)",
@@ -142,6 +160,7 @@ export function ProductImageGallery({ media, title }: Props) {
 
   const prev = useCallback(() => setSelected((i) => (i > 0 ? i - 1 : media.length - 1)), [media.length]);
   const next = useCallback(() => setSelected((i) => (i < media.length - 1 ? i + 1 : 0)), [media.length]);
+  const swipe = useTouchSwipe(next, prev);
 
   if (media.length === 0) {
     return (
@@ -170,6 +189,7 @@ export function ProductImageGallery({ media, title }: Props) {
             if (e.key === "ArrowRight") next();
             if (e.key === "Enter" || e.key === " ") setLightboxOpen(true);
           }}
+          {...swipe}
           style={{ aspectRatio: "4 / 5", borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)", position: "relative", outline: "none" }}
         >
           <Image

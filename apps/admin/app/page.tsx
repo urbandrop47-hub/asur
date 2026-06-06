@@ -5,6 +5,10 @@ import Link from "next/link";
 import { formatCurrency } from "@asur/utils";
 import { api } from "../lib/api";
 import { readAdminToken } from "../lib/auth-storage";
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip,
+  CartesianGrid, ResponsiveContainer
+} from "recharts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,62 +74,63 @@ function KpiTile({
   );
 }
 
-// ─── Revenue Bar Chart (pure SVG, no deps) ───────────────────────────────────
+// ─── Revenue Area Chart (Recharts) ───────────────────────────────────────────
+
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string }>; label?: string }) {
+  if (!active || !payload?.length) return null;
+  const rev = payload.find((p) => p.name === "revenue");
+  const ord = payload.find((p) => p.name === "orders");
+  return (
+    <div style={{
+      background: "rgba(13,19,33,0.97)", border: "1px solid rgba(56,189,248,0.25)",
+      borderRadius: 10, padding: "0.6rem 0.85rem", fontSize: "0.78rem", minWidth: 140,
+      boxShadow: "0 8px 24px rgba(0,0,0,0.5)"
+    }}>
+      <p style={{ margin: "0 0 0.3rem", color: "rgba(246,241,234,0.55)", fontSize: "0.7rem" }}>{label}</p>
+      {rev && <p style={{ margin: 0, fontWeight: 700, color: "#38bdf8" }}>₹{rev.value.toLocaleString("en-IN")}</p>}
+      {ord && <p style={{ margin: "0.15rem 0 0", color: "rgba(246,241,234,0.6)", fontSize: "0.72rem" }}>{ord.value} order{ord.value !== 1 ? "s" : ""}</p>}
+    </div>
+  );
+}
 
 function RevenueChart({ data }: { data: ChartDay[] }) {
-  const W = 720;
-  const H = 160;
-  const PAD = { top: 12, right: 8, bottom: 28, left: 8 };
-  const chartW = W - PAD.left - PAD.right;
-  const chartH = H - PAD.top - PAD.bottom;
-
-  const maxRev = Math.max(...data.map((d) => d.revenue), 1);
-  const barW = Math.max(2, chartW / data.length - 2);
-  const gap = (chartW - barW * data.length) / (data.length - 1 || 1);
-
-  // Show only every 5th date label to avoid crowding
-  const labelEvery = 5;
-
+  const every = data.length > 30 ? 10 : data.length > 14 ? 5 : 2;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: H, display: "block" }} aria-label="30-day revenue chart">
-      <defs>
-        <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.6" />
-        </linearGradient>
-      </defs>
-      {/* Zero line */}
-      <line
-        x1={PAD.left} y1={PAD.top + chartH}
-        x2={PAD.left + chartW} y2={PAD.top + chartH}
-        stroke="rgba(255,255,255,0.08)" strokeWidth="1"
-      />
-      {/* Bars */}
-      {data.map((d, i) => {
-        const barH = d.revenue > 0 ? Math.max(2, (d.revenue / maxRev) * chartH) : 0;
-        const x = PAD.left + i * (barW + gap);
-        const y = PAD.top + chartH - barH;
-        return (
-          <g key={d.day}>
-            <rect x={x} y={y} width={barW} height={barH} rx={2} fill="url(#barGrad)" opacity={d.revenue > 0 ? 1 : 0.15} />
-            {/* Tooltip on hover via title */}
-            {d.revenue > 0 && (
-              <title>{d.day}: ₹{d.revenue.toLocaleString("en-IN")} ({d.orders} order{d.orders !== 1 ? "s" : ""})</title>
-            )}
-            {/* Date label */}
-            {i % labelEvery === 0 && (
-              <text
-                x={x + barW / 2} y={H - 6}
-                textAnchor="middle" fontSize="9" fill="rgba(246,241,234,0.35)"
-                fontFamily="system-ui, sans-serif"
-              >
-                {d.day.slice(5)} {/* MM-DD */}
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+    <ResponsiveContainer width="100%" height={180}>
+      <AreaChart data={data} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
+        <defs>
+          <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.35} />
+            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.04} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+        <XAxis
+          dataKey="day"
+          tick={{ fontSize: 9, fill: "rgba(246,241,234,0.35)" }}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(v: string) => v.slice(5)}
+          interval={every - 1}
+        />
+        <YAxis
+          tick={{ fontSize: 9, fill: "rgba(246,241,234,0.3)" }}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(v: number) => v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`}
+        />
+        <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(56,189,248,0.2)", strokeWidth: 1 }} />
+        <Area
+          type="monotone"
+          dataKey="revenue"
+          stroke="#38bdf8"
+          strokeWidth={2}
+          fill="url(#revGrad)"
+          dot={false}
+          activeDot={{ r: 4, fill: "#38bdf8", strokeWidth: 0 }}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -230,14 +235,15 @@ export default function AdminDashboardPage() {
   const [searchAnalytics, setSearchAnalytics] = useState<SearchAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<"7d" | "30d">("30d");
+  const [period, setPeriod] = useState<"7d" | "30d" | "90d">("30d");
 
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
+    const days = period === "7d" ? 7 : period === "90d" ? 90 : 30;
     Promise.all([
       api.get<{ data: Analytics }>("/api/v1/admin/analytics"),
-      api.get<{ data: { chart: ChartDay[] } }>("/api/v1/admin/analytics/revenue-chart"),
+      api.get<{ data: { chart: ChartDay[] } }>(`/api/v1/admin/analytics/revenue-chart?days=${days}`),
       api.get<{ data: SearchAnalytics }>("/api/v1/admin/analytics/search").catch(() => null)
     ])
       .then(([a, c, s]) => {
@@ -247,7 +253,7 @@ export default function AdminDashboardPage() {
       })
       .catch((e: Error) => setError(e.message ?? "Failed to load analytics"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [period]); // period must be in deps — load closes over it for the ?days= param
 
   useEffect(() => { load(); }, [load]);
 
@@ -258,8 +264,7 @@ export default function AdminDashboardPage() {
   const aov = analytics?.aov.d30 ?? 0;
   const aovChange = analytics?.aov.d30Change ?? 0;
 
-  // Chart slice for 7d vs 30d
-  const chartData = period === "7d" ? chart.slice(-7) : chart;
+  const chartData = chart; // already filtered by days= param
   const chartTotal = chartData.reduce((s, d) => s + d.revenue, 0);
 
   return (
@@ -277,7 +282,7 @@ export default function AdminDashboardPage() {
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           {/* Period toggle */}
           <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.05)", borderRadius: 999, padding: 2 }}>
-            {(["7d", "30d"] as const).map((p) => (
+            {(["7d", "30d", "90d"] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}

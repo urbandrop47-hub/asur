@@ -1,72 +1,72 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "FAQ",
-  description: "Frequently asked questions about ASUR orders, shipping, returns, sizing, and more.",
+  title: "FAQ — ASUR",
+  description: "Questions about ordering, shipping, returns, sizing, and the ASUR drop model.",
   alternates: { canonical: "https://asur.in/faq" }
 };
 
 const faqs: { q: string; a: string }[] = [
   {
     q: "How do I place an order?",
-    a: "Browse our products at /products, select your size and colour, add to cart, and proceed to checkout. You'll need to create a free account or sign in to complete your order. Payment is processed securely via Razorpay."
+    a: "Pick your size, add to cart, checkout. You'll need an account — takes 30 seconds. Payment goes through Razorpay. That's it.",
   },
   {
     q: "What payment methods do you accept?",
-    a: "We accept all major UPI apps (Google Pay, PhonePe, Paytm), credit cards, debit cards, net banking, and EMI via Razorpay. All transactions are secured with 256-bit SSL encryption."
+    a: "UPI (GPay, PhonePe, Paytm), cards, net banking, and EMI — all handled by Razorpay. We don't store your payment information.",
   },
   {
     q: "How long does delivery take?",
-    a: "We typically ship within 1–2 business days of order confirmation. Delivery takes 3–7 business days depending on your location. We ship pan-India. You'll receive an email with tracking information once your order ships."
+    a: "We ship within 1–2 business days. Delivery is 3–7 business days depending on your pin code. Pan-India. You'll get a tracking email when we ship.",
   },
   {
     q: "Do you offer free shipping?",
-    a: "Yes! Orders above ₹1,500 qualify for free shipping. Orders below ₹1,500 have a flat shipping fee of ₹250."
+    a: "Yes — orders above ₹1,500 ship free. Below that, it's a flat ₹250.",
   },
   {
     q: "Can I cancel my order?",
-    a: "Yes — you can cancel an order from your Orders page as long as it hasn't been packed yet. Once packed, cancellation is not possible, but you can return it after delivery within our 7-day window."
+    a: "Yes, but only before it's been packed. Go to your Orders page and cancel from there. Once packed, we can't stop it — but you can return it after delivery within 7 days.",
   },
   {
-    q: "What is your return policy?",
-    a: "We accept returns within 7 days of delivery for unworn, unwashed items with original tags. Sale items are final sale and cannot be returned. Visit /returns for full details and to initiate a return from your Orders page."
+    q: "What's your return policy?",
+    a: "7 days from delivery. Items must be unworn and unwashed, tags intact. Sale items are final. Visit /returns to start one from your Orders page.",
   },
   {
     q: "How long do refunds take?",
-    a: "Refunds are initiated within 2–3 business days of us receiving and inspecting the return. After initiation, your bank may take 5–7 business days to credit the amount. UPI and wallet refunds are usually faster (1–3 days)."
+    a: "We process refunds within 2–3 business days of receiving the return. Your bank may take another 5–7 days. UPI refunds tend to be faster.",
   },
   {
-    q: "Do you offer exchanges?",
-    a: "We don't currently offer direct exchanges because our drops are limited-run and sizes may sell out quickly. Return the item for a full refund and place a new order for your preferred size. This ensures you get exactly what you want without delay."
+    q: "Why don't you do exchanges?",
+    a: "Because our stock is limited and sizes disappear fast. Return the item for a full refund, then reorder in the right size. Cleaner for everyone.",
   },
   {
-    q: "How do I know which size to choose?",
-    a: "We have a size guide on every product page — click 'Size Guide' next to the size selector. ASUR's signature styles run in standard Indian sizing. Our Oversized fits intentionally run larger; the size guide notes this for each product."
+    q: "How do I find my size?",
+    a: "Every product page has a size guide — tap 'Size Guide' next to the size selector. Our Oversized fits intentionally run larger; the guide notes this per product.",
   },
   {
-    q: "Are your products limited edition?",
-    a: "Yes — ASUR operates on a drop model. Each collection releases in limited quantities and is not restocked once sold out. Sign up for back-in-stock alerts on any sold-out product to be notified if we ever restock."
+    q: "Are products restocked?",
+    a: "Rarely, and never guaranteed. ASUR runs on a drop model — each collection is made once. If something's sold out, sign up for back-in-stock alerts on the product page.",
   },
   {
-    q: "Can I track my order?",
-    a: "Yes. Once your order ships, you'll receive an email with tracking information. You can also visit your Orders page at /orders and click on any order to see its current status and tracking details."
+    q: "How do I track my order?",
+    a: "Check your Orders page at /orders and click any order for status and tracking. You'll also get an email with tracking info when we ship.",
   },
   {
-    q: "My order was delivered but I received a wrong or defective item. What do I do?",
-    a: "We're sorry! Email us at support@asur.in within 48 hours of delivery with your order number and photos of the issue. We'll arrange a free pickup and send a replacement or issue a full refund — whichever you prefer."
+    q: "I got the wrong item or something's damaged.",
+    a: "Email us at support@asur.in within 48 hours of delivery with your order number and photos. We'll sort a free pickup and send a replacement or issue a full refund.",
   },
   {
-    q: "I forgot to apply my coupon code. Can you apply it retrospectively?",
-    a: "Unfortunately, coupon codes cannot be applied to orders that have already been placed and paid. Make sure to enter your code at checkout before completing payment."
+    q: "I forgot to apply my coupon code.",
+    a: "Coupon codes can't be applied after payment. Apply it at checkout next time — there's a field on the review step.",
   },
   {
-    q: "How do I delete my account or download my data?",
-    a: "Go to Account → Notifications to manage your data and email preferences. You can download a full copy of your data (GDPR data export) or request account deletion. Account deletion anonymises your personal information while retaining order records for legal/tax purposes."
+    q: "How do I delete my account or export my data?",
+    a: "Go to Account → Notifications. From there you can request a full data export or delete your account. Deletion anonymises your personal data while keeping order records for compliance.",
   },
   {
     q: "Do you ship internationally?",
-    a: "Currently we ship only within India. International shipping is on our roadmap. Sign up for our newsletter to hear when international shipping launches."
-  }
+    a: "Not yet. India only for now. Sign up for the newsletter — we'll announce when international shipping opens.",
+  },
 ];
 
 const jsonLd = {
@@ -75,8 +75,8 @@ const jsonLd = {
   mainEntity: faqs.map(({ q, a }) => ({
     "@type": "Question",
     name: q,
-    acceptedAnswer: { "@type": "Answer", text: a }
-  }))
+    acceptedAnswer: { "@type": "Answer", text: a },
+  })),
 };
 
 export default function FaqPage() {
@@ -87,18 +87,22 @@ export default function FaqPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "3rem 1.25rem 5rem" }}>
-        <div style={{ marginBottom: "2.5rem" }}>
-          <p style={{ margin: "0 0 0.5rem", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+        <div style={{ marginBottom: "2.75rem" }}>
+          <p style={{ margin: "0 0 0.5rem", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", fontFamily: "var(--f-mono)" }}>
             Help
           </p>
-          <h1 style={{ margin: "0 0 0.5rem", fontSize: "2rem", fontWeight: 800 }}>Frequently asked questions</h1>
+          <h1 style={{ margin: "0 0 0.6rem", fontSize: "clamp(1.8rem, 4vw, 2.2rem)", fontWeight: 900, letterSpacing: "-0.02em" }}>
+            Questions
+          </h1>
           <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-muted)" }}>
-            Can't find an answer? Email us at{" "}
-            <a href="mailto:support@asur.in" style={{ color: "#f97316", textDecoration: "none" }}>support@asur.in</a>
+            Can&apos;t find an answer?{" "}
+            <a href="mailto:support@asur.in" style={{ color: "#f97316", textDecoration: "none" }}>
+              support@asur.in
+            </a>
           </p>
         </div>
 
-        <div style={{ display: "grid", gap: "0.5rem" }}>
+        <div style={{ display: "grid", gap: "0.4rem" }}>
           {faqs.map(({ q, a }) => (
             <details
               key={q}
@@ -106,38 +110,42 @@ export default function FaqPage() {
                 border: "1px solid var(--border)",
                 borderRadius: 12,
                 overflow: "hidden",
-                background: "rgba(255,255,255,0.02)"
+                background: "rgba(255,255,255,0.02)",
               }}
             >
-              <summary style={{
-                padding: "1rem 1.25rem",
-                fontWeight: 600,
-                fontSize: "0.92rem",
-                cursor: "pointer",
-                listStyle: "none",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "0.75rem",
-                userSelect: "none"
-              }}>
+              <summary
+                style={{
+                  padding: "1rem 1.25rem",
+                  fontWeight: 600,
+                  fontSize: "0.92rem",
+                  cursor: "pointer",
+                  listStyle: "none",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  userSelect: "none",
+                }}
+              >
                 {q}
                 <svg
-                  width="16" height="16" viewBox="0 0 16 16" fill="none"
-                  style={{ flexShrink: 0, opacity: 0.5, transition: "transform 0.2s" }}
+                  width="14" height="14" viewBox="0 0 14 14" fill="none"
+                  style={{ flexShrink: 0, opacity: 0.4 }}
                   className="faq-chevron"
                   aria-hidden="true"
                 >
-                  <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </summary>
-              <div style={{
-                padding: "0 1.25rem 1rem",
-                fontSize: "0.88rem",
-                lineHeight: 1.75,
-                color: "rgba(246,241,234,0.68)",
-                borderTop: "1px solid rgba(255,255,255,0.05)"
-              }}>
+              <div
+                style={{
+                  padding: "0 1.25rem 1rem",
+                  fontSize: "0.88rem",
+                  lineHeight: 1.75,
+                  color: "rgba(246,241,234,0.62)",
+                  borderTop: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
                 <p style={{ margin: "0.75rem 0 0" }}>{a}</p>
               </div>
             </details>
@@ -145,9 +153,8 @@ export default function FaqPage() {
         </div>
 
         <div style={{ marginTop: "2.5rem", padding: "1.25rem", borderRadius: 12, border: "1px solid var(--border)", background: "rgba(255,255,255,0.02)", textAlign: "center" }}>
-          <p style={{ margin: "0 0 0.4rem", fontWeight: 700, fontSize: "0.9rem" }}>Still need help?</p>
-          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
-            Reach us at{" "}
+          <p style={{ margin: "0 0 0.35rem", fontWeight: 700, fontSize: "0.9rem" }}>Still stuck?</p>
+          <p style={{ margin: 0, fontSize: "0.84rem", color: "var(--text-muted)" }}>
             <a href="mailto:support@asur.in" style={{ color: "#f97316", textDecoration: "none" }}>support@asur.in</a>
             {" "}— we reply within 24 hours on business days.
           </p>

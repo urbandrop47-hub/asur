@@ -139,6 +139,8 @@ export type Order = {
   paymentStatus: PaymentStatus;
   fulfillmentStatus: FulfillmentStatus;
   vendorTaskId?: ID;
+  trackingNumber?: string;
+  courierName?: string;
   couponCode?: string;
   discountAmount?: number;
   loyaltyPointsRedeemed?: number;
@@ -196,6 +198,11 @@ export type Review = {
   rating: number;
   body: string;
   approved: boolean;
+  verifiedPurchase: boolean;
+  helpfulVotes: number;
+  unhelpfulVotes: number;
+  helpfulVoters: string[];
+  images: string[];
   createdAt: string;
 };
 

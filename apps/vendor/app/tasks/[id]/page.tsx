@@ -6,31 +6,25 @@ import Link from "next/link";
 import type { VendorTask } from "@asur/types";
 import { api } from "../../../lib/api";
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  in_progress: "In progress",
-  ready_to_ship: "Ready to ship",
-  completed: "Completed"
-};
+const STEPS: { status: VendorTask["status"]; label: string; hint: string }[] = [
+  { status: "pending",       label: "Pick",  hint: "Locate and pull items from stock" },
+  { status: "in_progress",   label: "Pack",  hint: "Pack securely with care instructions" },
+  { status: "ready_to_ship", label: "Ship",  hint: "Hand off to courier with tracking" },
+  { status: "completed",     label: "Done",  hint: "Order marked as shipped" },
+];
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: "var(--warning)",
-  in_progress: "#38bdf8",
-  ready_to_ship: "#a78bfa",
-  completed: "var(--success)"
-};
-
-const NEXT_STATUS: Record<string, VendorTask["status"] | null> = {
-  pending: "in_progress",
-  in_progress: "ready_to_ship",
-  ready_to_ship: "completed",
-  completed: null
+const STEP_IDX: Record<string, number> = {
+  pending: 0, in_progress: 1, ready_to_ship: 2, completed: 3
 };
 
 const ACTION_LABEL: Record<string, string> = {
-  in_progress: "Mark in progress",
-  ready_to_ship: "Mark ready to ship",
-  completed: "Mark shipped"
+  in_progress:   "Mark picked — start packing",
+  ready_to_ship: "Mark packed — ready to ship",
+  completed:     "Mark shipped",
+};
+
+const NEXT_STATUS: Record<string, VendorTask["status"] | null> = {
+  pending: "in_progress", in_progress: "ready_to_ship", ready_to_ship: "completed", completed: null
 };
 
 export default function TaskDetailPage() {
@@ -41,12 +35,10 @@ export default function TaskDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Tracking form (only needed before marking completed)
   const [trackingId, setTrackingId] = useState("");
   const [courierName, setCourierName] = useState("");
   const [notes, setNotes] = useState("");
-  const [showTracking, setShowTracking] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -55,6 +47,7 @@ export default function TaskDetailPage() {
       .then((r) => {
         setTask(r.data);
         setNotes(r.data.notes ?? "");
+        setNotesSaved(false);
         setTrackingId(r.data.trackingId ?? "");
         setCourierName(r.data.courierName ?? "");
       })
@@ -66,30 +59,20 @@ export default function TaskDetailPage() {
     if (!task) return;
     const next = NEXT_STATUS[task.status];
     if (!next) return;
-
-    // For completed step, require tracking details
     if (next === "completed" && (!trackingId.trim() || !courierName.trim())) {
-      setShowTracking(true);
       setError("Enter tracking ID and courier name before marking shipped.");
       return;
     }
-
     setUpdating(true);
     setError(null);
-
     try {
       const body: Record<string, string> = { status: next };
       if (trackingId.trim()) body.trackingId = trackingId.trim();
       if (courierName.trim()) body.courierName = courierName.trim();
-      if (notes.trim()) body.notes = notes.trim();
-
+      if (notes.trim()) body.notes = notes.trim(); // only send if non-empty — never wipe saved notes
       const res = await api.patch<{ data: VendorTask }>(`/api/v1/vendor/tasks/${id}`, body);
       setTask(res.data);
-      setShowTracking(false);
-
-      if (next === "completed") {
-        router.push("/tasks");
-      }
+      if (next === "completed") router.push("/tasks");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update task");
     } finally {
@@ -98,11 +81,16 @@ export default function TaskDetailPage() {
   }
 
   async function saveNotes() {
-    if (!task || !notes.trim()) return;
+    if (!task || !notes.trim()) return; // guard: never send empty notes
     setUpdating(true);
+    setError(null);
     try {
-      const res = await api.patch<{ data: VendorTask }>(`/api/v1/vendor/tasks/${id}`, { notes: notes.trim() });
+      const res = await api.patch<{ data: VendorTask }>(`/api/v1/vendor/tasks/${id}`, {
+        notes: notes.trim()
+      });
       setTask(res.data);
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
     } catch {
       setError("Failed to save notes");
     } finally {
@@ -113,8 +101,9 @@ export default function TaskDetailPage() {
   if (loading) {
     return (
       <div style={{ display: "grid", gap: "1rem" }}>
-        <div style={{ height: 40, width: "40%", borderRadius: 10, background: "rgba(255,255,255,0.05)" }} />
-        <div style={{ height: 180, borderRadius: 14, background: "rgba(255,255,255,0.05)" }} />
+        <div style={{ height: 32, width: "35%", borderRadius: 8, background: "rgba(255,255,255,0.05)" }} />
+        <div style={{ height: 88, borderRadius: 14, background: "rgba(255,255,255,0.05)" }} />
+        <div style={{ height: 200, borderRadius: 14, background: "rgba(255,255,255,0.05)" }} />
       </div>
     );
   }
@@ -128,91 +117,142 @@ export default function TaskDetailPage() {
     );
   }
 
+  const currentStep = STEP_IDX[task.status] ?? 0;
   const nextStatus = NEXT_STATUS[task.status];
-  const statusColor = STATUS_COLOR[task.status] ?? "var(--text-muted)";
+  const isComplete = task.status === "completed";
 
   return (
     <div style={{ display: "grid", gap: "1.25rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-        <Link href="/tasks" style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>← Tasks</Link>
-      </div>
+      <Link href="/tasks" style={{ color: "var(--text-muted)", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
+        ← All tasks
+      </Link>
 
-      {/* Status badge */}
+      {/* Order ID */}
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor }} />
-          <span style={{ fontSize: "0.85rem", fontWeight: 700, color: statusColor }}>
-            {STATUS_LABEL[task.status]}
-          </span>
-        </div>
-        <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
-          Updated {new Date(task.updatedAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-        </p>
+        <p style={{ margin: "0 0 0.15rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Order</p>
+        <p style={{ margin: 0, fontSize: "0.9rem", fontFamily: "monospace", wordBreak: "break-all" }}>{task.orderId}</p>
       </div>
 
-      {/* Order info */}
-      <div style={{ border: "1px solid var(--border)", borderRadius: 14, padding: "1rem" }}>
-        <p style={{ margin: "0 0 0.5rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Order</p>
-        <p style={{ margin: 0, fontSize: "0.85rem", fontFamily: "monospace", wordBreak: "break-all" }}>{task.orderId}</p>
+      {/* ── Step checklist ── */}
+      <div style={{ border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
+        {STEPS.map((step, i) => {
+          const isDone = i < currentStep;
+          const isActive = i === currentStep;
+          const dotColor = isDone ? "var(--success)" : isActive ? "#38bdf8" : "var(--border)";
+          const lineColor = isDone ? "var(--success)" : "rgba(255,255,255,0.06)";
+
+          return (
+            <div
+              key={step.status}
+              style={{
+                display: "flex", alignItems: "flex-start", gap: "1rem",
+                padding: "0.9rem 1.1rem",
+                background: isActive ? "rgba(56,189,248,0.04)" : "transparent",
+                borderBottom: i < STEPS.length - 1 ? "1px solid var(--border)" : "none",
+              }}
+            >
+              {/* Track dot + line */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: 3 }}>
+                <div style={{
+                  width: 14, height: 14, borderRadius: "50%", flexShrink: 0,
+                  background: isDone ? "var(--success)" : isActive ? "transparent" : "rgba(255,255,255,0.06)",
+                  border: `2px solid ${dotColor}`,
+                  boxShadow: isActive ? "0 0 0 3px rgba(56,189,248,0.18)" : "none",
+                  display: "flex", alignItems: "center", justifyContent: "center"
+                }}>
+                  {isDone && (
+                    <svg width="7" height="7" viewBox="0 0 7 7" fill="none" aria-hidden="true">
+                      <path d="M1 3.5L3 5.5L6 1.5" stroke="#050706" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div style={{ width: 2, flex: 1, minHeight: 18, background: lineColor, margin: "3px 0" }} />
+                )}
+              </div>
+
+              {/* Step content */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{
+                    fontSize: "0.88rem", fontWeight: isActive ? 700 : 500,
+                    color: isDone ? "var(--text-muted)" : isActive ? "var(--text)" : "rgba(255,255,255,0.35)"
+                  }}>
+                    {step.label}
+                  </span>
+                  {isActive && (
+                    <span style={{
+                      fontSize: "0.62rem", fontWeight: 700, padding: "1px 7px", borderRadius: 999,
+                      background: "rgba(56,189,248,0.15)", color: "#38bdf8",
+                      textTransform: "uppercase", letterSpacing: "0.07em"
+                    }}>
+                      Current
+                    </span>
+                  )}
+                  {isDone && (
+                    <span style={{ fontSize: "0.75rem", color: "var(--success)" }}>✓</span>
+                  )}
+                </div>
+                {(isDone || isActive) && (
+                  <p style={{ margin: "0.15rem 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                    {step.hint}
+                  </p>
+                )}
+
+                {/* Tracking fields inline in the Ship step */}
+                {isActive && step.status === "ready_to_ship" && (
+                  <div style={{ marginTop: "0.75rem", display: "grid", gap: "0.6rem" }}>
+                    <input
+                      value={courierName}
+                      onChange={(e) => setCourierName(e.target.value)}
+                      placeholder="Courier (Delhivery, BlueDart…)"
+                      style={{ padding: "0.6rem 0.8rem", borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "var(--text)", fontSize: "0.85rem", fontFamily: "inherit", outline: "none", width: "100%", boxSizing: "border-box" }}
+                    />
+                    <input
+                      value={trackingId}
+                      onChange={(e) => setTrackingId(e.target.value)}
+                      placeholder="Tracking ID"
+                      style={{ padding: "0.6rem 0.8rem", borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "var(--text)", fontSize: "0.85rem", fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Tracking info (if set) */}
-      {(task.trackingId || task.courierName) && (
+      {/* Tracking summary (once set) */}
+      {isComplete && task.trackingId && (
         <div style={{ border: "1px solid rgba(34,197,94,0.2)", borderRadius: 14, padding: "1rem", background: "rgba(34,197,94,0.05)" }}>
-          <p style={{ margin: "0 0 0.5rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--success)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Shipping info</p>
-          {task.courierName && <p style={{ margin: "0 0 0.2rem", fontSize: "0.88rem", fontWeight: 600 }}>{task.courierName}</p>}
-          {task.trackingId && <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)", fontFamily: "monospace" }}>{task.trackingId}</p>}
-        </div>
-      )}
-
-      {/* Tracking form — shown when moving to completed */}
-      {(showTracking || task.status === "ready_to_ship") && task.status !== "completed" && (
-        <div style={{ border: "1px solid var(--border)", borderRadius: 14, padding: "1rem", display: "grid", gap: "0.85rem" }}>
-          <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Shipping details
-          </p>
-          <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.3rem", color: "var(--text-muted)" }}>
-              Courier name *
-            </label>
-            <input
-              value={courierName}
-              onChange={(e) => setCourierName(e.target.value)}
-              placeholder="Delhivery / BlueDart / DTDC"
-              style={{ width: "100%", padding: "0.65rem 0.8rem", borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "var(--text)", fontSize: "0.88rem", fontFamily: "inherit", outline: "none", boxSizing: "border-box" as const }}
-            />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.3rem", color: "var(--text-muted)" }}>
-              Tracking ID *
-            </label>
-            <input
-              value={trackingId}
-              onChange={(e) => setTrackingId(e.target.value)}
-              placeholder="1Z999AA10123456784"
-              style={{ width: "100%", padding: "0.65rem 0.8rem", borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "var(--text)", fontSize: "0.88rem", fontFamily: "monospace", outline: "none", boxSizing: "border-box" as const }}
-            />
-          </div>
+          <p style={{ margin: "0 0 0.4rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--success)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Shipped via</p>
+          {task.courierName && <p style={{ margin: "0 0 0.2rem", fontSize: "0.9rem", fontWeight: 700 }}>{task.courierName}</p>}
+          <p style={{ margin: 0, fontSize: "0.82rem", fontFamily: "monospace", color: "var(--text-muted)" }}>{task.trackingId}</p>
         </div>
       )}
 
       {/* Notes */}
-      {task.status !== "completed" && (
+      {!isComplete && (
         <div style={{ display: "grid", gap: "0.5rem" }}>
-          <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>Notes</label>
+          <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Notes
+          </label>
           <textarea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder="Packing notes, issues, etc."
-            style={{ width: "100%", padding: "0.65rem 0.8rem", borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "var(--text)", fontSize: "0.85rem", fontFamily: "inherit", outline: "none", resize: "vertical", boxSizing: "border-box" as const }}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              setNotesSaved(false);
+            }}
+            rows={2}
+            placeholder="Packing notes, issues, substitutions…"
+            style={{ padding: "0.65rem 0.8rem", borderRadius: 10, border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "var(--text)", fontSize: "0.85rem", fontFamily: "inherit", outline: "none", resize: "vertical", width: "100%", boxSizing: "border-box" }}
           />
           <button
             onClick={saveNotes}
-            disabled={updating || !notes.trim()}
-            style={{ padding: "0.5rem 1rem", borderRadius: 999, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: "0.82rem", cursor: "pointer", fontFamily: "inherit", alignSelf: "start" }}
+            disabled={updating}
+            style={{ padding: "0.45rem 1rem", borderRadius: 999, border: "1px solid var(--border)", background: "transparent", color: notesSaved ? "var(--success)" : "var(--text-muted)", fontSize: "0.8rem", cursor: "pointer", fontFamily: "inherit", alignSelf: "start", transition: "color 0.15s" }}
           >
-            Save notes
+            {notesSaved ? "✓ Saved" : "Save notes"}
           </button>
         </div>
       )}
@@ -223,27 +263,27 @@ export default function TaskDetailPage() {
         </div>
       )}
 
-      {/* Primary action */}
+      {/* Primary CTA */}
       {nextStatus && (
         <button
           onClick={advance}
           disabled={updating}
           style={{
-            padding: "0.95rem", borderRadius: 999, fontWeight: 700, fontSize: "0.95rem",
+            padding: "1rem", borderRadius: 999, fontWeight: 700, fontSize: "0.95rem",
             background: nextStatus === "completed"
               ? "linear-gradient(135deg, #22c55e, #16a34a)"
               : "linear-gradient(135deg, #38bdf8, #818cf8)",
-            color: "#050706", border: "none", cursor: "pointer",
-            fontFamily: "inherit", opacity: updating ? 0.6 : 1
+            color: "#050706", border: "none", cursor: updating ? "wait" : "pointer",
+            fontFamily: "inherit", opacity: updating ? 0.65 : 1, transition: "opacity 0.15s"
           }}
         >
           {updating ? "Updating…" : ACTION_LABEL[nextStatus]}
         </button>
       )}
 
-      {task.status === "completed" && (
-        <div style={{ textAlign: "center", padding: "1rem", color: "var(--success)", fontWeight: 600 }}>
-          ✓ Task completed — order marked as shipped
+      {isComplete && (
+        <div style={{ textAlign: "center", padding: "1rem", color: "var(--success)", fontWeight: 600, fontSize: "0.9rem" }}>
+          ✓ Order shipped successfully
         </div>
       )}
     </div>

@@ -186,7 +186,8 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
   // Idempotent: only skip if BOTH the order status and paymentStatus are fully
   // settled. If status=paid but paymentStatus is still pending (i.e. markOrderPaid
   // succeeded but capturePayment threw on the first call), fall through and retry.
-  if (order.status === "paid" && order.paymentStatus === "captured") {
+  const existingPayment = await orderRepository.findPaymentByOrderId(order.id);
+  if (order.status === "paid" && order.paymentStatus === "captured" && existingPayment) {
     sendSuccess(res, { order }, "Payment already verified");
     return;
   }

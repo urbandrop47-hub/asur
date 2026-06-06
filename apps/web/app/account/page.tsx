@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
-import type { Address } from "@asur/types";
+import type { Address, Order } from "@asur/types";
+import { formatCurrency } from "@asur/utils";
 import { firebaseAuth } from "../../lib/firebase";
 import { useAuthStore } from "../../store/auth-store";
+import { useLoyaltyStore } from "../../store/loyalty-store";
 import { api } from "../../lib/api";
 
 // ─── Shared styles ───────────────────────────────────────────
@@ -355,17 +357,29 @@ function AddressCard({
   );
 }
 
+// ─── Loyalty tier helper ────────────────────────────────────
+
+function getTier(pts: number): { label: string; color: string; next: number | null; nextLabel: string } {
+  if (pts >= 5000) return { label: "Obsidian", color: "#a78bfa", next: null, nextLabel: "" };
+  if (pts >= 2000) return { label: "Gold", color: "#f59e0b", next: 5000, nextLabel: "Obsidian" };
+  if (pts >= 500) return { label: "Silver", color: "#94a3b8", next: 2000, nextLabel: "Gold" };
+  return { label: "Bronze", color: "#f97316", next: 500, nextLabel: "Silver" };
+}
+
 // ─── Main page ───────────────────────────────────────────────
 
 export default function AccountPage() {
   const router = useRouter();
   const { session, hydrated, clearSession, setSession } = useAuthStore();
+  const { points, redeemRate, loaded: loyaltyLoaded, fetchBalance } = useLoyaltyStore();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressLoading, setAddressLoading] = useState(true);
   const [addressError, setAddressError] = useState(false);
+  const [addressDeleteError, setAddressDeleteError] = useState<string | null>(null);
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -375,7 +389,12 @@ export default function AccountPage() {
       .then((r) => setAddresses(r.data ?? []))
       .catch(() => setAddressError(true))
       .finally(() => setAddressLoading(false));
-  }, [session, hydrated, router]);
+    api
+      .get<{ data: Order[] }>("/api/v1/orders?limit=3")
+      .then((r) => setRecentOrders(r.data ?? []))
+      .catch(() => {});
+    fetchBalance();
+  }, [session, hydrated, router, fetchBalance]);
 
   if (!hydrated || !session) return null;
 
@@ -391,11 +410,12 @@ export default function AccountPage() {
     // Guard against concurrent deletes — a stale index would delete the wrong address
     if (deletingIndex !== null) return;
     setDeletingIndex(index);
+    setAddressDeleteError(null);
     try {
       await api.del(`/api/v1/auth/addresses/${index}`);
       setAddresses((prev) => prev.filter((_, i) => i !== index));
     } catch {
-      // leave list unchanged on error
+      setAddressDeleteError("Failed to remove address. Please try again.");
     } finally {
       setDeletingIndex(null);
     }
@@ -472,6 +492,73 @@ export default function AccountPage() {
         )}
       </div>
 
+      {/* Loyalty card */}
+      {loyaltyLoaded && (() => {
+        const tier = getTier(points);
+        const progressPct = tier.next ? Math.min(100, Math.round((points / tier.next) * 100)) : 100;
+        return (
+          <div style={{ border: `1px solid ${tier.color}30`, borderRadius: 16, padding: "1.1rem 1.25rem", background: `linear-gradient(135deg, ${tier.color}08, transparent)` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+              <div>
+                <p style={{ ...sectionLabel, color: tier.color }}>Loyalty — {tier.label}</p>
+                <p style={{ margin: "0.3rem 0 0", fontWeight: 800, fontSize: "1.4rem", letterSpacing: "-0.02em" }}>
+                  {points.toLocaleString()} <span style={{ fontSize: "0.8rem", fontWeight: 500, color: "var(--text-muted)" }}>pts</span>
+                </p>
+              </div>
+              <Link href="/account/loyalty" style={{ fontSize: "0.75rem", color: tier.color, textDecoration: "none", fontWeight: 600 }}>
+                View →
+              </Link>
+            </div>
+            {tier.next && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{points.toLocaleString()} / {tier.next.toLocaleString()} pts to {tier.nextLabel}</span>
+                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{progressPct}%</span>
+                </div>
+                <div style={{ height: 4, borderRadius: 999, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", borderRadius: 999, width: `${progressPct}%`, background: `linear-gradient(90deg, ${tier.color}, ${tier.color}aa)`, transition: "width 600ms ease" }} />
+                </div>
+              </div>
+            )}
+            {points > 0 && (
+              <p style={{ margin: "0.65rem 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                Worth <strong style={{ color: "var(--text)" }}>{formatCurrency(Math.floor(points / redeemRate))}</strong> — redeem at checkout
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Recent orders */}
+      {recentOrders.length > 0 && (
+        <div style={card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <p style={sectionLabel}>Recent orders</p>
+            <Link href="/orders" style={{ fontSize: "0.75rem", color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>All orders →</Link>
+          </div>
+          <div style={{ display: "grid", gap: "0.5rem" }}>
+            {recentOrders.map((order) => (
+              <Link key={order.id} href={`/orders/${order.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.65rem 0.75rem", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: "0.82rem", fontWeight: 600, fontFamily: "var(--f-mono)" }}>{order.orderNumber}</p>
+                    <p style={{ margin: "0.1rem 0 0", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                      {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} · {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700 }}>{formatCurrency(order.total)}</p>
+                    <p style={{ margin: "0.1rem 0 0", fontSize: "0.7rem", textTransform: "capitalize", color: order.status === "delivered" ? "var(--success)" : order.status === "cancelled" ? "var(--danger)" : "var(--warning)" }}>
+                      {order.status.replace("_", " ")}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick links */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
         {[
@@ -530,6 +617,11 @@ export default function AccountPage() {
           </p>
         ) : (
           <div style={{ display: "grid", gap: "0.6rem" }}>
+            {addressDeleteError && (
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--danger)", padding: "0.5rem 0.75rem", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                {addressDeleteError}
+              </p>
+            )}
             {addresses.map((addr, i) => (
               <AddressCard
                 key={i}

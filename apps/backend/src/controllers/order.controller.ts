@@ -115,9 +115,11 @@ export const getOrderController: RequestHandler = asyncHandler(async (req, res) 
   sendSuccess(res, order, "Order fetched");
 });
 
+// "cancelled" is intentionally excluded — it must go through cancelOrder() in
+// order.service.ts which restores stock, loyalty points, coupons, and gift cards.
 const bulkOrderStatusSchema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(100),
-  status: z.enum(["processing", "packed", "shipped", "delivered", "cancelled"])
+  status: z.enum(["processing", "packed", "shipped", "delivered"])
 });
 
 // ── POST /api/v1/admin/orders/bulk-status ────────────────────────────────────
@@ -135,7 +137,11 @@ export const bulkOrderStatusController: RequestHandler = asyncHandler(async (req
   await Promise.all(
     ids.map(async (id) => {
       try {
-        await orderRepository.updateStatus(id, status);
+        const order = await orderRepository.updateStatus(id, status);
+        if (!order) {
+          failed.push(id);
+          return;
+        }
         updated++;
       } catch {
         failed.push(id);
