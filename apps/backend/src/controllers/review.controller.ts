@@ -120,6 +120,14 @@ export const voteHelpfulController: RequestHandler = asyncHandler(async (req, re
   const customerId: string = res.locals.user.id;
   const reviewId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const { vote } = z.object({ vote: z.enum(["up", "down"]) }).parse(req.body);
+
+  // Fetch the review first to prevent self-voting
+  const existing = await reviewRepository.findById(reviewId);
+  if (!existing) throw new AppError(404, "Review not found");
+  if (existing.customerId === customerId) {
+    throw new AppError(422, "You cannot vote on your own review");
+  }
+
   const review = await reviewRepository.voteHelpful(reviewId, customerId, vote);
   if (!review) throw new AppError(404, "Review not found");
   sendSuccess(res, review, "Vote recorded");

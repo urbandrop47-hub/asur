@@ -29,14 +29,12 @@ export const updateStockController: RequestHandler = asyncHandler(async (req, re
 
   const product = await productRepository.findById(productId);
   if (!product) throw new AppError(404, "Product not found");
+  if (!product.variants.find((v) => v.sku === sku)) throw new AppError(404, "Variant SKU not found");
 
-  const variant = product.variants.find((v) => v.sku === sku);
-  if (!variant) throw new AppError(404, "Variant SKU not found");
-  const previousStock = variant.stock;
+  // setVariantStock returns the previous stock atomically — no separate read needed
+  const previousStock = await productRepository.setVariantStock(productId, sku, stock);
 
-  await productRepository.setVariantStock(productId, sku, stock);
-
-  // If restocked, notify back-in-stock subscribers
+  // If restocked from zero, notify back-in-stock subscribers
   if (stock > 0 && previousStock === 0) {
     void triggerBackInStockNotifications(productId, sku);
   }

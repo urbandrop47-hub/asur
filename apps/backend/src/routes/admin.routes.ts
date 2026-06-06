@@ -69,6 +69,12 @@ import {
   adminUpdateArticleController,
   adminDeleteArticleController,
 } from "../controllers/article.controller";
+import {
+  listCustomersController,
+  getCustomerProfileController,
+  addCustomerNoteController,
+  emailSegmentController
+} from "../controllers/customer.controller";
 
 export const adminRouter: ExpressRouter = Router();
 
@@ -149,6 +155,13 @@ adminRouter.post("/articles", adminOnlyMiddleware, requirePermission("content:wr
 adminRouter.get("/articles/:id", adminOnlyMiddleware, adminGetArticleController);
 adminRouter.patch("/articles/:id", adminOnlyMiddleware, requirePermission("content:write"), adminUpdateArticleController);
 adminRouter.delete("/articles/:id", adminOnlyMiddleware, requirePermission("content:write"), adminDeleteArticleController);
+
+// Customer CRM
+adminRouter.get("/customers", adminOnlyMiddleware, listCustomersController);
+// email-segment must be before /:id to avoid param swallowing
+adminRouter.post("/customers/email-segment", adminOnlyMiddleware, requirePermission("users:invite"), emailSegmentController);
+adminRouter.get("/customers/:id", adminOnlyMiddleware, getCustomerProfileController);
+adminRouter.post("/customers/:id/note", adminOnlyMiddleware, addCustomerNoteController);
 
 // Audit log
 adminRouter.get("/audit-log", adminOnlyMiddleware, listAuditLogsController);

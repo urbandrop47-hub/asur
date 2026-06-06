@@ -30,7 +30,9 @@ type FormState = {
   tags: string;
   collectionSlugs: string;
   fit: string;
-  status: "draft" | "active" | "archived";
+  status: "draft" | "active" | "archived" | "preorder";
+  preorderShipDate: string;
+  preorderNote: string;
 };
 
 export default function EditProductPage() {
@@ -58,7 +60,9 @@ export default function EditProductPage() {
           tags: p.tags.join(", "),
           collectionSlugs: p.collectionSlugs.join(", "),
           fit: p.fit ?? "",
-          status: p.status
+          status: p.status,
+          preorderShipDate: p.preorderShipDate ?? "",
+          preorderNote: p.preorderNote ?? "",
         });
         setVariants(p.variants);
       })
@@ -75,6 +79,7 @@ export default function EditProductPage() {
     if (!form) return;
     if (!form.title.trim()) { setError("Title is required"); return; }
     if (variants.length === 0) { setError("Add at least one variant"); return; }
+    if (form.status === "preorder" && !form.preorderShipDate) { setError("Estimated ship date is required for pre-order products"); return; }
 
     setSaving(true);
     setError(null);
@@ -88,6 +93,8 @@ export default function EditProductPage() {
         collectionSlugs: form.collectionSlugs.split(",").map((s) => s.trim()).filter(Boolean),
         fit: form.fit || undefined,
         status: form.status,
+        preorderShipDate: form.preorderShipDate || undefined,
+        preorderNote: form.preorderNote || undefined,
         variants
       });
       router.push("/products");
@@ -179,7 +186,8 @@ export default function EditProductPage() {
                     setGenLoading(false);
                   }
                 }}
-                style={{ padding: "0.25rem 0.65rem", borderRadius: 6, border: "1px solid rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.07)", color: "var(--accent)", fontSize: "0.72rem", fontWeight: 700, cursor: genLoading || !form.title.trim() ? "not-allowed" : "pointer", opacity: genLoading || !form.title.trim() ? 0.5 : 1 }}
+                title={!form.title.trim() ? "Enter a product title first" : genLoading ? "Generating…" : "Generate description with AI"}
+                style={{ padding: "0.25rem 0.65rem", borderRadius: 6, border: "1px solid rgba(249,115,22,0.35)", background: "rgba(249,115,22,0.07)", color: genLoading || !form.title.trim() ? "var(--text-muted)" : "var(--accent)", fontSize: "0.72rem", fontWeight: 700, cursor: genLoading || !form.title.trim() ? "not-allowed" : "pointer", opacity: genLoading || !form.title.trim() ? 0.45 : 1 }}
               >
                 {genLoading ? "Generating…" : "✦ Generate with AI"}
               </button>
@@ -215,9 +223,50 @@ export default function EditProductPage() {
               <option value="draft">Draft</option>
               <option value="active">Active</option>
               <option value="archived">Archived</option>
+              <option value="preorder">Pre-order</option>
             </select>
           </div>
         </div>
+
+        {/* Pre-order fields — only shown when status = preorder */}
+        {form.status === "preorder" && (
+          <div className="card" style={{ display: "grid", gap: "1rem", borderColor: "rgba(249,115,22,0.3)" }}>
+            <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              📦 Pre-order settings
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="form-field">
+                <label className="form-label">Estimated ship date *</label>
+                <input
+                  className="form-input"
+                  type="date"
+                  value={form.preorderShipDate}
+                  onChange={(e) => set("preorderShipDate", e.target.value)}
+                  style={{ borderColor: !form.preorderShipDate ? "rgba(249,115,22,0.5)" : undefined }}
+                />
+                {!form.preorderShipDate && (
+                  <p style={{ margin: "0.25rem 0 0", fontSize: "0.72rem", color: "var(--accent)" }}>Required for pre-order</p>
+                )}
+              </div>
+              <div className="form-field">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <label className="form-label">Customer-facing note <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(optional)</span></label>
+                  <span style={{ fontSize: "0.68rem", color: form.preorderNote.length > 180 ? "var(--accent)" : "var(--text-muted)" }}>
+                    {form.preorderNote.length}/200
+                  </span>
+                </div>
+                <input
+                  className="form-input"
+                  type="text"
+                  value={form.preorderNote}
+                  onChange={(e) => set("preorderNote", e.target.value)}
+                  placeholder="Ships September 2026"
+                  maxLength={200}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="card" style={{ display: "grid", gap: "1rem" }}>
           <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Variants</p>

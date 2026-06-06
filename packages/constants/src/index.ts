@@ -37,7 +37,7 @@ export const adminRolePermissions = {
   SUPER_ADMIN: [...adminPermissions]
 } as const;
 
-export const productStatuses = ["draft", "active", "archived"] as const;
+export const productStatuses = ["draft", "active", "archived", "preorder"] as const;
 export const productFits = ["regular", "oversized", "boxy", "relaxed"] as const;
 export const orderStatuses = [
   "draft",
@@ -76,6 +76,26 @@ export const collectionNames = {
   reviews: "reviews",
   wishlists: "wishlists"
 } as const;
+
+export const COURIER_TRACKING_URLS: Record<string, string> = {
+  Delhivery: "https://www.delhivery.com/track/package/{tracking}",
+  BlueDart: "https://www.bluedart.com/tracking?trackfor={tracking}",
+  DTDC: "https://www.dtdc.in/tracking.asp?awb={tracking}",
+  "India Post": "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
+  Ekart: "https://ekartlogistics.com/shipmenttrack/{tracking}",
+  Shadowfax: "https://www.shadowfax.in/track/{tracking}",
+  Xpressbees: "https://www.xpressbees.com/track/{tracking}"
+};
+
+export function getCourierTrackingUrl(courierName: string, trackingNumber: string): string | null {
+  const template = COURIER_TRACKING_URLS[courierName];
+  if (!template) return null;
+  if (template.includes("{tracking}")) {
+    return template.replace("{tracking}", encodeURIComponent(trackingNumber));
+  }
+  // India Post: tracking number goes in query param
+  return `${template}?consignment=${encodeURIComponent(trackingNumber)}`;
+}
 
 export const routePaths = {
   health: "/health",

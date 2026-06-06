@@ -103,7 +103,7 @@ function SuggestDropdown({
           {item.image ? (
             <img
               src={item.image}
-              alt=""
+              alt={item.title}
               width={36}
               height={36}
               style={{ borderRadius: 6, objectFit: "cover", flexShrink: 0 }}
@@ -378,13 +378,13 @@ export function SiteHeader() {
             <Link href="/wishlist" className="nav-cart-link">
               Wishlist
               {mounted && wishlistCount > 0 && (
-                <span className="cart-badge">{wishlistCount > 99 ? "99+" : wishlistCount}</span>
+                <span key={wishlistCount} className="cart-badge">{wishlistCount > 99 ? "99+" : wishlistCount}</span>
               )}
             </Link>
             <Link href="/cart" className="nav-cart-link">
               Cart
               {mounted && itemCount > 0 && (
-                <span className="cart-badge">{itemCount > 99 ? "99+" : itemCount}</span>
+                <span key={itemCount} className="cart-badge">{itemCount > 99 ? "99+" : itemCount}</span>
               )}
             </Link>
 

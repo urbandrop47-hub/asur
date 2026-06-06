@@ -161,7 +161,18 @@ export default function OrdersPage() {
       <div className="empty-state" style={{ marginTop: "4rem" }}>
         <h2>Couldn&apos;t load orders</h2>
         <p>Something went wrong. Please try again.</p>
-        <button className="badge" onClick={() => window.location.reload()}>Retry</button>
+        <button
+          onClick={() => { setError(false); setLoading(true); void loadOrders(); }}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            borderRadius: 999, padding: "0.85rem 1.5rem",
+            background: "linear-gradient(135deg, #f97316, #fb7185)",
+            color: "#130f0b", fontWeight: 700, fontSize: "0.92rem",
+            border: "none", cursor: "pointer", minHeight: 48,
+          }}
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -181,7 +192,9 @@ export default function OrdersPage() {
       {/* Pull-to-refresh indicator */}
       {(pullDistance > 0 || refreshing) && (
         <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+          position: "fixed",
+          top: "env(safe-area-inset-top, 0px)",
+          left: 0, right: 0, zIndex: 100,
           display: "flex", justifyContent: "center", alignItems: "center",
           height: refreshing ? 48 : Math.max(pullDistance, 0),
           transition: refreshing ? "height 200ms ease" : "none",

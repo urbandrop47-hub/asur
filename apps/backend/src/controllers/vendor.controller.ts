@@ -142,7 +142,7 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
     void (async () => {
       const order = await orderRepository.findByIdAdmin(updated.orderId);
       if (!order) return;
-      const customer = await userRepository.findById(order.customerId);
+      const customer = order.customerId ? await userRepository.findById(order.customerId) : null;
       const customerEmail = customer?.email ?? "";
       const customerName = customer?.name ?? "there";
       if (customerEmail) {

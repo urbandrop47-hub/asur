@@ -138,7 +138,7 @@ function Lightbox({
                   flexShrink: 0, transition: "border-color 0.15s"
                 }}
               >
-                <Image src={asset.url} alt="" fill sizes="48px" style={{ objectFit: "cover" }} />
+                <Image src={asset.url} alt={asset.alt ?? `Product image ${i + 1}`} fill sizes="48px" style={{ objectFit: "cover" }} />
               </button>
             ))}
           </div>

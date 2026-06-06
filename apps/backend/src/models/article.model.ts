@@ -25,6 +25,8 @@ export type ArticleDoc = {
   publishedAt?: Date;
   seoTitle?: string;
   seoDescription?: string;
+  /** Optional access code gate for drops — set to a non-empty string to require it */
+  accessCode?: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -53,6 +55,7 @@ const articleSchema = new Schema<ArticleDoc>(
     publishedAt: { type: Date, index: true },
     seoTitle: { type: String },
     seoDescription: { type: String },
+    accessCode: { type: String },
     createdAt: { type: Date, default: () => new Date() },
     updatedAt: { type: Date, default: () => new Date() },
   },

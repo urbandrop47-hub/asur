@@ -17,6 +17,7 @@ export default function CartPage() {
 
   // Avoid hydration mismatch from localStorage rehydration
   const [mounted, setMounted] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   useEffect(() => { setMounted(true); fetchConfig(); }, [fetchConfig]);
 
   const { freeShippingThreshold, shippingFee, gstRate } = config;
@@ -84,20 +85,38 @@ export default function CartPage() {
               {items.length} item{items.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <button
-            onClick={clear}
-            style={{
-              background: "none",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 999,
-              padding: "0.45rem 0.9rem",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              fontSize: "0.82rem",
-            }}
-          >
-            Clear all
-          </button>
+          {confirmClear ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Remove all?</span>
+              <button
+                onClick={() => { clear(); setConfirmClear(false); }}
+                style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 999, padding: "0.35rem 0.75rem", color: "#ef4444", cursor: "pointer", fontSize: "0.8rem", fontWeight: 700 }}
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setConfirmClear(false)}
+                style={{ background: "none", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: "0.35rem 0.75rem", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.8rem" }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmClear(true)}
+              style={{
+                background: "none",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 999,
+                padding: "0.45rem 0.9rem",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: "0.82rem",
+              }}
+            >
+              Clear all
+            </button>
+          )}
         </div>
 
         {/* Line items */}
@@ -163,6 +182,8 @@ export default function CartPage() {
                   <button
                     className="qty-btn"
                     aria-label="Increase quantity"
+                    disabled={item.maxStock != null && item.quantity >= item.maxStock}
+                    title={item.maxStock != null && item.quantity >= item.maxStock ? `Max ${item.maxStock} in stock` : undefined}
                     onClick={() => updateQuantity(item.variantSku, item.quantity + 1)}
                   >
                     +
@@ -237,7 +258,7 @@ export default function CartPage() {
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
-            <span style={{ color: "var(--text-muted)" }}>GST (18%)</span>
+            <span style={{ color: "var(--text-muted)" }}>GST ({Math.round(gstRate * 100)}%)</span>
             <span>{formatCurrency(tax)}</span>
           </div>
           <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "0.25rem 0" }} />

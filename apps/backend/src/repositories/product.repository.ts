@@ -233,17 +233,25 @@ export const productRepository = {
   },
 
   /** Set a specific variant's stock to an exact value (used by bulk restock / admin panel). */
-  async setVariantStock(productId: string, sku: string, stock: number): Promise<void> {
+  /** Set a variant's stock to an absolute value. Returns the previous stock level
+   *  so the caller can detect 0→N transitions for back-in-stock alerts. */
+  async setVariantStock(productId: string, sku: string, stock: number): Promise<number> {
     if (hasMongoConnection) {
-      await ProductModel.updateOne(
+      // findOneAndUpdate with { new: false } returns the pre-update doc, giving us
+      // the previous stock atomically — no separate read needed (eliminates TOCTOU).
+      const before = await ProductModel.findOneAndUpdate(
         { id: productId, "variants.sku": sku },
-        { $set: { "variants.$.stock": stock } }
-      );
-      return;
+        { $set: { "variants.$.stock": stock } },
+        { new: false }
+      ).lean<{ variants: Array<{ sku: string; stock: number }> }>();
+      const prevVariant = before?.variants.find((v) => v.sku === sku);
+      return prevVariant?.stock ?? 0;
     }
     const product = mockStore.products.find((p) => p.id === productId);
     const variant = product?.variants.find((v) => v.sku === sku);
+    const prev = variant?.stock ?? 0;
     if (variant) variant.stock = Math.max(0, stock);
+    return prev;
   },
 
   /** List all products for inventory — all statuses, sorted by title. */

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   EmailAuthProvider,
   GoogleAuthProvider,
+  RecaptchaVerifier,
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
   linkWithCredential,
@@ -12,9 +13,11 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signInWithPhoneNumber,
   signInWithPopup,
   signOut
 } from "firebase/auth";
+import type { ConfirmationResult } from "firebase/auth";
 import type { AuthSession } from "@asur/types";
 import { api } from "../lib/api";
 import { firebaseAuth, hasFirebaseConfig } from "../lib/firebase";
@@ -48,6 +51,7 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"sign-in" | "create-account">("sign-in");
+  const [authTab, setAuthTab] = useState<"email" | "phone">("email");
   const [providers, setProviders] = useState<string[]>([]);
   const [pendingLink, setPendingLink] = useState<PendingLink | null>(null);
   // Ref mirrors state so the onAuthStateChanged callback always sees the latest
@@ -56,6 +60,14 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [showForgot, setShowForgot] = useState(false);
+
+  // ── Phone OTP state ─────────────────────────��──────────────────
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [phoneStep, setPhoneStep] = useState<"input" | "otp">("input");
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   async function syncSessionFromFirebaseUser() {
     if (!firebaseAuth?.currentUser) return;
@@ -195,6 +207,42 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
     } finally { setBusy(false); }
   }
 
+  async function handleSendOtp() {
+    if (!firebaseAuth || !hasFirebaseConfig()) { setMessage("Firebase config is missing."); return; }
+    const phone = phoneNumber.trim().startsWith("+") ? phoneNumber.trim() : `+91${phoneNumber.trim()}`;
+    if (!/^\+\d{10,15}$/.test(phone.replace(/[\s\-]/g, ""))) {
+      setMessage("Enter a valid phone number."); return;
+    }
+    setBusy(true); setMessage(null);
+    try {
+      // Create (or reuse) the invisible reCAPTCHA verifier
+      if (!recaptchaVerifierRef.current && recaptchaContainerRef.current) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(firebaseAuth, recaptchaContainerRef.current, { size: "invisible" });
+      }
+      const result = await signInWithPhoneNumber(firebaseAuth, phone, recaptchaVerifierRef.current!);
+      setConfirmationResult(result);
+      setPhoneStep("otp");
+      setMessage("OTP sent! Check your messages.");
+    } catch (error) {
+      // Reset verifier on error so it can be recreated fresh
+      recaptchaVerifierRef.current?.clear();
+      recaptchaVerifierRef.current = null;
+      setMessage(error instanceof Error ? error.message : "Failed to send OTP");
+    } finally { setBusy(false); }
+  }
+
+  async function handleVerifyOtp() {
+    if (!confirmationResult) return;
+    if (!otp.trim() || otp.length < 4) { setMessage("Enter the OTP you received."); return; }
+    setBusy(true); setMessage(null);
+    try {
+      await confirmationResult.confirm(otp.trim());
+      // onAuthStateChanged fires → syncSessionFromFirebaseUser handles the rest
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Invalid OTP — please try again");
+    } finally { setBusy(false); }
+  }
+
   async function handleSignOut() {
     if (firebaseAuth) await signOut(firebaseAuth);
     clearSession();
@@ -285,67 +333,160 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
 
       <div className="auth-divider">or</div>
 
-      {/* Mode tabs */}
-      <div className="auth-mode-tabs">
+      {/* Auth method tabs: Email | Phone */}
+      <div className="auth-mode-tabs" style={{ marginBottom: "1rem" }}>
         <button
-          className={`auth-mode-tab${mode === "sign-in" ? " active" : ""}`}
-          onClick={() => { setMode("sign-in"); setMessage(null); }}
+          className={`auth-mode-tab${authTab === "email" ? " active" : ""}`}
+          onClick={() => { setAuthTab("email"); setMessage(null); setPhoneStep("input"); }}
         >
-          Sign in
+          Email
         </button>
         <button
-          className={`auth-mode-tab${mode === "create-account" ? " active" : ""}`}
-          onClick={() => { setMode("create-account"); setMessage(null); }}
+          className={`auth-mode-tab${authTab === "phone" ? " active" : ""}`}
+          onClick={() => { setAuthTab("phone"); setMessage(null); }}
         >
-          Create account
+          Phone (OTP)
         </button>
       </div>
 
-      <div style={{ display: "grid", gap: "0.85rem", marginBottom: "1rem" }}>
-        <div className="form-field">
-          <label className="form-label">Email</label>
-          <input
-            className="input"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            onKeyDown={(e) => e.key === "Enter" && handleEmailAuth()}
-          />
-        </div>
-        <div className="form-field">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-            <span className="form-label" style={{ margin: 0 }}>Password</span>
-            {mode === "sign-in" && (
-              <button className="auth-ghost-link" style={{ fontSize: "0.78rem" }} onClick={() => { setShowForgot(true); setMessage(null); }}>
-                Forgot?
+      {/* ── Phone OTP flow ── */}
+      {authTab === "phone" && (
+        <div style={{ display: "grid", gap: "0.85rem", marginBottom: "1rem" }}>
+          {/* invisible reCAPTCHA anchor */}
+          <div ref={recaptchaContainerRef} />
+
+          {phoneStep === "input" ? (
+            <>
+              <div className="form-field">
+                <label className="form-label">Mobile number</label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <span style={{ padding: "0 0.85rem", borderRadius: 12, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "var(--text-muted)", display: "flex", alignItems: "center", fontSize: "0.92rem", flexShrink: 0 }}>
+                    +91
+                  </span>
+                  <input
+                    className="input"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel-national"
+                    value={phoneNumber}
+                    onChange={(e) => { setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10)); setMessage(null); }}
+                    placeholder="98765 43210"
+                    onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              </div>
+              <button
+                className="auth-submit-btn"
+                onClick={handleSendOtp}
+                disabled={busy || !firebaseReady || phoneNumber.replace(/\D/g, "").length < 10}
+              >
+                {busy ? "Sending OTP…" : "Send OTP →"}
               </button>
-            )}
-          </div>
-          <input
-            className="input"
-            type="password"
-            autoComplete={mode === "create-account" ? "new-password" : "current-password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            onKeyDown={(e) => e.key === "Enter" && handleEmailAuth()}
-          />
+            </>
+          ) : (
+            <>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                Enter the 6-digit code sent to +91 {phoneNumber}
+              </p>
+              <div className="form-field">
+                <label className="form-label">One-time password</label>
+                <input
+                  className="input"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={otp}
+                  onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setMessage(null); }}
+                  placeholder="123456"
+                  onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
+                  style={{ letterSpacing: "0.2em", fontFamily: "monospace", fontSize: "1.1rem" }}
+                />
+              </div>
+              <button
+                className="auth-submit-btn"
+                onClick={handleVerifyOtp}
+                disabled={busy || otp.length < 6}
+              >
+                {busy ? "Verifying…" : "Verify & sign in →"}
+              </button>
+              <button
+                className="auth-ghost-link"
+                onClick={() => { setPhoneStep("input"); setOtp(""); setMessage(null); setConfirmationResult(null); }}
+              >
+                ← Change number
+              </button>
+            </>
+          )}
         </div>
-      </div>
+      )}
 
-      <button
-        className="auth-submit-btn"
-        onClick={handleEmailAuth}
-        disabled={busy || !firebaseReady}
-      >
-        {busy
-          ? "Working…"
-          : mode === "create-account"
-            ? "Create account →"
-            : "Sign in →"}
-      </button>
+      {/* ── Email / password flow ── */}
+      {authTab === "email" && (
+        <>
+          {/* Mode tabs */}
+          <div className="auth-mode-tabs">
+            <button
+              className={`auth-mode-tab${mode === "sign-in" ? " active" : ""}`}
+              onClick={() => { setMode("sign-in"); setMessage(null); }}
+            >
+              Sign in
+            </button>
+            <button
+              className={`auth-mode-tab${mode === "create-account" ? " active" : ""}`}
+              onClick={() => { setMode("create-account"); setMessage(null); }}
+            >
+              Create account
+            </button>
+          </div>
+
+          <div style={{ display: "grid", gap: "0.85rem", marginBottom: "1rem" }}>
+            <div className="form-field">
+              <label className="form-label">Email</label>
+              <input
+                className="input"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                onKeyDown={(e) => e.key === "Enter" && handleEmailAuth()}
+              />
+            </div>
+            <div className="form-field">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                <span className="form-label" style={{ margin: 0 }}>Password</span>
+                {mode === "sign-in" && (
+                  <button className="auth-ghost-link" style={{ fontSize: "0.78rem" }} onClick={() => { setShowForgot(true); setMessage(null); }}>
+                    Forgot?
+                  </button>
+                )}
+              </div>
+              <input
+                className="input"
+                type="password"
+                autoComplete={mode === "create-account" ? "new-password" : "current-password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                onKeyDown={(e) => e.key === "Enter" && handleEmailAuth()}
+              />
+            </div>
+          </div>
+
+          <button
+            className="auth-submit-btn"
+            onClick={handleEmailAuth}
+            disabled={busy || !firebaseReady}
+          >
+            {busy
+              ? "Working…"
+              : mode === "create-account"
+                ? "Create account →"
+                : "Sign in →"}
+          </button>
+        </>
+      )}
 
       {message && <div className="auth-message">{message}</div>}
       {pendingLink && (

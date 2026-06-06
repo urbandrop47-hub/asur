@@ -240,9 +240,10 @@ button { font-family: inherit; }
 .form-input {
   padding: 0.7rem 0.85rem; border-radius: 10px; border: 1px solid var(--border);
   background: rgba(255,255,255,0.05); color: var(--text); font-size: 0.88rem;
-  font-family: inherit; outline: none; width: 100%;
+  font-family: inherit; width: 100%;
 }
-.form-input:focus { border-color: rgba(56,189,248,0.4); }
+.form-input:focus { outline: none; border-color: rgba(56,189,248,0.4); }
+.form-input:focus-visible { outline: 2px solid rgba(56,189,248,0.7); outline-offset: 2px; }
 .form-error { font-size: 0.75rem; color: var(--danger); }
 .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
 .empty-state h2 { margin: 0 0 0.5rem; color: var(--text); }

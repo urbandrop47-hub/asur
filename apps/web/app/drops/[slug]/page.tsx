@@ -13,6 +13,7 @@ type Article = {
   _id: string;
   slug: string;
   title: string;
+  requiresAccessCode?: boolean;
   type: "drop";
   heroImage?: string;
   excerpt?: string;
@@ -136,15 +137,92 @@ function NotifyMeForm() {
   );
 }
 
+// ── Access code gate for restricted drops ─────────────────────────────────────
+function AccessGate({ slug, onUnlock }: { slug: string; onUnlock: () => void }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  // Persist unlock in sessionStorage so page refreshes don't re-gate
+  const STORAGE_KEY = `drop_access_${slug}`;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setChecking(true);
+    try {
+      await api.post(`/api/v1/articles/drops/${encodeURIComponent(slug)}/access`, { code: code.trim().toUpperCase() });
+      sessionStorage.setItem(STORAGE_KEY, "1");
+      onUnlock();
+    } catch {
+      setError("Invalid access code. Try again.");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <div style={{
+      maxWidth: 420, margin: "6rem auto", padding: "2.5rem 2rem",
+      borderRadius: 20, border: "1px solid rgba(249,115,22,0.2)",
+      background: "rgba(249,115,22,0.04)", textAlign: "center",
+    }}>
+      <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>🔒</div>
+      <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.2rem", fontWeight: 800 }}>
+        Early access only
+      </h2>
+      <p style={{ margin: "0 0 1.5rem", fontSize: "0.88rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+        This drop is restricted. Enter your access code to unlock it.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "0.75rem" }}>
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => { setCode(e.target.value.toUpperCase()); setError(null); }}
+          placeholder="ACCESS CODE"
+          maxLength={64}
+          required
+          style={{
+            padding: "0.85rem 1rem", borderRadius: 12, textAlign: "center",
+            border: error ? "1px solid var(--danger)" : "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(255,255,255,0.05)", color: "var(--text)",
+            fontFamily: "var(--f-mono)", fontSize: "1rem", letterSpacing: "0.12em",
+            outline: "none",
+          }}
+        />
+        {error && (
+          <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--danger)" }}>{error}</p>
+        )}
+        <button
+          type="submit"
+          disabled={checking || !code.trim()}
+          style={{
+            padding: "0.85rem", borderRadius: 999, fontWeight: 700,
+            fontSize: "0.95rem", cursor: "pointer", border: "none",
+            background: "linear-gradient(135deg, #f97316, #fb7185)", color: "#130f0b",
+            opacity: checking ? 0.7 : 1,
+          }}
+        >
+          {checking ? "Checking…" : "Unlock drop"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default function DropPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const [article, setArticle] = useState<Article | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
+    // Check sessionStorage first — avoids flickering the gate on refresh
+    const alreadyUnlocked = typeof window !== "undefined" && sessionStorage.getItem(`drop_access_${slug}`) === "1";
+    if (alreadyUnlocked) setUnlocked(true);
     void api.get<{ data: Article }>(`/api/v1/articles/drops/${slug}`)
       .then(async (r) => {
         setArticle(r.data);
@@ -167,6 +245,15 @@ export default function DropPage() {
   }
 
   if (!article) return null;
+
+  // Show access gate if the drop requires a code and hasn't been unlocked yet
+  if (article.requiresAccessCode && !unlocked) {
+    return (
+      <div style={{ padding: "0 1rem" }}>
+        <AccessGate slug={article.slug} onUnlock={() => setUnlocked(true)} />
+      </div>
+    );
+  }
 
   const dropDate = article.publishedAt ? new Date(article.publishedAt) : null;
   const isLive = !dropDate || dropDate <= new Date();

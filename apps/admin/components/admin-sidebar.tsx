@@ -12,6 +12,7 @@ const NAV = [
   { href: "/products", label: "Products", icon: "◈" },
   { href: "/inventory", label: "Inventory", icon: "⊞" },
   { href: "/orders", label: "Orders", icon: "◫" },
+  { href: "/customers", label: "Customers", icon: "⊙" },
   { href: "/reviews", label: "Reviews", icon: "★" },
   { href: "/coupons", label: "Coupons", icon: "%" },
   { href: "/gift-cards", label: "Gift Cards", icon: "🎁" },
@@ -25,6 +26,7 @@ const NAV = [
 function LoginScreen({ onSave }: { onSave: () => void }) {
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
+  const [showPw, setShowPw] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,19 +52,33 @@ function LoginScreen({ onSave }: { onSave: () => void }) {
             <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.4rem", color: "var(--text-muted)" }}>
               Admin password
             </label>
-            <input
-              type="password"
-              value={token}
-              onChange={(e) => { setToken(e.target.value); setError(""); }}
-              placeholder="Enter your admin password"
-              autoComplete="current-password"
-              style={{
-                width: "100%", padding: "0.75rem", borderRadius: 10,
-                border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)",
-                color: "var(--text)", fontSize: "0.88rem", outline: "none",
-                fontFamily: "inherit"
-              }}
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPw ? "text" : "password"}
+                value={token}
+                onChange={(e) => { setToken(e.target.value); setError(""); }}
+                placeholder="Enter your admin password"
+                autoComplete="current-password"
+                style={{
+                  width: "100%", padding: "0.75rem 2.75rem 0.75rem 0.75rem", borderRadius: 10,
+                  border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)",
+                  color: "var(--text)", fontSize: "0.88rem", outline: "none",
+                  fontFamily: "inherit", boxSizing: "border-box"
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                aria-label={showPw ? "Hide password" : "Show password"}
+                style={{
+                  position: "absolute", right: "0.65rem", top: "50%", transform: "translateY(-50%)",
+                  background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer",
+                  fontSize: "0.72rem", fontWeight: 600, padding: "0.2rem 0.35rem", borderRadius: 4
+                }}
+              >
+                {showPw ? "Hide" : "Show"}
+              </button>
+            </div>
             {error && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{error}</p>}
           </div>
           <button
@@ -92,6 +108,7 @@ export function AdminSidebar({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [gMode, setGMode] = useState(false);
 
   useEffect(() => {
     setToken(readAdminToken());
@@ -118,12 +135,14 @@ export function AdminSidebar({ children }: { children: React.ReactNode }) {
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
         gPressed = true;
+        setGMode(true);
         clearTimeout(gTimer);
-        gTimer = setTimeout(() => { gPressed = false; }, 800);
+        gTimer = setTimeout(() => { gPressed = false; setGMode(false); }, 800);
         return;
       }
       if (gPressed) {
         gPressed = false;
+        setGMode(false);
         clearTimeout(gTimer);
         if (e.key === "o") { router.push("/orders"); return; }
         if (e.key === "p") { router.push("/products"); return; }
@@ -136,8 +155,16 @@ export function AdminSidebar({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener("keydown", handler);
       window.removeEventListener("keydown", seqHandler);
+      clearTimeout(gTimer);
+      setGMode(false);
     };
   }, [router]);
+
+  // Body scroll lock when mobile nav is open
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
@@ -185,6 +212,12 @@ export function AdminSidebar({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
       <div className="sidebar-footer">
+        {gMode && (
+          <div style={{ padding: "0.35rem 0.65rem", borderRadius: 7, background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.3)", marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--accent)", letterSpacing: "0.06em" }}>GO TO…</span>
+            <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>O=Orders  P=Products  D=Dashboard  I=Inventory</span>
+          </div>
+        )}
         <button
           onClick={() => setPaletteOpen(true)}
           className="sidebar-cmd-btn"

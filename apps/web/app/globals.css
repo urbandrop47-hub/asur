@@ -297,6 +297,11 @@ header.site-header {
   align-items: center;
   justify-content: center;
   padding: 0 4px;
+  animation: badgePop 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes badgePop {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.55); }
 }
 .fsheet.open { transform: none; }
 .fsheet-grab { width: 40px; height: 4px; border-radius: 999px; background: var(--hair-2); margin: 10px auto 0; }
@@ -1877,7 +1882,7 @@ input[type="search"]:focus,
 input[type="password"]:focus,
 select:focus,
 textarea:focus {
-  outline: none;
+  /* Intentionally no outline: none — keyboard users keep the :focus-visible ring from the global rule above */
   border-color: rgba(249, 115, 22, 0.55) !important;
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }

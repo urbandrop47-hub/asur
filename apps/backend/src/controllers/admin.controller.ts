@@ -37,7 +37,9 @@ const createProductSchema = z.object({
   variants: z.array(variantSchema).min(1),
   collectionSlugs: z.array(z.string()).default([]),
   fit: z.enum(productFits).optional(),
-  status: z.enum(["draft", "active", "archived"]).default("draft"),
+  status: z.enum(["draft", "active", "archived", "preorder"]).default("draft"),
+  preorderShipDate: z.string().optional(),
+  preorderNote: z.string().max(200).optional(),
   media: z
     .array(z.object({ url: z.string().url(), alt: z.string().optional(), width: z.number().optional(), height: z.number().optional() }))
     .default([])

@@ -27,7 +27,8 @@ export async function createOrder(input: CreateOrderInput) {
       if (!variant) {
         throw new AppError(422, `Selected variant is no longer available`, { variantSku: item.variantSku });
       }
-      if (variant.stock < item.quantity) {
+      // Skip stock check for pre-order products — they accept orders regardless of current stock
+      if (product.status !== "preorder" && variant.stock < item.quantity) {
         throw new AppError(409, `Only ${variant.stock} unit(s) left for this item`, { variantSku: item.variantSku, available: variant.stock });
       }
       // Carry the full product/variant data so later steps don't need to re-fetch
@@ -37,17 +38,20 @@ export async function createOrder(input: CreateOrderInput) {
 
   const subtotal = verifiedItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
 
-  // Validate coupon before creating the order (so we never create an order with a bad code)
+  const isGuest = !input.customerId && !!input.guestPhone;
+
+  // Validate coupon before creating the order (so we never create an order with a bad code).
+  // For guest orders pass undefined customerId — tier-gated coupons will be skipped.
   let couponResult: Awaited<ReturnType<typeof validateCoupon>> | null = null;
   if (input.couponCode) {
     couponResult = await validateCoupon(input.couponCode, subtotal, input.customerId);
   }
 
-  // Validate loyalty point redemption
-  const pointsToRedeem = input.loyaltyPointsToRedeem ?? 0;
+  // Loyalty + gift-card redemption is only available to authenticated customers
+  const pointsToRedeem = isGuest ? 0 : (input.loyaltyPointsToRedeem ?? 0);
   let actualPointsRedeemed = 0;
   let loyaltyDiscount = 0;
-  if (pointsToRedeem >= MIN_REDEEM) {
+  if (!isGuest && pointsToRedeem >= MIN_REDEEM && input.customerId) {
     const account = await loyaltyRepository.getAccount(input.customerId);
     const available = account?.points ?? 0;
     const capped = Math.min(pointsToRedeem, available);
@@ -58,9 +62,9 @@ export async function createOrder(input: CreateOrderInput) {
     loyaltyDiscount = finalDiscount;
   }
 
-  // Validate gift card before creating the order
+  // Gift card only available to authenticated customers
   let giftCardResult: Awaited<ReturnType<typeof validateGiftCard>> | null = null;
-  if (input.giftCardCode) {
+  if (!isGuest && input.giftCardCode) {
     // Compute estimated order total for capping (coupon + loyalty already factored)
     const { freeShippingThreshold, shippingFee, gstRate } = await getOrderPricingConfig();
     const couponDiscount = couponResult ? couponResult.discountAmount : 0;
@@ -88,13 +92,13 @@ export async function createOrder(input: CreateOrderInput) {
     giftCardAmount: giftCardResult ? giftCardResult.applicableAmount : 0
   });
 
-  // Atomically decrement stock for each variant. Because a concurrent order may have
-  // taken the last unit between our validation check and now, we verify each decrement
-  // succeeded. If any fail, we cancel the order and return a 409.
+  // Atomically decrement stock for each variant. Pre-order products skip this step
+  // (they accept orders regardless of stock level; inventory is managed separately).
   const decrementResults = await Promise.all(
     verifiedItems.map(async (item) => {
+      if (item._product.status === "preorder") return { ...item, ok: true, skipped: true };
       const ok = await productRepository.decrementVariantStock(item.productId, item.variantSku, item.quantity);
-      return { ...item, ok };
+      return { ...item, ok, skipped: false };
     })
   );
 
@@ -104,7 +108,7 @@ export async function createOrder(input: CreateOrderInput) {
     await orderRepository.updateStatus(order.id, "cancelled");
     await Promise.all(
       decrementResults
-        .filter((r) => r.ok)
+        .filter((r) => r.ok && !r.skipped)
         .map((r) => productRepository.incrementVariantStock(r.productId, r.variantSku, r.quantity))
     );
     throw new AppError(409, `Item sold out — another order just took the last unit for SKU ${failed.variantSku}`);
@@ -139,7 +143,7 @@ export async function createOrder(input: CreateOrderInput) {
   }
 
   // Deduct loyalty points optimistically — restored if order is cancelled before payment
-  if (actualPointsRedeemed > 0) {
+  if (actualPointsRedeemed > 0 && input.customerId) {
     const redeemed = await loyaltyRepository.redeemPoints(
       input.customerId,
       actualPointsRedeemed,
@@ -163,12 +167,17 @@ export async function createOrder(input: CreateOrderInput) {
   }
 
   // Fire-and-forget low-stock alerts only after all reversible checkout checks
-  // have succeeded, so abandoned/failed orders do not trigger false warnings.
+  // have succeeded. Re-fetch the actual DB stock rather than estimating from the
+  // in-memory snapshot (which is stale if concurrent orders ran between validation
+  // and decrement). Skip pre-order products — their stock is managed separately.
   void (async () => {
     for (const item of verifiedItems) {
-      const postDecrementStock = item._variant.stock - item.quantity;
-      if (postDecrementStock < LOW_STOCK_THRESHOLD && postDecrementStock >= 0) {
-        await sendLowStockAlertEmail(item._product.title, item.variantSku, postDecrementStock);
+      if (item._product.status === "preorder") continue;
+      const fresh = await productRepository.findById(item.productId);
+      const freshVariant = fresh?.variants.find((v) => v.sku === item.variantSku);
+      const currentStock = freshVariant?.stock ?? 0;
+      if (currentStock < LOW_STOCK_THRESHOLD && currentStock >= 0) {
+        await sendLowStockAlertEmail(item._product.title, item.variantSku, currentStock);
       }
     }
   })();
@@ -177,13 +186,18 @@ export async function createOrder(input: CreateOrderInput) {
 
   // Fire-and-forget — email failures must never break the order flow
   void (async () => {
-    const customer = await userRepository.findById(input.customerId);
-    const customerEmail = customer?.email ?? "";
-    const customerName = customer?.name ?? "there";
+    let customerEmail = "";
+    let customerName = "there";
+    if (input.customerId) {
+      const customer = await userRepository.findById(input.customerId);
+      customerEmail = customer?.email ?? "";
+      customerName = customer?.name ?? "there";
+    }
+    // Guest orders: no confirmation email (no email address collected at checkout)
     if (customerEmail) {
       await sendOrderConfirmationEmail(order, customerEmail, customerName);
     }
-    await sendAdminNewOrderEmail(order, customerEmail || "unknown");
+    await sendAdminNewOrderEmail(order, customerEmail || `guest:${input.guestPhone ?? "unknown"}`);
   })();
 
   return { order, vendorTask };
@@ -195,6 +209,10 @@ export async function listOrdersByCustomer(customerId: string) {
 
 export async function getOrderById(id: string, customerId: string) {
   return orderRepository.findById(id, customerId);
+}
+
+export async function getOrderByIdForGuest(id: string, guestPhone: string) {
+  return orderRepository.findByIdForGuest(id, guestPhone);
 }
 
 /** Cancel an order and release the reserved stock back to each variant. */
@@ -236,7 +254,7 @@ export async function cancelOrder(orderId: string, requesterId: string, isAdmin 
 
   // Restore redeemed loyalty points
   const orderWithExtras = order as typeof order & { loyaltyPointsRedeemed?: number; giftCardCode?: string; giftCardAmount?: number };
-  if (orderWithExtras.loyaltyPointsRedeemed && orderWithExtras.loyaltyPointsRedeemed > 0) {
+  if (order.customerId && orderWithExtras.loyaltyPointsRedeemed && orderWithExtras.loyaltyPointsRedeemed > 0) {
     await loyaltyRepository.restorePoints(
       order.customerId,
       orderWithExtras.loyaltyPointsRedeemed,

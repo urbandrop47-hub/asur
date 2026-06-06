@@ -93,7 +93,7 @@ export const createPaymentOrderController: RequestHandler = asyncHandler(async (
       void (async () => {
         // Zero-amount orders earn 0 loyalty points (nothing paid), but referral bonus still applies.
         const orderReferralCode = (paidOrder as typeof paidOrder & { referralCode?: string }).referralCode;
-        if (orderReferralCode) {
+        if (orderReferralCode && existingOrder.customerId) {
           const referral = await referralRepository.findByCode(orderReferralCode);
           if (referral && referral.userId !== existingOrder.customerId) {
             const wasNew = await referralRepository.markUsed(orderReferralCode, existingOrder.customerId);
@@ -213,41 +213,45 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
   // Fire-and-forget: receipt email + loyalty points earn
   if (paidOrder) {
     void (async () => {
-      const customer = await userRepository.findById(order.customerId);
+      // Guest orders (no customerId) skip loyalty/referral — they have no account
+      const customerId = order.customerId;
+      const customer = customerId ? await userRepository.findById(customerId) : null;
       const customerEmail = customer?.email ?? "";
       const customerName = customer?.name ?? "there";
       if (customerEmail) {
         await sendPaymentReceiptEmail(paidOrder, captured.payment, customerEmail, customerName);
       }
 
-      // Earn 1pt per ₹10 spent (on the amount actually paid after all discounts)
-      const paidAmount = paidOrder.total ?? 0;
-      const pointsEarned = Math.floor(paidAmount / EARN_RATE);
-      if (pointsEarned > 0) {
-        await loyaltyRepository.earnPoints(
-          order.customerId,
-          pointsEarned,
-          `Earned for order #${paidOrder.orderNumber}`,
-          paidOrder.id
-        );
-        await notificationRepository.create({
-          userId: order.customerId,
-          type: "loyalty",
-          title: `You earned ${pointsEarned} points!`,
-          body: `${pointsEarned} loyalty points credited for order #${paidOrder.orderNumber}.`,
-          link: "/account/loyalty"
-        });
-      }
+      if (customerId) {
+        // Earn 1pt per ₹10 spent (on the amount actually paid after all discounts)
+        const paidAmount = paidOrder.total ?? 0;
+        const pointsEarned = Math.floor(paidAmount / EARN_RATE);
+        if (pointsEarned > 0) {
+          await loyaltyRepository.earnPoints(
+            customerId,
+            pointsEarned,
+            `Earned for order #${paidOrder.orderNumber}`,
+            paidOrder.id
+          );
+          await notificationRepository.create({
+            userId: customerId,
+            type: "loyalty",
+            title: `You earned ${pointsEarned} points!`,
+            body: `${pointsEarned} loyalty points credited for order #${paidOrder.orderNumber}.`,
+            link: "/account/loyalty"
+          });
+        }
 
-      // Credit referral bonus now that payment is confirmed — avoids farming via create+cancel
-      const orderReferralCode = (paidOrder as typeof paidOrder & { referralCode?: string }).referralCode;
-      if (orderReferralCode) {
-        const referral = await referralRepository.findByCode(orderReferralCode);
-        if (referral && referral.userId !== order.customerId) {
-          const wasNew = await referralRepository.markUsed(orderReferralCode, order.customerId);
-          if (wasNew) {
-            await loyaltyRepository.earnPoints(referral.userId, 100, `Referral bonus — ${orderReferralCode}`, paidOrder.id, "referral_bonus");
-            await loyaltyRepository.earnPoints(order.customerId, 50, "Referral signup bonus", paidOrder.id, "referral_bonus");
+        // Credit referral bonus now that payment is confirmed — avoids farming via create+cancel
+        const orderReferralCode = (paidOrder as typeof paidOrder & { referralCode?: string }).referralCode;
+        if (orderReferralCode) {
+          const referral = await referralRepository.findByCode(orderReferralCode);
+          if (referral && referral.userId !== customerId) {
+            const wasNew = await referralRepository.markUsed(orderReferralCode, customerId);
+            if (wasNew) {
+              await loyaltyRepository.earnPoints(referral.userId, 100, `Referral bonus — ${orderReferralCode}`, paidOrder.id, "referral_bonus");
+              await loyaltyRepository.earnPoints(customerId, 50, "Referral signup bonus", paidOrder.id, "referral_bonus");
+            }
           }
         }
       }

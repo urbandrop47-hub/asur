@@ -76,7 +76,7 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFA
 # ── Cloudflare R2 ─────────────────────────────────────────────────────────
 R2_ACCOUNT_ID=adb87e8d9e12ebfda971e8bd04272ef5
 R2_PUBLIC_URL=https://pub-36a39403c92148fa9b8d677191e81c7b.r2.dev
-R2_BUCKET=<your bucket name>           # ← still needed
+R2_BUCKET=asur-assets
 R2_ACCESS_KEY=<R2 token access key>    # ← still needed
 R2_SECRET_KEY=<R2 token secret key>    # ← still needed
 
@@ -245,7 +245,7 @@ Without R2, the storefront shows gradient placeholders instead of product photos
 ### 6.1 — Create a bucket
 
 1. [dash.cloudflare.com](https://dash.cloudflare.com) → **R2 Object Storage** → **Create bucket**.
-2. Name it `asur-products`. Region: auto.
+2. Name it `asur-assets`. Region: auto.
 3. Bucket → Settings → **Public access** → Allow access.
 4. Copy the **Public bucket URL** (`https://pub-xxxx.r2.dev`).
 
@@ -254,9 +254,9 @@ Without R2, the storefront shows gradient placeholders instead of product photos
 ### 6.2 — Create an API token
 
 1. R2 → **Manage R2 API tokens** → **Create API token**.
-2. Permissions: **Object Read & Write**, restricted to the `asur-products` bucket.
+2. Permissions: **Object Read & Write**, restricted to the `asur-assets` bucket.
 3. Copy **Access Key ID** → `R2_ACCESS_KEY` and **Secret Access Key** → `R2_SECRET_KEY`.
-4. Bucket name → `R2_BUCKET` (e.g. `asur-products`).
+4. `R2_BUCKET=asur-assets` (already set in `.env`).
 
 Add all four R2 vars to Railway (already have `R2_ACCOUNT_ID` and `R2_PUBLIC_URL` — just need the three above).
 

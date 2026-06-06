@@ -56,7 +56,7 @@ export type SeoMeta = {
   canonical?: string;
 };
 
-export type ProductStatus = "draft" | "active" | "archived";
+export type ProductStatus = "draft" | "active" | "archived" | "preorder";
 export type ProductFit = "regular" | "oversized" | "boxy" | "relaxed";
 
 export type ProductDrop = {
@@ -80,6 +80,8 @@ export type Product = {
   fit?: ProductFit;
   seo?: SeoMeta;
   status: ProductStatus;
+  preorderShipDate?: string;
+  preorderNote?: string;
 };
 
 export type CartItem = {
@@ -127,7 +129,8 @@ export type OrderItem = {
 export type Order = {
   id: ID;
   orderNumber: string;
-  customerId: ID;
+  customerId?: ID;
+  guestPhone?: string;
   items: OrderItem[];
   subtotal: number;
   shipping: number;

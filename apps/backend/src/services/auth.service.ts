@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { AuthSession } from "@asur/types";
 import { verifyFirebaseIdToken } from "../auth/firebase";
 import { userRepository } from "../repositories/user.repository";
+import { orderRepository } from "../repositories/order.repository";
 
 export async function createSession(idToken: string): Promise<AuthSession> {
   const user = await resolveUserFromIdToken(idToken);
@@ -21,5 +22,12 @@ export async function createSession(idToken: string): Promise<AuthSession> {
 
 export async function resolveUserFromIdToken(idToken: string) {
   const identity = await verifyFirebaseIdToken(idToken);
-  return userRepository.upsertFromAuth(identity);
+  const user = await userRepository.upsertFromAuth(identity);
+
+  // Phone sign-in: link any guest orders placed with this number to the new account
+  if (identity.phoneNumber) {
+    void orderRepository.linkGuestOrders(identity.phoneNumber, user.id).catch(() => {});
+  }
+
+  return user;
 }

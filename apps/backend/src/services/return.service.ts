@@ -10,6 +10,7 @@ import { returnRepository } from "../repositories/return.repository";
 import { PaymentModel } from "../models/payment.model";
 import { sendReturnConfirmationEmail, sendRefundInitiatedEmail } from "./email.service";
 import { UserModel } from "../models/user.model";
+import { getOrderPricingConfig } from "../models/site-config.model";
 
 const RETURN_WINDOW_DAYS = 7;
 
@@ -98,7 +99,8 @@ export async function approveReturn(id: string, adminNote?: string): Promise<Ret
   // Using order.discount / order.subtotal rather than deriving a rate from
   // order.tax prevents over-refunding on discounted orders.
   const discountRatio = order.subtotal > 0 ? Math.min(1, (order.discount ?? 0) / order.subtotal) : 0;
-  refundAmount = Math.round(refundAmount * (1 - discountRatio) * 1.18);
+  const { gstRate } = await getOrderPricingConfig();
+  refundAmount = Math.round(refundAmount * (1 - discountRatio) * (1 + gstRate));
 
   // Trigger Razorpay refund — only available in MongoDB mode (PaymentModel is MongoDB-only)
   let refundId: string | undefined;

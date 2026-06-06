@@ -38,7 +38,9 @@ export const getDropBySlugController: RequestHandler = asyncHandler(async (req, 
     res.status(404).json({ success: false, message: "Drop not found" });
     return;
   }
-  res.json({ success: true, data: article });
+  // Strip the actual code — expose only whether a gate exists, not the code itself
+  const { accessCode, ...safe } = article as typeof article & { accessCode?: string };
+  res.json({ success: true, data: { ...safe, requiresAccessCode: !!accessCode } });
 });
 
 export const getLatestArticlesController: RequestHandler = asyncHandler(async (req, res) => {
@@ -96,6 +98,8 @@ const articleWriteSchema = z.object({
   publishedAt: z.string().datetime({ offset: true }).optional(),
   seoTitle: z.string().max(200).optional(),
   seoDescription: z.string().max(500).optional(),
+  /** Drop access code gate — empty string clears it */
+  accessCode: z.string().max(64).optional().or(z.literal("")),
 });
 
 export const adminCreateArticleController: RequestHandler = asyncHandler(async (req, res) => {

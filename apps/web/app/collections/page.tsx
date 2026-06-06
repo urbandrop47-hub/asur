@@ -34,7 +34,7 @@ type Collection = {
 const COLLECTIONS: Collection[] = [
   {
     slug: "void-season",
-    eyebrow: "Drop 001 · SS 2025",
+    eyebrow: "Drop 001 · SS 2026",
     title: "Void Season",
     lore: "For those who move in silence.",
     description: "Minimalist silhouettes built from the space between noise and clarity. Every piece asks the same question — what do you carry when you carry nothing?",
@@ -46,7 +46,7 @@ const COLLECTIONS: Collection[] = [
   },
   {
     slug: "black-mirror",
-    eyebrow: "Capsule · AW 2025",
+    eyebrow: "Capsule · AW 2026",
     title: "Black Mirror",
     lore: "High-contrast. Stark. Unignorable.",
     description: "Graphic-heavy, monochrome-forward. Built for the room that goes quiet when you walk in.",
@@ -57,7 +57,7 @@ const COLLECTIONS: Collection[] = [
   },
   {
     slug: "dust-collective",
-    eyebrow: "Collab · SS 2025",
+    eyebrow: "Collab · SS 2026",
     title: "Dust Collective",
     lore: "The city and the soil.",
     description: "Earth tones meet urban geometry. A collaboration rooted in what the streets taught us.",

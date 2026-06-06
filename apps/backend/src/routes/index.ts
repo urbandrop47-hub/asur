@@ -19,6 +19,7 @@ import { abandonedCartRouter } from "./abandoned-cart.routes";
 import { newsletterRouter } from "./newsletter.routes";
 import { articleRouter } from "./article.routes";
 import { aiRouter } from "./ai.routes";
+import { trackRouter } from "./track.routes";
 
 export const apiRouter: Router = Router();
 
@@ -41,3 +42,4 @@ apiRouter.use(`${API_BASE_PATH}/abandoned-cart`, abandonedCartRouter);
 apiRouter.use(`${API_BASE_PATH}/newsletter`, newsletterRouter);
 apiRouter.use(`${API_BASE_PATH}/articles`, articleRouter);
 apiRouter.use(`${API_BASE_PATH}/ai`, aiRouter);
+apiRouter.use(`${API_BASE_PATH}/track`, trackRouter);

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import type { Order } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { useAuthStore } from "../../../../store/auth-store";
@@ -124,24 +125,52 @@ function OrderTimeline({ status }: { status: string }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function OrderConfirmationPage() {
+  return (
+    <Suspense>
+      <OrderConfirmationPageContent />
+    </Suspense>
+  );
+}
+
+function OrderConfirmationPageContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { session, hydrated } = useAuthStore();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  // Guest phone: from URL param (immediate redirect) or sessionStorage (F5 refresh)
+  const guestPhoneFromUrl = searchParams.get("guestPhone");
+  const guestPhone = guestPhoneFromUrl
+    ?? (typeof sessionStorage !== "undefined" ? sessionStorage.getItem(`guest_order_${id}`) : null);
+  const isGuest = !session && !!guestPhone;
+
   useEffect(() => {
     if (!hydrated) return;
-    if (!session) { router.replace(`/auth?next=/orders/${id}/confirmation`); return; }
     if (!id) return;
-    api.get<{ data: Order }>(`/api/v1/orders/${id}`)
-      .then((r) => setOrder(r.data))
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [id, session, hydrated, router]);
 
-  if (!hydrated || !session) return null;
+    if (session) {
+      // Authenticated user
+      api.get<{ data: Order }>(`/api/v1/orders/${id}`)
+        .then((r) => setOrder(r.data))
+        .catch(() => setNotFound(true))
+        .finally(() => setLoading(false));
+    } else if (guestPhone) {
+      // Guest with phone — fetch using guestPhone query param
+      api.get<{ data: Order }>(`/api/v1/orders/${id}?guestPhone=${encodeURIComponent(guestPhone)}`)
+        .then((r) => setOrder(r.data))
+        .catch(() => setNotFound(true))
+        .finally(() => setLoading(false));
+    } else {
+      // No session, no guest phone — redirect to auth
+      router.replace(`/auth?next=/orders/${id}/confirmation`);
+    }
+  }, [id, session, guestPhone, hydrated, router]);
+
+  if (!hydrated) return null;
+  if (!session && !guestPhone) return null;
 
   if (loading) {
     return (
@@ -181,7 +210,7 @@ export default function OrderConfirmationPage() {
           Your order <strong style={{ color: "var(--text)", fontFamily: "var(--f-mono)", letterSpacing: "0.04em" }}>{order.orderNumber}</strong> has been placed.
         </p>
         <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)" }}>
-          A confirmation email has been sent to you.
+          {isGuest ? "Save your order number to track it." : "A confirmation email has been sent to you."}
         </p>
       </div>
 
@@ -259,24 +288,42 @@ export default function OrderConfirmationPage() {
         </div>
       </div>
 
+      {/* Guest sign-in nudge */}
+      {isGuest && (
+        <div style={{ border: "1px solid rgba(249,115,22,0.2)", borderRadius: 16, padding: "1.1rem 1.25rem", background: "rgba(249,115,22,0.04)" }}>
+          <p style={{ margin: "0 0 0.35rem", fontWeight: 700, fontSize: "0.92rem" }}>Sign in to track this order</p>
+          <p style={{ margin: "0 0 0.85rem", fontSize: "0.82rem", color: "var(--text-muted)" }}>
+            Enter your number <strong>{guestPhone}</strong> via Phone OTP and this order will appear in your account automatically.
+          </p>
+          <Link
+            href={`/auth?next=/orders/${order.id}`}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "0.6rem 1.25rem", background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.3)", color: "var(--accent)", fontWeight: 700, fontSize: "0.85rem", textDecoration: "none" }}
+          >
+            Sign in with phone →
+          </Link>
+        </div>
+      )}
+
       {/* Actions */}
       <div style={{ display: "grid", gap: "0.65rem" }}>
-        <Link
-          href={`/orders/${order.id}`}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            borderRadius: 999, padding: "0.95rem",
-            background: "linear-gradient(135deg, #f97316, #fb7185)",
-            color: "#130f0b", fontWeight: 700, fontSize: "0.95rem",
-            textDecoration: "none", minHeight: 52,
-            boxShadow: "0 6px 24px rgba(249,115,22,0.25)",
-          }}
-        >
-          Track order
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <path d="M2 7h10M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
+        {!isGuest && (
+          <Link
+            href={`/orders/${order.id}`}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              borderRadius: 999, padding: "0.95rem",
+              background: "linear-gradient(135deg, #f97316, #fb7185)",
+              color: "#130f0b", fontWeight: 700, fontSize: "0.95rem",
+              textDecoration: "none", minHeight: 52,
+              boxShadow: "0 6px 24px rgba(249,115,22,0.25)",
+            }}
+          >
+            Track order
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M2 7h10M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
+        )}
         <Link
           href="/products"
           style={{

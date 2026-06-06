@@ -29,11 +29,12 @@ const orderItemSchema = new Schema(
   { _id: false }
 );
 
-const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number; reviewEmailSentAt?: string }>(
+const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number; reviewEmailSentAt?: string; deliveredAt?: string; guestPhone?: string }>(
   {
     id: { type: String, required: true, index: true },
     orderNumber: { type: String, required: true, unique: true, index: true },
-    customerId: { type: String, required: true, index: true },
+    customerId: { type: String, required: false, index: true, sparse: true },
+    guestPhone: { type: String, index: true, sparse: true },
     items: { type: [orderItemSchema], required: true },
     subtotal: { type: Number, required: true },
     shipping: { type: Number, required: true },
@@ -56,6 +57,7 @@ const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPoints
     trackingNumber: { type: String },
     courierName: { type: String },
     reviewEmailSentAt: { type: String }, // set by review-request cron; guards against re-sending
+    deliveredAt: { type: String },       // set when status transitions to "delivered"
     providerOrderId: { type: String },
     shippingAddress: { type: addressSchema, required: true },
     createdAt: { type: String, required: true },
@@ -64,4 +66,4 @@ const orderSchema = new Schema<Order & { providerOrderId?: string; loyaltyPoints
   { versionKey: false }
 );
 
-export const OrderModel = models.Order ?? model<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number; reviewEmailSentAt?: string }>("Order", orderSchema);
+export const OrderModel = models.Order ?? model<Order & { providerOrderId?: string; loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number; reviewEmailSentAt?: string; guestPhone?: string }>("Order", orderSchema);

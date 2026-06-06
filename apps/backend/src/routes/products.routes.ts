@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Router as ExpressRouter, Request, Response, NextFunction } from "express";
-import { getProductController, listProductsController, relatedProductsController, suggestController } from "../controllers/product.controller";
+import { getProductController, listProductsController, relatedProductsController, suggestController, stockStreamController, verifyDropAccessController } from "../controllers/product.controller";
 import { listProductReviewsController } from "../controllers/review.controller";
 
 function swr(maxAge: number, staleWhileRevalidate: number) {
@@ -18,3 +18,5 @@ productsRouter.get("/suggest", swr(600, 1800), suggestController);
 productsRouter.get("/:slug", swr(300, 3600), getProductController);
 productsRouter.get("/:slug/related", swr(600, 1800), relatedProductsController);
 productsRouter.get("/:slug/reviews", swr(900, 3600), listProductReviewsController);
+// SSE — no SWR wrapper (streaming response)
+productsRouter.get("/:slug/stock-stream", stockStreamController);

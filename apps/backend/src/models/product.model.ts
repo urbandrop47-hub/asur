@@ -43,7 +43,9 @@ const productSchema = new Schema<Product>(
     },
     fit: { type: String, enum: productFits },
     seo: { type: Schema.Types.Mixed },
-    status: { type: String, required: true, default: "active" }
+    status: { type: String, required: true, default: "active" },
+    preorderShipDate: { type: String },
+    preorderNote: { type: String }
   },
   { versionKey: false }
 );
