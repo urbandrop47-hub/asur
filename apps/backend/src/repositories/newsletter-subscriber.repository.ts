@@ -42,8 +42,15 @@ export const newsletterRepository = {
   },
 
   async confirm(confirmToken: string): Promise<NewsletterSubscriberDoc | null> {
+    // Tokens older than 24 h are considered expired — re-subscribe to get a fresh link.
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const doc = await NewsletterSubscriberModel.findOneAndUpdate(
-      { confirmToken, unsubscribedAt: { $exists: false } },
+      {
+        confirmToken,
+        unsubscribedAt: { $exists: false },
+        confirmedAt: { $exists: false },   // idempotent — don't re-confirm already confirmed
+        createdAt: { $gte: cutoff },       // 24-h TTL
+      },
       { $set: { confirmedAt: new Date(), updatedAt: new Date() } },
       { new: true }
     ).lean();

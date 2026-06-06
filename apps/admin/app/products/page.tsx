@@ -42,6 +42,7 @@ export default function AdminProductsPage() {
 
   const load = () => {
     setSelected(new Set());
+    setLoading(true);
     api
       .get<{ data: ProductWithSummary[] }>("/api/v1/admin/products")
       .then((r) => setProducts(r.data))
@@ -79,7 +80,7 @@ export default function AdminProductsPage() {
       a.href = url;
       a.download = `asur-products-${isoDay(new Date())}.csv`;
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
       return;
     }
 

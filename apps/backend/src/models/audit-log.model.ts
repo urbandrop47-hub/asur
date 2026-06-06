@@ -8,7 +8,7 @@ export type IAuditLog = {
   resourceId?: string;   // affected document id
   diff?: Record<string, unknown>;
   ip?: string;
-  createdAt: string;
+  createdAt: Date;       // Date type required for MongoDB TTL index to fire
 };
 
 const auditLogSchema = new Schema<IAuditLog>(
@@ -19,7 +19,7 @@ const auditLogSchema = new Schema<IAuditLog>(
     resourceId:   { type: String },
     diff:         { type: Schema.Types.Mixed },
     ip:           { type: String },
-    createdAt:    { type: String, required: true }
+    createdAt:    { type: Date, required: true }
   },
   { versionKey: false }
 );

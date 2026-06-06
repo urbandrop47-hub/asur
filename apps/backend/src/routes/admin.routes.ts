@@ -36,8 +36,10 @@ import {
   getAnalyticsController,
   getRevenueChartController,
   exportOrdersCsvController,
-  getSearchAnalyticsController
+  getSearchAnalyticsController,
+  orderStreamController
 } from "../controllers/analytics.controller";
+import { getVendorPerformanceController } from "../controllers/vendor.controller";
 import {
   listAdminReturnsController,
   getAdminReturnController,
@@ -86,7 +88,9 @@ adminRouter.delete("/products/:id", adminOnlyMiddleware, requirePermission("cata
 
 // Order monitoring
 adminRouter.get("/orders", adminOnlyMiddleware, listAdminOrdersController);
-adminRouter.post("/orders/bulk-status", adminOnlyMiddleware, requirePermission("orders:read"), bulkOrderStatusController);
+adminRouter.post("/orders/bulk-status", adminOnlyMiddleware, requirePermission("fulfillment:write"), bulkOrderStatusController);
+// /orders/stream must be before /:id to avoid param swallowing
+adminRouter.get("/orders/stream", adminOnlyMiddleware, orderStreamController);
 adminRouter.get("/orders/:id", adminOnlyMiddleware, getAdminOrderController);
 adminRouter.get("/orders/:id/invoice", adminOnlyMiddleware, downloadInvoiceController);
 
@@ -106,6 +110,7 @@ adminRouter.post("/orders/:id/cancel", adminOnlyMiddleware, cancelOrderControlle
 adminRouter.get("/analytics", adminOnlyMiddleware, getAnalyticsController);
 adminRouter.get("/analytics/revenue-chart", adminOnlyMiddleware, getRevenueChartController);
 adminRouter.get("/analytics/export-csv", adminOnlyMiddleware, exportOrdersCsvController);
+adminRouter.get("/analytics/search", adminOnlyMiddleware, getSearchAnalyticsController);
 
 // Returns management
 adminRouter.get("/returns", adminOnlyMiddleware, listAdminReturnsController);
@@ -147,3 +152,6 @@ adminRouter.delete("/articles/:id", adminOnlyMiddleware, requirePermission("cont
 
 // Audit log
 adminRouter.get("/audit-log", adminOnlyMiddleware, listAuditLogsController);
+
+// Vendor performance report
+adminRouter.get("/vendor-performance", adminOnlyMiddleware, getVendorPerformanceController);

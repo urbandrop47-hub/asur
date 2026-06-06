@@ -221,9 +221,17 @@ export const bulkProductActionController: RequestHandler = asyncHandler(async (r
     ids.map(async (id) => {
       try {
         if (action === "delete") {
-          await productRepository.deleteById(id);
+          const deleted = await productRepository.deleteById(id);
+          if (!deleted) {
+            failed.push(id);
+            return;
+          }
         } else {
-          await productRepository.update(id, { status: action } as Partial<Product>);
+          const updatedProduct = await productRepository.update(id, { status: action } as Partial<Product>);
+          if (!updatedProduct) {
+            failed.push(id);
+            return;
+          }
         }
         updated++;
       } catch {

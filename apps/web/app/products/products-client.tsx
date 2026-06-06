@@ -18,8 +18,14 @@ import {
   filtersToParams,
   type ProductFilters
 } from "../../lib/filter-params";
+import { track } from "../../lib/analytics";
 
 const PAGE_SIZE = 24;
+
+function parsePageParam(value: string | null): number {
+  const parsed = Number(value ?? 1);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
+}
 
 function ProductSkeleton() {
   return (
@@ -131,7 +137,7 @@ function ProductsPageInner() {
   const searchParams = useSearchParams();
 
   const collectionSlug = searchParams.get("collection") ?? undefined;
-  const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+  const page = parsePageParam(searchParams.get("page"));
   const filters = useMemo(() => filtersFromParams(searchParams), [searchParams]);
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -139,6 +145,9 @@ function ProductsPageInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [vsResults, setVsResults] = useState<{ attrs: { color: string; type: string; keywords: string[] }; products: Product[] } | null>(null);
+  const [vsLoading, setVsLoading] = useState(false);
+  const [vsError, setVsError] = useState<string | null>(null);
 
   // Facets are fetched once (unfiltered, page 1 large limit) so filter options
   // remain complete across all pages — not just the current page's products.
@@ -201,6 +210,36 @@ function ProductsPageInner() {
   const chips = useMemo(() => activeFilterChips(filters), [filters]);
   const activeCount = useMemo(() => countActiveFilters(filters), [filters]);
 
+  async function handleVisualSearch(file: File) {
+    const ACCEPTED = ["image/jpeg", "image/png", "image/webp"] as const;
+    type AcceptedType = typeof ACCEPTED[number];
+    if (!ACCEPTED.includes(file.type as AcceptedType)) {
+      setVsError("Only JPEG, PNG, or WebP images are supported.");
+      return;
+    }
+    setVsLoading(true);
+    setVsError(null);
+    setVsResults(null);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const mediaType = file.type as AcceptedType;
+      const res = await api.post<{ data: { attributes: { color: string; type: string; keywords: string[] }; products: Product[] } }>(
+        "/api/v1/ai/visual-search", { imageBase64: base64, mediaType }
+      );
+      setVsResults({ attrs: res.data.attributes, products: res.data.products });
+      track("visual_search_used", { color: res.data.attributes.color, type: res.data.attributes.type });
+    } catch {
+      setVsError("Visual search failed. Try again with a clearer image.");
+    } finally {
+      setVsLoading(false);
+    }
+  }
+
   const collectionLabel = collectionSlug
     ? collectionSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
     : null;
@@ -260,6 +299,30 @@ function ProductsPageInner() {
               : `${total} result${total !== 1 ? "s" : ""}`}
           </div>
           <div className="products-toolbar-right">
+            {/* Visual search button */}
+            <label
+              title="Search by image"
+              aria-label="Search by image"
+              style={{
+                display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.45rem 0.8rem",
+                borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)",
+                background: vsLoading ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.04)",
+                color: vsLoading ? "var(--accent)" : "var(--text-muted)", fontSize: "0.8rem",
+                cursor: vsLoading ? "wait" : "pointer", fontWeight: 600, whiteSpace: "nowrap",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
+              {vsLoading ? "Searching…" : "Search by image"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: "none" }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVisualSearch(f); e.target.value = ""; }}
+              />
+            </label>
             <select
               className="sort-select"
               value={filters.sort}
@@ -282,6 +345,29 @@ function ProductsPageInner() {
               {activeCount > 0 && <span className="filter-btn-badge">{activeCount}</span>}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Visual search results ── */}
+      {(vsResults || vsError) && (
+        <div style={{ border: "1px solid rgba(249,115,22,0.2)", borderRadius: 16, padding: "1.1rem 1.25rem", background: "rgba(249,115,22,0.04)", animation: "fadeInUp 0.25s ease both" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 700, color: "var(--accent)" }}>
+              {vsResults ? `Visual search — ${vsResults.attrs.color} ${vsResults.attrs.type}` : "Visual search"}
+            </p>
+            <button onClick={() => { setVsResults(null); setVsError(null); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.8rem" }}>✕ Clear</button>
+          </div>
+          {vsError && <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--danger)" }}>{vsError}</p>}
+          {vsResults && vsResults.products.length === 0 && (
+            <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>No products matched the image. Try a different photo.</p>
+          )}
+          {vsResults && vsResults.products.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "0.75rem" }}>
+              {vsResults.products.map((p) => (
+                <ProductCard key={p.slug} product={p} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -316,7 +402,7 @@ function ProductsPageInner() {
           ? Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={i} />)
           : products.map((product, i) => (
               <div key={product.slug} className="animate-in" style={{ animationDelay: `${Math.min(i * 0.06, 0.5)}s` }}>
-                <ProductCard product={product} />
+                <ProductCard product={product} priority={i < 2} />
               </div>
             ))}
       </div>

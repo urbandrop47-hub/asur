@@ -9,6 +9,12 @@ const subscribeSchema = z.object({
   source: z.enum(["footer", "popup", "checkout"]).default("footer"),
 });
 
+function parsePositiveLimit(value: unknown, fallback: number, max: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(1, Math.floor(parsed)));
+}
+
 export const subscribeNewsletter: RequestHandler = asyncHandler(async (req, res) => {
   const parsed = subscribeSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -57,8 +63,8 @@ export const unsubscribeNewsletter: RequestHandler = asyncHandler(async (req, re
 // ── Admin endpoints ──────────────────────────────────────────────────
 
 export const adminListSubscribers: RequestHandler = asyncHandler(async (req, res) => {
-  const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+  const page = parsePositiveLimit(req.query.page, 1, Number.POSITIVE_INFINITY);
+  const limit = parsePositiveLimit(req.query.limit, 50, 100);
   const { docs, total } = await newsletterRepository.listConfirmed(page, limit);
   res.json({ success: true, data: docs, total, page, limit });
 });

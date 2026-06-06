@@ -10,7 +10,7 @@ export const auditLogRepository = {
     await AuditLogModel.create({
       _id: createId(),
       ...entry,
-      createdAt: new Date().toISOString()
+      createdAt: new Date()   // Date — required for MongoDB TTL to fire
     });
   },
 
@@ -30,7 +30,10 @@ export const auditLogRepository = {
   }
 };
 
-/** Fire-and-forget audit write — never throws, never blocks the response. */
+/** Fire-and-forget audit write — never throws, never blocks the response.
+ *  adminId is read from the ADMIN_ID env var so different deployments can be
+ *  distinguished in the log (e.g. ADMIN_ID=ops-team, ADMIN_ID=staging).
+ */
 export function logAudit(
   action: string,
   resourceType: string,
@@ -38,8 +41,9 @@ export function logAudit(
   ip: string | undefined,
   diff?: Record<string, unknown>
 ): void {
+  const adminId = (process.env.ADMIN_ID ?? "").trim() || "admin";
   auditLogRepository.create({
-    adminId: "admin",
+    adminId,
     action,
     resourceType,
     resourceId,

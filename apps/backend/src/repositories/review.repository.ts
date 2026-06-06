@@ -9,6 +9,7 @@ export type CreateReviewInput = {
   productId: string;
   rating: number;
   body: string;
+  images?: string[];
 };
 
 export type ReviewAggregate = {
@@ -30,6 +31,11 @@ export const reviewRepository = {
       rating: input.rating,
       body: input.body,
       approved: false,
+      verifiedPurchase: true,
+      helpfulVotes: 0,
+      unhelpfulVotes: 0,
+      helpfulVoters: [],
+      images: input.images ?? [],
       createdAt: now
     };
 
@@ -120,5 +126,26 @@ export const reviewRepository = {
       return ReviewModel.find({ customerId }).sort({ createdAt: -1 }).lean<Review[]>().exec();
     }
     return mockReviews.filter((r) => r.customerId === customerId);
+  },
+
+  async voteHelpful(id: string, customerId: string, vote: "up" | "down"): Promise<Review | null> {
+    if (hasMongoConnection) {
+      const existing = await ReviewModel.findOne({ id }).lean<Review>().exec();
+      if (!existing) return null;
+      // Idempotent: ignore if already voted
+      if (existing.helpfulVoters.includes(customerId)) return existing;
+      const inc = vote === "up" ? { helpfulVotes: 1 } : { unhelpfulVotes: 1 };
+      return ReviewModel.findOneAndUpdate(
+        { id },
+        { $inc: inc, $push: { helpfulVoters: customerId } },
+        { new: true }
+      ).lean<Review>().exec();
+    }
+    const r = mockReviews.find((rv) => rv.id === id);
+    if (!r || r.helpfulVoters.includes(customerId)) return r ?? null;
+    if (vote === "up") r.helpfulVotes++;
+    else r.unhelpfulVotes++;
+    r.helpfulVoters.push(customerId);
+    return r;
   }
 };

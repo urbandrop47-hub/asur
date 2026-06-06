@@ -12,7 +12,9 @@ import { env } from "../config/env";
  */
 export const adminOnlyMiddleware: RequestHandler = (req, res, next) => {
   const authorization = req.headers.authorization;
-  const token = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  // Also accept ?token= for SSE endpoints (EventSource can't send headers)
+  const queryToken = typeof req.query.token === "string" ? req.query.token.trim() : "";
+  const token = (authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : "") || queryToken;
 
   if (!token) {
     res.status(401).json({ success: false, message: "Admin token required" });

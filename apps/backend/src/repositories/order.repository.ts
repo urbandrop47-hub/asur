@@ -190,6 +190,27 @@ export const orderRepository = {
     return order ?? null;
   },
 
+  async updateTracking(id: string, trackingNumber: string, courierName: string) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOneAndUpdate(
+        { id },
+        { trackingNumber, courierName, updatedAt: new Date().toISOString() },
+        { new: true }
+      ).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order;
+    }
+    const order = mockStore.orders.find((o) => o.id === id);
+    if (order) {
+      (order as Order & { trackingNumber?: string; courierName?: string }).trackingNumber = trackingNumber;
+      (order as Order & { courierName?: string }).courierName = courierName;
+      order.updatedAt = new Date().toISOString();
+    }
+    return order ?? null;
+  },
+
   async updateFulfillmentStatus(id: string, fulfillmentStatus: FulfillmentStatus) {
     if (hasMongoConnection) {
       const doc = await OrderModel.findOneAndUpdate(
@@ -359,5 +380,16 @@ export const orderRepository = {
 
     mockStore.payments.push(paymentData);
     return paymentData;
+  },
+
+  async findPaymentByOrderId(orderId: string) {
+    if (hasMongoConnection) {
+      const doc = await PaymentModel.findOne({ orderId }).sort({ createdAt: -1 }).lean<Payment>().exec();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Payment;
+    }
+    return mockStore.payments.find((p) => p.orderId === orderId) ?? null;
   }
 };

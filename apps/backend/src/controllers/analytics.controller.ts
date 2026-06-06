@@ -1,4 +1,4 @@
-import type { RequestHandler } from "express";
+import type { Request, Response, RequestHandler } from "express";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
 import { hasMongoConnection } from "../config/env";
@@ -139,17 +139,19 @@ export const getAnalyticsController: RequestHandler = asyncHandler(async (_req, 
 });
 
 // ── GET /api/v1/admin/analytics/revenue-chart ─────────────────────────────────
-export const getRevenueChartController: RequestHandler = asyncHandler(async (_req, res) => {
-  // Build list of the last 30 UTC day labels (matches isoDay which uses UTC)
+export const getRevenueChartController: RequestHandler = asyncHandler(async (req, res) => {
+  const numDays = Math.max(7, Math.min(90, Number(req.query.days) || 30));
+
+  // Build list of the last N UTC day labels (matches isoDay which uses UTC)
   const days: string[] = [];
-  for (let i = 29; i >= 0; i--) {
+  for (let i = numDays - 1; i >= 0; i--) {
     const d = new Date();
     d.setUTCDate(d.getUTCDate() - i);
     days.push(isoDay(d));
   }
 
   if (hasMongoConnection) {
-    const cutoff = daysAgo(30).toISOString();
+    const cutoff = daysAgo(numDays).toISOString();
     const agg = await OrderModel.aggregate([
       { $match: { status: { $in: PAID_STATUSES }, createdAt: { $gte: cutoff } } },
       { $group: { _id: { $substr: ["$createdAt", 0, 10] }, revenue: { $sum: "$total" }, count: { $sum: 1 } } }
@@ -257,3 +259,53 @@ export const exportOrdersCsvController: RequestHandler = asyncHandler(async (_re
   res.setHeader("Content-Disposition", `attachment; filename="asur-orders-${isoDay(new Date())}.csv"`);
   res.status(200).send(csv);
 });
+
+// ── GET /api/v1/admin/orders/stream (SSE) ─────────────────────────────────────
+export function orderStreamController(req: Request, res: Response): void {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  let lastCheckedAt = new Date().toISOString();
+  let lastCheckedId = "";
+
+  // Heartbeat every 25s to keep connection alive through proxies
+  const heartbeat = setInterval(() => {
+    res.write(":heartbeat\n\n");
+  }, 25000);
+
+  const poll = setInterval(async () => {
+    try {
+      if (!hasMongoConnection) return;
+      const newOrders = await OrderModel.find({
+        $or: [
+          { createdAt: { $gt: lastCheckedAt } },
+          ...(lastCheckedId ? [{ createdAt: lastCheckedAt, _id: { $gt: lastCheckedId } }] : [])
+        ]
+      })
+        .sort({ createdAt: 1, _id: 1 })
+        .lean();
+      if (newOrders.length > 0) {
+        const newest = newOrders[newOrders.length - 1];
+        lastCheckedAt = String(newest.createdAt ?? lastCheckedAt);
+        lastCheckedId = String(newest._id ?? lastCheckedId);
+        const payload = newOrders.map((o) => ({
+          id: String(o._id),
+          orderNumber: (o as { orderNumber?: string }).orderNumber ?? String(o._id).slice(-6).toUpperCase(),
+          total: (o as { total?: number }).total ?? 0,
+          status: (o as { status?: string }).status ?? "pending_payment",
+        }));
+        res.write(`data: ${JSON.stringify({ type: "new_orders", orders: payload })}\n\n`);
+      }
+    } catch {
+      // ignore transient poll errors
+    }
+  }, 5000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    clearInterval(poll);
+  });
+}

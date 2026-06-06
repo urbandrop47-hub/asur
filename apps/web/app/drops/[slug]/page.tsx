@@ -82,7 +82,7 @@ function NotifyMeForm() {
     try {
       const res = await api.post<{ success: boolean; alreadySubscribed: boolean }>(
         "/api/v1/newsletter/subscribe",
-        { email: trimmed, source: "popup" }
+        { email: trimmed, source: "drop_notify" }
       );
       setStatus(res.alreadySubscribed ? "already" : "done");
     } catch {
@@ -208,11 +208,22 @@ export default function DropPage() {
         )}
       </div>
 
-      {/* Excerpt */}
+      {/* Excerpt / narrative */}
       {article.excerpt && (
-        <p style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 3rem", fontSize: "1rem", color: "rgba(246,241,234,0.6)", lineHeight: 1.7 }}>
-          {article.excerpt}
-        </p>
+        <div style={{ maxWidth: 600, margin: "0 auto 3rem" }}>
+          <p style={{ textAlign: "center", fontSize: "1.05rem", color: "rgba(246,241,234,0.65)", lineHeight: 1.8, fontStyle: "italic", margin: "0 0 1.5rem" }}>
+            &ldquo;{article.excerpt}&rdquo;
+          </p>
+          {article.tags.length > 0 && (
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "center" }}>
+              {article.tags.map((tag) => (
+                <span key={tag} style={{ padding: "3px 10px", borderRadius: 999, fontSize: "0.68rem", fontWeight: 600, background: "rgba(255,255,255,0.06)", color: "rgba(246,241,234,0.45)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Products or Notify Me */}

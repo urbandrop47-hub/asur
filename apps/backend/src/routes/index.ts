@@ -18,6 +18,7 @@ import { giftCardRouter } from "./gift-card.routes";
 import { abandonedCartRouter } from "./abandoned-cart.routes";
 import { newsletterRouter } from "./newsletter.routes";
 import { articleRouter } from "./article.routes";
+import { aiRouter } from "./ai.routes";
 
 export const apiRouter: Router = Router();
 
@@ -39,3 +40,4 @@ apiRouter.use(`${API_BASE_PATH}/gift-cards`, giftCardRouter);
 apiRouter.use(`${API_BASE_PATH}/abandoned-cart`, abandonedCartRouter);
 apiRouter.use(`${API_BASE_PATH}/newsletter`, newsletterRouter);
 apiRouter.use(`${API_BASE_PATH}/articles`, articleRouter);
+apiRouter.use(`${API_BASE_PATH}/ai`, aiRouter);

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Router as ExpressRouter } from "express";
+import type { Router as ExpressRouter, Request, Response, NextFunction } from "express";
 import {
   listArticlesController,
   getArticleBySlugController,
@@ -8,10 +8,17 @@ import {
   getRelatedArticlesController,
 } from "../controllers/article.controller";
 
+function swr(maxAge: number, staleWhileRevalidate: number) {
+  return (_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader("Cache-Control", `public, max-age=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`);
+    next();
+  };
+}
+
 export const articleRouter: ExpressRouter = Router();
 
-articleRouter.get("/", listArticlesController);
-articleRouter.get("/latest", getLatestArticlesController);
-articleRouter.get("/drops/:slug", getDropBySlugController);
-articleRouter.get("/:slug", getArticleBySlugController);
-articleRouter.get("/:slug/related", getRelatedArticlesController);
+articleRouter.get("/", swr(600, 3600), listArticlesController);
+articleRouter.get("/latest", swr(900, 3600), getLatestArticlesController);
+articleRouter.get("/drops/:slug", swr(900, 7200), getDropBySlugController);
+articleRouter.get("/:slug", swr(900, 7200), getArticleBySlugController);
+articleRouter.get("/:slug/related", swr(600, 3600), getRelatedArticlesController);

@@ -6,13 +6,21 @@ import { AppError } from "../lib/errors";
 import { reviewRepository } from "../repositories/review.repository";
 import { orderRepository } from "../repositories/order.repository";
 import { productRepository } from "../repositories/product.repository";
+import { getReviewImageUploadUrl } from "../services/r2-upload.service";
 
 const createReviewSchema = z.object({
   productId: z.string().min(1),
   orderId: z.string().min(1),
   rating: z.number().int().min(1).max(5),
-  body: z.string().min(10, "Review must be at least 10 characters").max(2000)
+  body: z.string().min(10, "Review must be at least 10 characters").max(2000),
+  images: z.array(z.string().url()).max(3).optional().default([])
 });
+
+function parsePageParam(value: unknown, fallback: number, max = Number.POSITIVE_INFINITY) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(1, Math.floor(parsed)));
+}
 
 // POST /api/v1/reviews — authenticated customer submits a review
 export const createReviewController: RequestHandler = asyncHandler(async (req, res) => {
@@ -48,7 +56,8 @@ export const createReviewController: RequestHandler = asyncHandler(async (req, r
     customerId,
     productId: input.productId,
     rating: input.rating,
-    body: input.body
+    body: input.body,
+    images: input.images
   });
 
   sendSuccess(res, review, "Review submitted — it will appear once approved", 201);
@@ -57,8 +66,8 @@ export const createReviewController: RequestHandler = asyncHandler(async (req, r
 // GET /api/v1/products/:slug/reviews — public, paginated
 export const listProductReviewsController: RequestHandler = asyncHandler(async (req, res) => {
   const slug = Array.isArray(req.params.slug) ? req.params.slug[0] : req.params.slug;
-  const page = Math.max(1, Number(req.query.page ?? 1));
-  const pageSize = Math.min(50, Math.max(1, Number(req.query.pageSize ?? 10)));
+  const page = parsePageParam(req.query.page, 1);
+  const pageSize = parsePageParam(req.query.pageSize, 10, 50);
 
   const product = await productRepository.findBySlug(slug);
   if (!product) {
@@ -73,7 +82,7 @@ export const listProductReviewsController: RequestHandler = asyncHandler(async (
 // Admin: GET /api/v1/admin/reviews — all reviews for moderation
 // ?filter=pending → unapproved only; ?filter=approved → approved only; no param → all
 export const listAdminReviewsController: RequestHandler = asyncHandler(async (req, res) => {
-  const page = Math.max(1, Number(req.query.page ?? 1));
+  const page = parsePageParam(req.query.page, 1);
   const filter = req.query.filter as string | undefined;
   const approvedOnly =
     filter === "approved" ? true :
@@ -104,4 +113,23 @@ export const moderateReviewController: RequestHandler = asyncHandler(async (req,
     }
     sendSuccess(res, null, "Review rejected and removed");
   }
+});
+
+// POST /api/v1/reviews/:id/helpful — authenticated, vote a review helpful/unhelpful
+export const voteHelpfulController: RequestHandler = asyncHandler(async (req, res) => {
+  const customerId: string = res.locals.user.id;
+  const reviewId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const { vote } = z.object({ vote: z.enum(["up", "down"]) }).parse(req.body);
+  const review = await reviewRepository.voteHelpful(reviewId, customerId, vote);
+  if (!review) throw new AppError(404, "Review not found");
+  sendSuccess(res, review, "Vote recorded");
+});
+
+// POST /api/v1/reviews/upload-url — authenticated, get pre-signed R2 upload URL for review image
+export const getReviewUploadUrlController: RequestHandler = asyncHandler(async (req, res) => {
+  const { contentType } = z.object({
+    contentType: z.enum(["image/jpeg", "image/png", "image/webp"])
+  }).parse(req.body);
+  const result = await getReviewImageUploadUrl(contentType);
+  sendSuccess(res, result, "Upload URL generated");
 });

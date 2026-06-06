@@ -8,6 +8,7 @@ import type { Product } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { api } from "../../lib/api";
 import { useCompareStore } from "../../store/compare-store";
+import { getLowestVariantPrice, getTotalStock, hasVariants } from "../../lib/product-utils";
 
 function CompareContent() {
   const searchParams = useSearchParams();
@@ -86,7 +87,12 @@ function CompareContent() {
       label: "Price",
       getValue: (p) => (
         <strong style={{ fontSize: "1.05rem", color: "var(--accent)" }}>
-          {p.variants.length > 1 ? "from " : ""}{formatCurrency(Math.min(...p.variants.map((v) => v.price)))}
+          {hasVariants(p)
+            ? <>
+                {p.variants.length > 1 ? "from " : ""}
+                {getLowestVariantPrice(p) !== null ? formatCurrency(getLowestVariantPrice(p)!) : "Price unavailable"}
+              </>
+            : "Coming soon"}
         </strong>
       )
     },
@@ -117,8 +123,10 @@ function CompareContent() {
     {
       label: "Availability",
       getValue: (p) => {
-        const totalStock = p.variants.reduce((s, v) => s + v.stock, 0);
-        return totalStock === 0
+        const totalStock = getTotalStock(p);
+        return !hasVariants(p)
+          ? <span style={{ color: "var(--text-muted)", fontSize: "0.83rem", fontWeight: 600 }}>Coming soon</span>
+          : totalStock === 0
           ? <span style={{ color: "var(--danger)", fontSize: "0.83rem", fontWeight: 600 }}>Sold out</span>
           : totalStock < 5
             ? <span style={{ color: "var(--warning)", fontSize: "0.83rem", fontWeight: 600 }}>Low stock ({totalStock})</span>
@@ -173,7 +181,7 @@ function CompareContent() {
             Shop
           </div>
           {validProducts.map((p) => {
-            const inStock = p.variants.some((v) => v.stock > 0);
+            const inStock = hasVariants(p) && p.variants.some((v) => v.stock > 0);
             return (
               <div key={`shop-${p.id}`} style={{ padding: "1rem 0.5rem", display: "flex", alignItems: "center" }}>
                 <Link
@@ -186,7 +194,7 @@ function CompareContent() {
                     textDecoration: "none", pointerEvents: inStock ? "auto" : "none"
                   }}
                 >
-                  {inStock ? "Shop now →" : "Sold out"}
+                  {!hasVariants(p) ? "Coming soon" : inStock ? "Shop now →" : "Sold out"}
                 </Link>
               </div>
             );

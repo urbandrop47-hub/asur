@@ -110,17 +110,6 @@ export async function createOrder(input: CreateOrderInput) {
     throw new AppError(409, `Item sold out — another order just took the last unit for SKU ${failed.variantSku}`);
   }
 
-  // Fire-and-forget low-stock alerts — reuse the already-fetched product/variant data
-  void (async () => {
-    for (const item of verifiedItems) {
-      // Post-decrement stock = pre-decrement stock minus quantity ordered
-      const postDecrementStock = item._variant.stock - item.quantity;
-      if (postDecrementStock < LOW_STOCK_THRESHOLD && postDecrementStock >= 0) {
-        await sendLowStockAlertEmail(item._product.title, item.variantSku, postDecrementStock);
-      }
-    }
-  })();
-
   // Atomically increment coupon usage count now that the order is confirmed
   if (couponResult) {
     const applied = await applyCoupon(couponResult.coupon.code, couponResult.coupon.usageLimit);
@@ -172,6 +161,17 @@ export async function createOrder(input: CreateOrderInput) {
       throw new AppError(409, "Insufficient loyalty points — another redemption was processed simultaneously");
     }
   }
+
+  // Fire-and-forget low-stock alerts only after all reversible checkout checks
+  // have succeeded, so abandoned/failed orders do not trigger false warnings.
+  void (async () => {
+    for (const item of verifiedItems) {
+      const postDecrementStock = item._variant.stock - item.quantity;
+      if (postDecrementStock < LOW_STOCK_THRESHOLD && postDecrementStock >= 0) {
+        await sendLowStockAlertEmail(item._product.title, item.variantSku, postDecrementStock);
+      }
+    }
+  })();
 
   const vendorTask = await orderRepository.createVendorTask(order.id);
 

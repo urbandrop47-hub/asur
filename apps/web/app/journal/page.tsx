@@ -20,6 +20,14 @@ type Tab = "all" | "lookbook" | "blog";
 
 const TYPE_LABELS: Record<Tab, string> = { all: "All", lookbook: "Lookbooks", blog: "Blog" };
 
+// Reading time can't be computed from the excerpt alone (always 1 min).
+// Render it only when the API exposes a wordCount field.
+function readingTime(wordCount?: number): string | null {
+  if (!wordCount || wordCount < 100) return null;
+  const mins = Math.max(1, Math.ceil(wordCount / 200));
+  return `${mins} min read`;
+}
+
 function ArticleCard({ article, hero = false }: { article: Article; hero?: boolean }) {
   const date = new Date(article.publishedAt).toLocaleDateString("en-IN", {
     day: "2-digit", month: "short", year: "numeric"
@@ -60,12 +68,20 @@ function ArticleCard({ article, hero = false }: { article: Article; hero?: boole
 
         {/* Content */}
         <div style={{ padding: hero ? "1.5rem 1.75rem" : "1.1rem 1.25rem" }}>
-          <p style={{ margin: "0 0 0.5rem", fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--f-mono)" }}>{date}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+            <p style={{ margin: 0, fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "var(--f-mono)" }}>{date}</p>
+            {readingTime((article as Article & { wordCount?: number }).wordCount) && (
+              <>
+                <span style={{ fontSize: "0.72rem", color: "rgba(246,241,234,0.25)" }}>·</span>
+                <p style={{ margin: 0, fontSize: "0.72rem", color: "rgba(246,241,234,0.35)" }}>{readingTime((article as Article & { wordCount?: number }).wordCount)}</p>
+              </>
+            )}
+          </div>
           <h2 style={{ margin: "0 0 0.6rem", fontSize: hero ? "1.4rem" : "1rem", fontWeight: 800, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
             {article.title}
           </h2>
           {article.excerpt && (
-            <p style={{ margin: 0, fontSize: "0.88rem", color: "rgba(246,241,234,0.55)", lineHeight: 1.65, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            <p style={{ margin: 0, fontSize: "0.88rem", color: "rgba(246,241,234,0.55)", lineHeight: 1.65, display: "-webkit-box", WebkitLineClamp: hero ? 3 : 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
               {article.excerpt}
             </p>
           )}
@@ -117,7 +133,10 @@ export default function JournalPage() {
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "2rem 1rem" }}>
       {/* Header */}
       <div style={{ marginBottom: "2rem" }}>
-        <h1 style={{ margin: "0 0 0.3rem", fontSize: "clamp(1.8rem, 4vw, 2.4rem)", fontWeight: 900, letterSpacing: "-0.02em" }}>Journal</h1>
+        <p style={{ margin: "0 0 0.6rem", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(249,115,22,0.8)", fontFamily: "var(--f-mono)" }}>
+          Editorial
+        </p>
+        <h1 style={{ margin: "0 0 0.4rem", fontSize: "clamp(1.8rem, 4vw, 2.4rem)", fontWeight: 900, letterSpacing: "-0.02em" }}>Journal</h1>
         <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>Stories, lookbooks, and drop culture from ASUR.</p>
       </div>
 

@@ -30,10 +30,10 @@ type LoyaltyData = {
   minRedeem: number;
 };
 
-const TIER_CONFIG: Record<LoyaltyTier, { color: string; next: number | null; label: string }> = {
-  Bronze: { color: "#cd7f32", next: 500, label: "Bronze" },
-  Silver: { color: "#c0c0c0", next: 2000, label: "Silver" },
-  Gold: { color: "#f97316", next: null, label: "Gold" }
+const TIER_CONFIG: Record<LoyaltyTier, { color: string; base: number; next: number | null; label: string }> = {
+  Bronze: { color: "#cd7f32", base: 0,   next: 500,  label: "Bronze" },
+  Silver: { color: "#c0c0c0", base: 500, next: 2000, label: "Silver" },
+  Gold:   { color: "#f97316", base: 2000, next: null, label: "Gold" }
 };
 
 const TX_ICON: Record<LoyaltyTransaction["type"], string> = {
@@ -73,8 +73,9 @@ export default function LoyaltyPage() {
   const tier = data?.account.tier ?? "Bronze";
   const tierCfg = TIER_CONFIG[tier];
   const lifetimePts = data?.account.lifetimePoints ?? 0;
+  // Progress within current tier: (pts above tier base) / (pts needed to reach next tier)
   const progressPct = tierCfg.next
-    ? Math.min(100, Math.round((lifetimePts / tierCfg.next) * 100))
+    ? Math.min(100, Math.round(((lifetimePts - tierCfg.base) / (tierCfg.next - tierCfg.base)) * 100))
     : 100;
 
   return (

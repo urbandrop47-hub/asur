@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Order } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
 import { api } from "../../lib/api";
+import { readAdminToken } from "../../lib/auth-storage";
 
 const STATUS_CLASS: Record<string, string> = {
   pending_payment: "badge warning",
@@ -17,8 +18,17 @@ const STATUS_CLASS: Record<string, string> = {
   draft: "badge draft"
 };
 
+const KANBAN_COLS: { status: string; label: string; next?: string }[] = [
+  { status: "paid", label: "Paid", next: "processing" },
+  { status: "processing", label: "Processing", next: "packed" },
+  { status: "packed", label: "Packed", next: "shipped" },
+  { status: "shipped", label: "Shipped", next: "delivered" },
+  { status: "delivered", label: "Delivered" },
+];
+
 type Tab = "all" | "paid" | "processing" | "shipped";
 type BulkAction = "shipped" | "delivered" | "export-csv";
+type ViewMode = "table" | "kanban";
 
 function isoDay(d: Date) { return d.toISOString().slice(0, 10); }
 
@@ -35,6 +45,90 @@ function ordersToCSV(orders: Order[]): string {
   return [header.join(","), ...rows].join("\r\n");
 }
 
+function KanbanView({ orders, onStatusChange }: { orders: Order[]; onStatusChange: (id: string, status: string) => Promise<void> }) {
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+
+  function handleDragStart(e: React.DragEvent, orderId: string) {
+    setDragging(orderId);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDrop(e: React.DragEvent, targetStatus: string) {
+    e.preventDefault();
+    if (!dragging) return;
+    const order = orders.find((o) => o.id === dragging);
+    if (order && order.status !== targetStatus) {
+      onStatusChange(dragging, targetStatus).catch(() => {});
+    }
+    setDragging(null);
+    setOver(null);
+  }
+
+  return (
+    <div className="kanban-board">
+      {KANBAN_COLS.map((col) => {
+        const colOrders = orders.filter((o) => o.status === col.status);
+        const isOver = over === col.status;
+        return (
+          <div
+            key={col.status}
+            className={`kanban-col${isOver ? " drag-over" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setOver(col.status); }}
+            onDragLeave={() => setOver(null)}
+            onDrop={(e) => handleDrop(e, col.status)}
+          >
+            <div className="kanban-col-header">
+              <span className={`badge ${STATUS_CLASS[col.status]?.replace("badge ", "") ?? ""}`} style={{ fontSize: "0.68rem" }}>
+                {col.label}
+              </span>
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginLeft: "auto" }}>
+                {colOrders.length}
+              </span>
+            </div>
+            <div className="kanban-cards">
+              {colOrders.length === 0 ? (
+                <div className="kanban-empty">Drop here</div>
+              ) : (
+                colOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, order.id)}
+                    onDragEnd={() => { setDragging(null); setOver(null); }}
+                    className={`kanban-card${dragging === order.id ? " dragging" : ""}`}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.35rem" }}>
+                      <Link href={`/orders/${order.id}`} style={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--text)" }}>
+                        {order.orderNumber}
+                      </Link>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 600 }}>{formatCurrency(order.total)}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                      {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      {" · "}
+                      {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                    </p>
+                    {col.next && (
+                      <button
+                        onClick={() => onStatusChange(order.id, col.next!).catch(() => {})}
+                        className="kanban-advance-btn"
+                        title={`Move to ${col.next}`}
+                      >
+                        → {col.next}
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,11 +136,17 @@ export default function AdminOrdersPage() {
   const [tab, setTab] = useState<Tab>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [view, setView] = useState<ViewMode>("table");
+  const [newOrderCount, setNewOrderCount] = useState(0);
+  const sseRef = useRef<EventSource | null>(null);
+  const seenStreamOrders = useRef<Set<string>>(new Set());
 
   const load = () => {
     setLoading(true);
     setError(false);
     setSelected(new Set());
+    seenStreamOrders.current.clear();
+    setNewOrderCount(0);
     api
       .get<{ data: Order[] }>("/api/v1/admin/orders")
       .then((r) => setOrders(r.data ?? []))
@@ -55,6 +155,39 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // SSE real-time feed
+  useEffect(() => {
+    const token = readAdminToken();
+    if (!token) return;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+    // EventSource doesn't support custom headers; pass token as query param for SSE
+    const es = new EventSource(`${baseUrl}/api/v1/admin/orders/stream?token=${encodeURIComponent(token)}`);
+    sseRef.current = es;
+    es.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data as string) as { type: string; orders: { id: string }[] };
+        if (msg.type === "new_orders") {
+          const unseen = msg.orders.filter((order) => {
+            if (seenStreamOrders.current.has(order.id)) return false;
+            seenStreamOrders.current.add(order.id);
+            return true;
+          });
+          if (unseen.length > 0) {
+            setNewOrderCount((n) => n + unseen.length);
+          }
+        }
+      } catch {
+        // ignore malformed events
+      }
+    };
+    return () => { es.close(); sseRef.current = null; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSingleStatusChange(id: string, status: string) {
+    await api.post("/api/v1/admin/orders/bulk-status", { ids: [id], status });
+    load();
+  }
 
   const filtered =
     tab === "all" ? orders
@@ -88,7 +221,7 @@ export default function AdminOrdersPage() {
       a.href = url;
       a.download = `asur-orders-${isoDay(new Date())}.csv`;
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
       return;
     }
 
@@ -110,12 +243,41 @@ export default function AdminOrdersPage() {
           <h1>Orders</h1>
           <p style={{ margin: "0.2rem 0 0", fontSize: "0.85rem", color: "var(--text-muted)" }}>
             {orders.length} total
+            {newOrderCount > 0 && (
+              <button
+                onClick={() => { setNewOrderCount(0); load(); }}
+                style={{
+                  marginLeft: "0.75rem", padding: "1px 8px", borderRadius: 999,
+                  background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.3)",
+                  color: "var(--success)", fontSize: "0.72rem", fontWeight: 700,
+                  cursor: "pointer", fontFamily: "inherit"
+                }}
+              >
+                ↑ {newOrderCount} new — refresh
+              </button>
+            )}
           </p>
+        </div>
+        {/* View toggle */}
+        <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.05)", borderRadius: 999, padding: 2 }}>
+          {(["table", "kanban"] as ViewMode[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              style={{
+                padding: "0.3rem 0.85rem", borderRadius: 999, fontSize: "0.78rem", fontWeight: 600,
+                background: view === v ? "rgba(56,189,248,0.15)" : "transparent",
+                color: view === v ? "var(--accent)" : "var(--text-muted)",
+                border: view === v ? "1px solid rgba(56,189,248,0.3)" : "1px solid transparent",
+                cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize"
+              }}
+            >{v}</button>
+          ))}
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: "flex", gap: "0.4rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
+      {/* Filter tabs — only meaningful in table view */}
+      <div style={{ display: view === "kanban" ? "none" : "flex", gap: "0.4rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
         {(["all", "paid", "processing", "shipped"] as Tab[]).map((t) => (
           <button
             key={t}
@@ -163,22 +325,27 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {loading ? (
+      {/* Kanban view */}
+      {view === "kanban" && !loading && !error && (
+        <KanbanView orders={orders} onStatusChange={handleSingleStatusChange} />
+      )}
+
+      {view === "table" && loading ? (
         <div style={{ display: "grid", gap: "0.6rem" }}>
           {[1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 52 }} />)}
         </div>
-      ) : error ? (
+      ) : view === "table" && error ? (
         <div className="empty-state">
           <h2>Failed to load orders</h2>
           <p>Could not reach the server. Check your connection and try again.</p>
           <button className="badge" onClick={load}>Retry</button>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : view === "table" && filtered.length === 0 ? (
         <div className="empty-state">
           <h2>No orders</h2>
           <p>{tab !== "all" ? `No ${tab} orders.` : "Orders will appear here once customers check out."}</p>
         </div>
-      ) : (
+      ) : view === "table" ? (
         <div className="table-card">
           <div style={{ display: "grid", gridTemplateColumns: "32px 1.2fr 1.5fr 0.8fr 0.8fr 0.7fr", gap: "1rem", padding: "0.65rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
             <input
@@ -192,7 +359,7 @@ export default function AdminOrdersPage() {
             ))}
           </div>
 
-          {filtered.map((o) => {
+          {(view === "table" ? filtered : []).map((o) => {
             const date = new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
             const isSelected = selected.has(o.id);
             return (
@@ -230,7 +397,7 @@ export default function AdminOrdersPage() {
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

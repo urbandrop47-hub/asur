@@ -10,6 +10,11 @@ const reviewSchema = new Schema<Review>(
     rating: { type: Number, required: true, min: 1, max: 5 },
     body: { type: String, required: true },
     approved: { type: Boolean, required: true, default: false },
+    verifiedPurchase: { type: Boolean, required: true, default: true },
+    helpfulVotes: { type: Number, default: 0 },
+    unhelpfulVotes: { type: Number, default: 0 },
+    helpfulVoters: { type: [String], default: [] },
+    images: { type: [String], default: [] },
     createdAt: { type: String, required: true }
   },
   { versionKey: false }

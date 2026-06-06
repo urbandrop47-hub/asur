@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { APP_NAME } from "@asur/constants";
 import { clearAdminToken, readAdminToken, saveAdminToken } from "../lib/auth-storage";
+import { CommandPalette } from "./command-palette";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: "⬡" },
@@ -17,6 +18,7 @@ const NAV = [
   { href: "/returns", label: "Returns", icon: "↩" },
   { href: "/newsletter", label: "Newsletter", icon: "✉" },
   { href: "/articles", label: "Articles", icon: "✍" },
+  { href: "/vendors", label: "Vendors", icon: "◎" },
   { href: "/settings", label: "Settings", icon: "⚙" }
 ];
 
@@ -84,14 +86,65 @@ function LoginScreen({ onSave }: { onSave: () => void }) {
 
 export function AdminSidebar({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     setToken(readAdminToken());
     setMounted(true);
+    const stored = (typeof localStorage !== "undefined" ? localStorage.getItem("asur-admin-theme") : null) ?? "dark";
+    setTheme(stored as "dark" | "light");
+    document.documentElement.setAttribute("data-theme", stored);
   }, []);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Cmd+K / Ctrl+K → command palette
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    // Sequence shortcut: g then key
+    let gPressed = false;
+    let gTimer: ReturnType<typeof setTimeout>;
+    const seqHandler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
+        gPressed = true;
+        clearTimeout(gTimer);
+        gTimer = setTimeout(() => { gPressed = false; }, 800);
+        return;
+      }
+      if (gPressed) {
+        gPressed = false;
+        clearTimeout(gTimer);
+        if (e.key === "o") { router.push("/orders"); return; }
+        if (e.key === "p") { router.push("/products"); return; }
+        if (e.key === "d") { router.push("/"); return; }
+        if (e.key === "i") { router.push("/inventory"); return; }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    window.addEventListener("keydown", seqHandler);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      window.removeEventListener("keydown", seqHandler);
+    };
+  }, [router]);
+
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("asur-admin-theme", next);
+    document.documentElement.setAttribute("data-theme", next);
+  }
 
   if (!mounted) return null;
 
@@ -132,9 +185,26 @@ export function AdminSidebar({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
       <div className="sidebar-footer">
-        <button onClick={handleSignOut} className="sidebar-signout">
-          Sign out
+        <button
+          onClick={() => setPaletteOpen(true)}
+          className="sidebar-cmd-btn"
+          title="Command palette (⌘K)"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1.3" />
+            <path d="M8 8l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          </svg>
+          Search
+          <kbd style={{ marginLeft: "auto", fontSize: "0.62rem", padding: "1px 5px", borderRadius: 4, border: "1px solid var(--border)", color: "var(--text-muted)", fontFamily: "inherit" }}>⌘K</kbd>
         </button>
+        <div style={{ display: "flex", gap: "0.4rem" }}>
+          <button onClick={toggleTheme} className="sidebar-theme-btn" title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+            {theme === "dark" ? "☀" : "◑"}
+          </button>
+          <button onClick={handleSignOut} className="sidebar-signout" style={{ flex: 1 }}>
+            Sign out
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -163,6 +233,8 @@ export function AdminSidebar({ children }: { children: React.ReactNode }) {
       <main className="admin-main">
         {children}
       </main>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }

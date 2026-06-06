@@ -6,6 +6,8 @@ import { sendSuccess } from "../lib/response";
 import { orderRepository } from "../repositories/order.repository";
 import { userRepository } from "../repositories/user.repository";
 import { sendShippingUpdateEmail } from "../services/email.service";
+import { hasMongoConnection } from "../config/env";
+import { VendorTaskModel } from "../models/vendor-task.model";
 
 // Status transitions: each key can move to any value in its array
 const TRANSITIONS: Record<VendorTask["status"], VendorTask["status"][]> = {
@@ -124,6 +126,12 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
     const order = await orderRepository.findByIdAdmin(updated.orderId);
     if (order && SHIPPABLE_STATUSES.includes(order.status)) {
       await orderRepository.updateStatus(updated.orderId, "shipped");
+      // Copy tracking details from task onto the order so the customer API returns them
+      const tNumber = updated.trackingId ?? "";
+      const cName = updated.courierName ?? "";
+      if (tNumber && cName) {
+        await orderRepository.updateTracking(updated.orderId, tNumber, cName);
+      }
     }
     if (!order || !SHIPPABLE_STATUSES.includes(order.status)) {
       // Log the mismatch but don't fail the vendor task update
@@ -144,4 +152,40 @@ export const updateVendorTaskController: RequestHandler = asyncHandler(async (re
   }
 
   sendSuccess(res, updated, "Task updated");
+});
+
+// ── GET /api/v1/admin/vendor-performance ──────────────────────────────────────
+export const getVendorPerformanceController: RequestHandler = asyncHandler(async (_req, res) => {
+  if (hasMongoConnection) {
+    const agg = await VendorTaskModel.aggregate([
+      {
+        $group: {
+          _id: { $ifNull: ["$vendorId", "unassigned"] },
+          pending:      { $sum: { $cond: [{ $eq: ["$status", "pending"] },       1, 0] } },
+          in_progress:  { $sum: { $cond: [{ $eq: ["$status", "in_progress"] },   1, 0] } },
+          ready_to_ship:{ $sum: { $cond: [{ $eq: ["$status", "ready_to_ship"] }, 1, 0] } },
+          completed:    { $sum: { $cond: [{ $eq: ["$status", "completed"] },     1, 0] } },
+          total:        { $sum: 1 }
+        }
+      },
+      { $sort: { completed: -1 } }
+    ]);
+    const vendors = agg.map((v: Record<string, unknown>) => ({ vendorId: v._id, ...v, _id: undefined }));
+    sendSuccess(res, { vendors }, "Vendor performance fetched");
+    return;
+  }
+
+  // Mock fallback: group the mock store vendor tasks
+  const tasks = await orderRepository.listVendorTasks();
+  type PerfRow = { vendorId: string; pending: number; in_progress: number; ready_to_ship: number; completed: number; total: number };
+  const map = new Map<string, PerfRow>();
+  for (const t of tasks) {
+    const key = t.vendorId ?? "unassigned";
+    const entry: PerfRow = map.get(key) ?? { vendorId: key, pending: 0, in_progress: 0, ready_to_ship: 0, completed: 0, total: 0 };
+    const s = t.status as "pending" | "in_progress" | "ready_to_ship" | "completed";
+    entry[s] = entry[s] + 1;
+    entry.total++;
+    map.set(key, entry);
+  }
+  sendSuccess(res, { vendors: [...map.values()] }, "Vendor performance fetched (mock)");
 });

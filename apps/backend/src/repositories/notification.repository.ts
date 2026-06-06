@@ -44,5 +44,10 @@ export const notificationRepository = {
       { $set: { read: true } }
     );
     return result.modifiedCount;
+  },
+
+  async existsForUser(id: string, userId: string): Promise<boolean> {
+    const count = await NotificationModel.countDocuments({ _id: id, userId });
+    return count > 0;
   }
 };

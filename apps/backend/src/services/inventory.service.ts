@@ -82,11 +82,14 @@ export async function bulkUpdateStock(rows: BulkStockRow[]): Promise<{ updated: 
         skipped.push(row.sku);
         return;
       }
+      const product = await productRepository.findById(entry.productId);
+      const variant = product?.variants.find((v) => v.sku === entry.sku);
+      const previousStock = variant?.stock ?? 0;
       await productRepository.setVariantStock(entry.productId, entry.sku, row.stock);
       updated++;
 
-      // Notify back-in-stock subscribers if this variant now has stock
-      if (row.stock > 0) {
+      // Notify only when the variant transitions from out-of-stock to in-stock.
+      if (previousStock === 0 && row.stock > 0) {
         await triggerBackInStockNotifications(entry.productId, entry.sku);
       }
     })

@@ -1,6 +1,11 @@
 export type AnalyticsEvent =
   | "product_viewed"
+  | "size_selected"
+  | "color_selected"
   | "add_to_cart"
+  | "image_viewed"
+  | "size_rec_used"
+  | "visual_search_used"
   | "checkout_started"
   | "checkout_address_complete"
   | "checkout_review_complete"

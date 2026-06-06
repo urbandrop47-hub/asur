@@ -11,6 +11,7 @@ import { useWishlistStore, productToWishlistItem } from "../../store/wishlist-st
 import { useCartStore } from "../../store/cart-store";
 import { HeartButton } from "../../components/heart-button";
 import { api } from "../../lib/api";
+import { getLowestVariantPrice, getTotalStock, hasVariants } from "../../lib/product-utils";
 
 type WishlistEntry = { productId: string; addedAt: string; product: Product };
 
@@ -111,7 +112,7 @@ export default function WishlistPage() {
           Sign in to save and view your wishlisted items.
         </p>
         <Link
-          href="/auth?redirect=/wishlist"
+          href="/auth?next=/wishlist"
           style={{
             display: "inline-flex", alignItems: "center", justifyContent: "center",
             padding: "0.85rem 2rem", borderRadius: 999,
@@ -192,11 +193,10 @@ export default function WishlistPage() {
         <div className="grid-3">
           {entries.map((entry, i) => {
             const { product } = entry;
-            const lowestPrice = product.variants.length > 0
-              ? Math.min(...product.variants.map((v) => v.price))
-              : 0;
-            const totalStock = product.variants.reduce((s, v) => s + v.stock, 0);
-            const isSoldOut = totalStock === 0;
+            const lowestPrice = getLowestVariantPrice(product);
+            const totalStock = getTotalStock(product);
+            const comingSoon = !hasVariants(product);
+            const isSoldOut = !comingSoon && totalStock === 0;
             const coverImage = product.media?.[0];
 
             return (
@@ -262,21 +262,27 @@ export default function WishlistPage() {
                     </h3>
                   </div>
 
-                  <strong style={{ fontSize: "1.05rem" }}>{formatCurrency(lowestPrice)}</strong>
+                  <strong style={{ fontSize: "1.05rem", color: comingSoon ? "var(--text-muted)" : "var(--text)" }}>
+                    {comingSoon
+                      ? "Coming soon"
+                      : lowestPrice !== null
+                        ? formatCurrency(lowestPrice)
+                        : "Price unavailable"}
+                  </strong>
 
                   <div style={{ display: "flex", gap: "0.5rem", marginTop: "auto" }}>
                     <button
-                      disabled={isSoldOut}
+                      disabled={comingSoon || isSoldOut}
                       onClick={() => moveToCart(entry)}
                       style={{
                         flex: 1, padding: "0.7rem", borderRadius: 999, fontWeight: 700, fontSize: "0.85rem",
-                        background: isSoldOut ? "rgba(255,255,255,0.07)" : "linear-gradient(135deg, #f97316, #fb7185)",
-                        color: isSoldOut ? "var(--text-muted)" : "#130f0b",
-                        cursor: isSoldOut ? "not-allowed" : "pointer",
+                        background: comingSoon || isSoldOut ? "rgba(255,255,255,0.07)" : "linear-gradient(135deg, #f97316, #fb7185)",
+                        color: comingSoon || isSoldOut ? "var(--text-muted)" : "#130f0b",
+                        cursor: comingSoon || isSoldOut ? "not-allowed" : "pointer",
                         border: "none", minHeight: 44,
                       }}
                     >
-                      {isSoldOut ? "Sold out" : "Move to cart"}
+                      {comingSoon ? "Coming soon" : isSoldOut ? "Sold out" : "Move to cart"}
                     </button>
                   </div>
                 </div>

@@ -92,25 +92,35 @@ export const downloadInvoiceController: RequestHandler = asyncHandler(async (req
     .text("TOTAL", cols.total, tableTop);
   doc.moveTo(50, tableTop + 18).lineTo(545, tableTop + 18).stroke("#ddd");
 
+  // Prices in the order are GST-exclusive (tax = taxableAmount * gstRate is added on top).
+  // Allocate the order-level discount proportionally across items so each item's
+  // taxable line is correct and sum(taxable) + sum(gst) = order.total.
+  const orderSubtotal = order.subtotal ?? 0;
+  const couponDiscount = order.discountAmount ?? 0;
+  const orderTax = order.tax ?? 0;
+  const discountRatio = orderSubtotal > 0 ? couponDiscount / orderSubtotal : 0;
+
   let y = tableTop + 26;
   let totalTaxable = 0;
   let totalGstAmount = 0;
 
   for (const item of order.items ?? []) {
-    const taxableUnit = Math.round(item.unitPrice / (1 + gstRate));
-    const taxableTotal = taxableUnit * item.quantity;
-    const gstOnItem = item.totalPrice - taxableTotal;
-    totalTaxable += taxableTotal;
-    totalGstAmount += gstOnItem;
+    // item.unitPrice is GST-exclusive variant price
+    const lineTotal = item.totalPrice; // unitPrice * quantity
+    const lineDiscount = Math.round(lineTotal * discountRatio);
+    const lineTaxable = lineTotal - lineDiscount;
+    const lineGst = Math.round(lineTaxable * gstRate);
+    totalTaxable += lineTaxable;
+    totalGstAmount += lineGst;
 
     doc.fontSize(8).font("Helvetica").fillColor("#222")
       .text(item.title, cols.item, y, { width: 175, ellipsis: true })
       .text(item.variantSku ?? HSN_CODE, cols.hsn, y)
       .text(String(item.quantity), cols.qty, y)
       .text(fmt(item.unitPrice), cols.price, y)
-      .text(fmt(taxableTotal), cols.taxable, y)
-      .text(fmt(gstOnItem), cols.tax, y)
-      .text(fmt(item.totalPrice), cols.total, y);
+      .text(fmt(lineTaxable), cols.taxable, y)
+      .text(fmt(lineGst), cols.tax, y)
+      .text(fmt(lineTotal), cols.total, y);
 
     y += 20;
     if (y > 680) {
@@ -121,6 +131,9 @@ export const downloadInvoiceController: RequestHandler = asyncHandler(async (req
 
   doc.moveTo(50, y + 4).lineTo(545, y + 4).stroke("#ddd");
   y += 14;
+
+  // Use authoritative order-level tax (matches what customer was charged)
+  const gstAmount = orderTax;
 
   // ── Tax Summary ──────────────────────────────────────────────────────────────
   const summaryX = 330;
@@ -133,15 +146,15 @@ export const downloadInvoiceController: RequestHandler = asyncHandler(async (req
     y += 16;
   };
 
-  summaryLine("Subtotal (taxable)", fmt(totalTaxable));
+  summaryLine("Subtotal", fmt(orderSubtotal));
+  if (couponDiscount > 0) summaryLine("Discount", `- ${fmt(couponDiscount)}`);
   if (isIntraState) {
-    summaryLine(`CGST @ ${(halfGst * 100).toFixed(1)}%`, fmt(Math.round(totalGstAmount / 2)));
-    summaryLine(`SGST @ ${(halfGst * 100).toFixed(1)}%`, fmt(Math.round(totalGstAmount / 2)));
+    summaryLine(`CGST @ ${(halfGst * 100).toFixed(1)}%`, fmt(Math.round(gstAmount / 2)));
+    summaryLine(`SGST @ ${(halfGst * 100).toFixed(1)}%`, fmt(Math.round(gstAmount / 2)));
   } else {
-    summaryLine(`IGST @ ${(gstRate * 100).toFixed(1)}%`, fmt(totalGstAmount));
+    summaryLine(`IGST @ ${(gstRate * 100).toFixed(1)}%`, fmt(gstAmount));
   }
   if ((order.shipping ?? 0) > 0) summaryLine("Shipping", fmt(order.shipping));
-  if ((order.discount ?? 0) > 0) summaryLine("Discount", `- ${fmt(order.discount ?? 0)}`);
   if ((order.loyaltyDiscount ?? 0) > 0) summaryLine("Loyalty Points", `- ${fmt(order.loyaltyDiscount ?? 0)}`);
   if ((order.giftCardAmount ?? 0) > 0) summaryLine("Gift Card", `- ${fmt(order.giftCardAmount ?? 0)}`);
   summaryLine("TOTAL", fmt(order.total), true);

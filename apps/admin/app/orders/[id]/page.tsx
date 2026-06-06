@@ -22,20 +22,74 @@ const STATUS_CLASS: Record<string, string> = {
   cancelled: "badge danger", draft: "badge draft"
 };
 
+// Statuses admin can set (not pending_payment/draft — those are system-set)
+const UPDATABLE_STATUSES = ["processing", "packed", "shipped", "delivered"] as const;
+
+function getDefaultAdminStatus(status: Order["status"]) {
+  return status === "paid" ? "processing" : status;
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1800);
+        });
+      }}
+      title="Copy to clipboard"
+      style={{
+        padding: "0.2rem 0.55rem", borderRadius: 6, border: "1px solid var(--border)",
+        background: "transparent", color: copied ? "var(--success, #22c55e)" : "var(--text-muted)",
+        fontSize: "0.72rem", cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
+        transition: "color 0.15s"
+      }}
+    >
+      {copied ? "Copied!" : "Copy"}
+    </button>
+  );
+}
+
 export default function AdminOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [nextStatus, setNextStatus] = useState<string>("");
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  useEffect(() => {
+  const loadOrder = () => {
     if (!id) return;
+    setLoading(true);
+    setNotFound(false);
+    setStatusMsg(null);
     api
       .get<{ data: Order }>(`/api/v1/admin/orders/${id}`)
-      .then((r) => setOrder(r.data))
+      .then((r) => { setOrder(r.data); setNextStatus(getDefaultAdminStatus(r.data.status)); })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  };
+
+  useEffect(() => { loadOrder(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleStatusUpdate() {
+    if (!order || !nextStatus || nextStatus === order.status) return;
+    setStatusSaving(true);
+    setStatusMsg(null);
+    try {
+      await api.post("/api/v1/admin/orders/bulk-status", { ids: [order.id], status: nextStatus });
+      setOrder((o) => o ? { ...o, status: nextStatus as Order["status"] } : o);
+      setStatusMsg({ ok: true, text: `Status updated to "${STATUS_LABEL[nextStatus] ?? nextStatus}"` });
+      setTimeout(() => setStatusMsg(null), 3000);
+    } catch {
+      setStatusMsg({ ok: false, text: "Failed to update status" });
+    } finally {
+      setStatusSaving(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -59,6 +113,8 @@ export default function AdminOrderDetailPage() {
   const date = new Date(order.createdAt).toLocaleString("en-IN", {
     day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
   });
+
+  const canUpdateStatus = !["cancelled", "pending_payment", "draft"].includes(order.status);
 
   return (
     <div style={{ maxWidth: 640, display: "grid", gap: "1.25rem" }}>
@@ -85,7 +141,7 @@ export default function AdminOrderDetailPage() {
                 a.href = url;
                 a.download = `ASUR-Invoice-${order.orderNumber}.pdf`;
                 a.click();
-                URL.revokeObjectURL(url);
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
               }}
               style={{
                 marginLeft: "auto", padding: "0.35rem 0.85rem", borderRadius: 8,
@@ -100,6 +156,48 @@ export default function AdminOrderDetailPage() {
         <p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem", color: "var(--text-muted)" }}>{date}</p>
       </div>
 
+      {/* Status update */}
+      {canUpdateStatus && (
+        <div className="card" style={{ padding: "0.9rem" }}>
+          <p style={{ margin: "0 0 0.6rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Update Status
+          </p>
+          <div style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap" }}>
+            <select
+              value={nextStatus}
+              onChange={(e) => setNextStatus(e.target.value)}
+              style={{
+                flex: 1, minWidth: 140, padding: "0.55rem 0.75rem", borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
+                color: "var(--text)", fontSize: "0.9rem", fontFamily: "inherit", outline: "none"
+              }}
+            >
+              {UPDATABLE_STATUSES.map((s) => (
+                <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleStatusUpdate}
+              disabled={statusSaving || nextStatus === order.status}
+              style={{
+                padding: "0.55rem 1.1rem", borderRadius: 8, border: "none",
+                background: nextStatus !== order.status ? "linear-gradient(135deg,#f97316,#fb7185)" : "rgba(255,255,255,0.07)",
+                color: nextStatus !== order.status ? "#130f0b" : "var(--text-muted)",
+                fontWeight: 700, fontSize: "0.85rem", cursor: nextStatus !== order.status ? "pointer" : "default",
+                fontFamily: "inherit", opacity: statusSaving ? 0.65 : 1, transition: "all 0.15s"
+              }}
+            >
+              {statusSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+          {statusMsg && (
+            <p style={{ margin: "0.5rem 0 0", fontSize: "0.78rem", color: statusMsg.ok ? "var(--success,#22c55e)" : "var(--danger,#ef4444)" }}>
+              {statusMsg.ok ? "✓ " : "✗ "}{statusMsg.text}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Status chips */}
       <div className="grid-2">
         <div className="card" style={{ padding: "0.9rem" }}>
@@ -111,6 +209,24 @@ export default function AdminOrderDetailPage() {
           <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 600, textTransform: "capitalize" }}>{order.fulfillmentStatus.replace(/_/g, " ")}</p>
         </div>
       </div>
+
+      {/* Tracking info */}
+      {order.trackingNumber && (
+        <div className="card" style={{ padding: "0.9rem", borderColor: "rgba(34,197,94,0.2)", background: "rgba(34,197,94,0.04)" }}>
+          <p style={{ margin: "0 0 0.5rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--success,#22c55e)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Shipment
+          </p>
+          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
+            {order.courierName && (
+              <span style={{ fontSize: "0.88rem", fontWeight: 600 }}>{order.courierName}</span>
+            )}
+            <span style={{ fontSize: "0.85rem", fontFamily: "monospace", color: "var(--text-muted)" }}>
+              {order.trackingNumber}
+            </span>
+            <CopyButton text={order.trackingNumber} />
+          </div>
+        </div>
+      )}
 
       {/* Items */}
       <div className="table-card">
@@ -162,10 +278,20 @@ export default function AdminOrderDetailPage() {
         </p>
       </div>
 
-      {/* Customer ID */}
-      <div className="card" style={{ padding: "0.9rem" }}>
-        <p style={{ margin: "0 0 0.3rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Customer ID</p>
-        <p style={{ margin: 0, fontSize: "0.82rem", fontFamily: "monospace", color: "var(--text-muted)" }}>{order.customerId}</p>
+      {/* IDs */}
+      <div className="card" style={{ padding: "0.9rem", display: "grid", gap: "0.75rem" }}>
+        {[
+          { label: "Order ID", value: order.id },
+          { label: "Customer ID", value: order.customerId }
+        ].map(({ label, value }) => (
+          <div key={label}>
+            <p style={{ margin: "0 0 0.3rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <p style={{ margin: 0, fontSize: "0.82rem", fontFamily: "monospace", color: "var(--text-muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</p>
+              <CopyButton text={value} />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -14,10 +14,17 @@ export const markNotificationReadController: RequestHandler = asyncHandler(async
   const userId: string = res.locals.user.id;
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
-  const updated = await notificationRepository.markRead(id, userId);
-  if (!updated) {
-    res.status(404).json({ success: false, message: "Notification not found" });
-    return;
+  // markRead returns false when modifiedCount=0, which happens both when the
+  // notification doesn't exist AND when it's already read. Check existence to
+  // distinguish the two: already-read is idempotent success; missing is 404.
+  const modified = await notificationRepository.markRead(id, userId);
+  if (!modified) {
+    const exists = await notificationRepository.existsForUser(id, userId);
+    if (!exists) {
+      res.status(404).json({ success: false, message: "Notification not found" });
+      return;
+    }
+    // Already read — treat as success (idempotent)
   }
 
   res.json({ success: true });

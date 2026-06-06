@@ -25,7 +25,7 @@ export default function ReviewsPage() {
 
   function load() {
     setLoading(true);
-    const qs = filter === "pending" ? "?pending=true" : filter === "approved" ? "?approved=true" : "";
+    const qs = filter === "all" ? "" : `?filter=${filter}`;
     api.get<{ data: { reviews: Review[]; total: number } }>(`/api/v1/admin/reviews${qs}`)
       .then((r) => { setReviews(r.data.reviews); setTotal(r.data.total); })
       .catch(() => setError("Failed to load reviews"))
