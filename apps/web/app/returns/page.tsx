@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Returns & Refunds",
   description: "ASUR's 7-day returns policy — how to request a return, eligible items, and refund timelines.",
-  alternates: { canonical: "https://asur.in/returns" }
+  alternates: { canonical: "https://weareasur.in/returns" }
 };
 
 const Step = ({ n, title, children }: { n: number; title: string; children: React.ReactNode }) => (
@@ -92,7 +92,7 @@ export default function ReturnsPage() {
       <section style={{ marginBottom: "2.25rem" }}>
         <h2 style={{ fontSize: "1.05rem", fontWeight: 700, margin: "0 0 0.75rem" }}>Defective or incorrectly shipped items</h2>
         <p style={{ fontSize: "0.9rem", lineHeight: 1.8, color: "rgba(246,241,234,0.72)" }}>
-          If you received a defective, damaged, or incorrect item, please contact us at <strong>support@asur.in</strong> within 48 hours of delivery with photos of the item and packaging. We will arrange a free return pickup and send a replacement or full refund at no cost to you.
+          If you received a defective, damaged, or incorrect item, please contact us at <strong>support@weareasur.in</strong> within 48 hours of delivery with photos of the item and packaging. We will arrange a free return pickup and send a replacement or full refund at no cost to you.
         </p>
       </section>
 
@@ -126,7 +126,7 @@ export default function ReturnsPage() {
       <div style={{ padding: "1.25rem", borderRadius: 12, border: "1px solid var(--border)", background: "rgba(255,255,255,0.02)" }}>
         <p style={{ margin: "0 0 0.4rem", fontWeight: 700, fontSize: "0.9rem" }}>Need help?</p>
         <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.7 }}>
-          Email us at <strong>support@asur.in</strong> — we respond within 24 hours on business days (Mon–Fri, 10am–6pm IST).
+          Email us at <strong>support@weareasur.in</strong> — we respond within 24 hours on business days (Mon–Fri, 10am–6pm IST).
         </p>
       </div>
     </div>

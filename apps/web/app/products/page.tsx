@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import ProductsClient from "./products-client";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://asur.in";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://weareasur.in";
 
 export const metadata: Metadata = {
   title: "Shop All — ASUR",

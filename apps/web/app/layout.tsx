@@ -41,7 +41,7 @@ const notoSerifDevanagari = Noto_Serif_Devanagari({
   display: "swap",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://asur.in";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://weareasur.in";
 
 export const viewport: Viewport = {
   width: "device-width",

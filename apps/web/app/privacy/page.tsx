@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "How ASUR collects, uses, and protects your personal data — in compliance with India's DPDP Act 2023 and GDPR.",
-  alternates: { canonical: "https://asur.in/privacy" }
+  alternates: { canonical: "https://weareasur.in/privacy" }
 };
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
       </p>
 
       <Section title="1. Who We Are">
-        <p>ASUR is a premium Indian streetwear brand operating at <strong>asur.in</strong>. We are a data fiduciary under the DPDP Act 2023. For privacy queries, contact us at <strong>privacy@asur.in</strong>.</p>
+        <p>ASUR is a premium Indian streetwear brand operating at <strong>weareasur.in</strong>. We are a data fiduciary under the DPDP Act 2023. For privacy queries, contact us at <strong>privacy@weareasur.in</strong>.</p>
       </Section>
 
       <Section title="2. Data We Collect">
@@ -95,7 +95,7 @@ export default function PrivacyPage() {
           <li><strong>Data portability</strong> — receive your data in a machine-readable format (JSON export)</li>
           <li><strong>Withdraw consent</strong> — for analytics/marketing cookies or marketing emails</li>
         </ul>
-        <p style={{ marginTop: "0.75rem" }}>To exercise these rights, visit your <strong>Account → Notifications</strong> page, or email <strong>privacy@asur.in</strong>. We will respond within 30 days.</p>
+        <p style={{ marginTop: "0.75rem" }}>To exercise these rights, visit your <strong>Account → Notifications</strong> page, or email <strong>privacy@weareasur.in</strong>. We will respond within 30 days.</p>
       </Section>
 
       <Section title="8. Security">
@@ -103,7 +103,7 @@ export default function PrivacyPage() {
       </Section>
 
       <Section title="9. Children's Privacy">
-        <p>Our services are not directed at children under 13 years of age. We do not knowingly collect personal data from children. If you believe a child has provided us data, contact privacy@asur.in and we will delete it promptly.</p>
+        <p>Our services are not directed at children under 13 years of age. We do not knowingly collect personal data from children. If you believe a child has provided us data, contact privacy@weareasur.in and we will delete it promptly.</p>
       </Section>
 
       <Section title="10. Changes to This Policy">
@@ -112,8 +112,8 @@ export default function PrivacyPage() {
 
       <Section title="11. Contact">
         <p>
-          <strong>Email:</strong> privacy@asur.in<br />
-          <strong>Grievance Officer (India):</strong> As required by the DPDP Act 2023, complaints can be directed to privacy@asur.in. We will respond within 30 days.
+          <strong>Email:</strong> privacy@weareasur.in<br />
+          <strong>Grievance Officer (India):</strong> As required by the DPDP Act 2023, complaints can be directed to privacy@weareasur.in. We will respond within 30 days.
         </p>
       </Section>
     </div>

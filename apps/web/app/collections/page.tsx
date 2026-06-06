@@ -5,13 +5,13 @@ export const metadata: Metadata = {
   title: "Collections — ASUR",
   description: "Explore ASUR drop collections — limited runs, each with a story. Void Season, Black Mirror, and more.",
   alternates: {
-    canonical: "https://asur.in/collections",
-    languages: { "en-IN": "https://asur.in/collections" },
+    canonical: "https://weareasur.in/collections",
+    languages: { "en-IN": "https://weareasur.in/collections" },
   },
   openGraph: {
     title: "Collections — ASUR",
     description: "Limited-run drop collections from ASUR. New season, new lore.",
-    url: "https://asur.in/collections",
+    url: "https://weareasur.in/collections",
     siteName: "ASUR",
     type: "website",
   },

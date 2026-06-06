@@ -6,7 +6,7 @@ import { ProductJsonLd } from "./json-ld";
 import { getLowestVariantPrice, hasVariants } from "../../../lib/product-utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://asur.in";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://weareasur.in";
 
 async function fetchProduct(slug: string): Promise<Product | null> {
   try {

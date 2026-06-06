@@ -46,7 +46,7 @@ export function newsletterConfirmHtml(confirmUrl: string, webBaseUrl: string): s
           <tr>
             <td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06)">
               <p style="margin:0;font-size:11px;color:rgba(246,241,234,0.25);text-align:center">
-                ASUR · Mumbai, India · <a href="${webBaseUrl}" style="color:rgba(246,241,234,0.25);text-decoration:underline">asur.in</a>
+                ASUR · Mumbai, India · <a href="${webBaseUrl}" style="color:rgba(246,241,234,0.25);text-decoration:underline">weareasur.in</a>
               </p>
             </td>
           </tr>

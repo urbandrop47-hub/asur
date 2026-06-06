@@ -23,7 +23,7 @@ export function refundInitiatedHtml(ret: Return, customerName: string): string {
       ${ret.adminNote ? kv("Note", ret.adminNote) : ""}
     </table>
     ${divider()}
-    ${p("If you have any questions, reply to this email or contact support@asur.in.")}
+    ${p("If you have any questions, reply to this email or contact support@weareasur.in.")}
   `;
 
   return baseLayout(`${statusLabel} — #${ret.orderNumber}`, body);
