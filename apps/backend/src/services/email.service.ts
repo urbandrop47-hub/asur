@@ -14,8 +14,8 @@ import { abandonedCart2Html, abandonedCart2Text } from "./email-templates/abando
 import { newsletterConfirmHtml, newsletterConfirmText } from "./email-templates/newsletter-confirm";
 import type { AbandonedCartDoc } from "../models/abandoned-cart.model";
 
-const FROM_ADDRESS = "ASUR <noreply@asur.in>";
-const WEB_BASE_URL = process.env.WEB_BASE_URL ?? "https://asur.in";
+const FROM_ADDRESS = "ASUR <noreply@weareasur.in>";
+const WEB_BASE_URL = process.env.WEB_BASE_URL ?? "https://weareasur.in";
 
 let resend: Resend | null = null;
 if (hasResendCredentials) {

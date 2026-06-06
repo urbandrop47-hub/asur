@@ -36,7 +36,7 @@ export function giftCardDeliveryHtml(params: {
   <p style="margin:0 0 24px;color:#aaa;font-size:14px;">Enter this code at checkout on <a href="${params.webBaseUrl}" style="color:#f97316;">${params.webBaseUrl.replace(/^https?:\/\//, "")}</a> to apply it to your order.</p>
 
   <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0 0 24px;">
-  <p style="margin:0;font-size:12px;color:#555;">Gift cards cannot be exchanged for cash. For help, contact us at support@asur.in.</p>
+  <p style="margin:0;font-size:12px;color:#555;">Gift cards cannot be exchanged for cash. For help, contact us at support@weareasur.in.</p>
 </div>
 </body>
 </html>`;
@@ -68,6 +68,6 @@ export function giftCardDeliveryText(params: {
     "",
     `Enter this code at checkout on ${params.webBaseUrl}`,
     "",
-    "Gift cards cannot be exchanged for cash. For help, contact us at support@asur.in."
+    "Gift cards cannot be exchanged for cash. For help, contact us at support@weareasur.in."
   ].join("\n");
 }

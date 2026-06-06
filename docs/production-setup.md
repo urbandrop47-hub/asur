@@ -1,5 +1,7 @@
 # ASUR — Production Setup Guide
 
+> ⚠️ **DEPRECATED** — This document is out of date (pre-S22). Use [`docs/railway-setup.md`](./railway-setup.md) instead. It has the correct domains, all current env vars (including S40 additions), and filled-in values.
+
 Everything you need to go from a fresh repo to a fully connected, live store. Work through the sections in order — each one unlocks the next.
 
 ---

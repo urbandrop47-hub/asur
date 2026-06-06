@@ -4,11 +4,11 @@ Three Next.js apps deploy to Vercel from the same GitHub monorepo as separate pr
 
 | Vercel Project | Root Directory | Domain |
 |---|---|---|
-| `asur-web` | `apps/web` | `asur.in`, `www.asur.in` |
-| `asur-admin` | `apps/admin` | `admin.asur.in` |
-| `asur-vendor` | `apps/vendor` | `vendor.asur.in` |
+| `asur-web` | `apps/web` | `weareasur.in`, `www.weareasur.in` |
+| `asur-admin` | `apps/admin` | `admin.weareasur.in` |
+| `asur-vendor` | `apps/vendor` | `vendor.weareasur.in` |
 
-> **Before you start:** Deploy the backend to Railway first and note its public URL (`https://api.asur.in`). All three apps need `NEXT_PUBLIC_API_URL` pointing to it.
+> **Before you start:** Deploy the backend to Railway first and note its public URL (`https://api.weareasur.in`). All three apps need `NEXT_PUBLIC_API_URL` pointing to it.
 
 ---
 
@@ -40,7 +40,7 @@ Go to **Project → Settings → Environment Variables** for each project and ad
 
 | Variable | Value |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | `https://api.asur.in` |
+| `NEXT_PUBLIC_API_URL` | `https://api.weareasur.in` |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | `AIzaSyC5ghQgOV_Z3Ec3XzvIJ9I01LYtcRI32m4` |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `asur-7e32a.firebaseapp.com` |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `asur-7e32a` |
@@ -48,14 +48,14 @@ Go to **Project → Settings → Environment Variables** for each project and ad
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `694940758108` |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | `1:694940758108:web:b2587b544be5b0bd513699` |
 | `NEXT_PUBLIC_RAZORPAY_KEY` | `rzp_live_...` — Razorpay dashboard → Settings → API Keys → Key ID |
-| `NEXT_PUBLIC_ADMIN_URL` | `https://admin.asur.in` |
+| `NEXT_PUBLIC_ADMIN_URL` | `https://admin.weareasur.in` |
 | `NEXT_PUBLIC_SENTRY_DSN` | _(optional)_ sentry.io → Project → Settings → Client Keys → DSN |
 
 ### asur-admin (admin dashboard)
 
 | Variable | Value |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | `https://api.asur.in` |
+| `NEXT_PUBLIC_API_URL` | `https://api.weareasur.in` |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | `AIzaSyC5ghQgOV_Z3Ec3XzvIJ9I01LYtcRI32m4` |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `asur-7e32a.firebaseapp.com` |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `asur-7e32a` |
@@ -64,13 +64,13 @@ Go to **Project → Settings → Environment Variables** for each project and ad
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | `1:694940758108:web:b2587b544be5b0bd513699` |
 | `NEXT_PUBLIC_SENTRY_DSN` | _(optional)_ |
 
-> **Admin login:** the admin panel password is `ADMIN_SECRET` — that variable lives on the **backend** (Railway), not here. You just type it on the login screen at `admin.asur.in`.
+> **Admin login:** the admin panel password is `ADMIN_SECRET` — that variable lives on the **backend** (Railway), not here. You just type it on the login screen at `admin.weareasur.in`.
 
 ### asur-vendor (vendor fulfilment app)
 
 | Variable | Value |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | `https://api.asur.in` |
+| `NEXT_PUBLIC_API_URL` | `https://api.weareasur.in` |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | `AIzaSyC5ghQgOV_Z3Ec3XzvIJ9I01LYtcRI32m4` |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `asur-7e32a.firebaseapp.com` |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `asur-7e32a` |
@@ -108,9 +108,9 @@ In each project → **Settings → Domains** → **Add**.
 
 | Project | Domain to add |
 |---|---|
-| `asur-web` | `asur.in` then `www.asur.in` |
-| `asur-admin` | `admin.asur.in` |
-| `asur-vendor` | `vendor.asur.in` |
+| `asur-web` | `weareasur.in` then `www.weareasur.in` |
+| `asur-admin` | `admin.weareasur.in` |
+| `asur-vendor` | `vendor.weareasur.in` |
 
 Vercel will show you a DNS record to add (usually a CNAME or A record). Add it in your domain registrar and Vercel auto-provisions the SSL certificate within minutes.
 
@@ -120,11 +120,11 @@ Vercel will show you a DNS record to add (usually a CNAME or A record). Add it i
 
 | Check | How |
 |---|---|
-| Storefront loads | Open `https://asur.in` |
-| Products visible | Browse to `/products` — should fetch from `api.asur.in` |
+| Storefront loads | Open `https://weareasur.in` |
+| Products visible | Browse to `/products` — should fetch from `api.weareasur.in` |
 | Auth works | Sign in with Google or email |
-| Admin panel | Open `https://admin.asur.in`, type the `ADMIN_SECRET` password |
-| Vendor app | Open `https://vendor.asur.in`, sign in as a vendor |
+| Admin panel | Open `https://admin.weareasur.in`, type the `ADMIN_SECRET` password |
+| Vendor app | Open `https://vendor.weareasur.in`, sign in as a vendor |
 
 ---
 
@@ -156,5 +156,5 @@ Fill in these files with the same values as the Vercel dashboard to keep parity 
 |---|---|
 | Build fails: `Cannot find module '@asur/types'` | The shared-package build step in `vercel.json` didn't run. Check that Root Directory is set to `apps/web` (not repo root) in the Vercel project settings. |
 | `NEXT_PUBLIC_API_URL` points to localhost in production | Env var not set in Vercel dashboard — it's only in `.env.local`. Add it under Project → Settings → Environment Variables. |
-| Firebase auth errors in production | Firebase console → Authentication → Settings → **Authorized domains** — add `asur.in`, `admin.asur.in`, `vendor.asur.in`. |
-| CORS errors from the backend | The backend's `ALLOWED_ORIGINS` in `apps/backend/src/app.ts` must include the Vercel production URLs. They're already there for `asur.in`, `admin.asur.in`, `vendor.asur.in`. |
+| Firebase auth errors in production | Firebase console → Authentication → Settings → **Authorized domains** — add `weareasur.in`, `admin.weareasur.in`, `vendor.weareasur.in`. |
+| CORS errors from the backend | The backend's `ALLOWED_ORIGINS` in `apps/backend/src/app.ts` must include the Vercel production URLs. They're already there for `weareasur.in`, `admin.weareasur.in`, `vendor.weareasur.in`. |

@@ -57,7 +57,7 @@ export const unsubscribeNewsletter: RequestHandler = asyncHandler(async (req, re
   }
 
   await newsletterRepository.unsubscribe(token);
-  res.redirect(302, `${process.env.WEB_BASE_URL ?? "https://asur.in"}/newsletter/unsubscribed`);
+  res.redirect(302, `${process.env.WEB_BASE_URL ?? "https://weareasur.in"}/newsletter/unsubscribed`);
 });
 
 // ── Admin endpoints ──────────────────────────────────────────────────

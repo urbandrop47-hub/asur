@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "FAQ — ASUR",
   description: "Questions about ordering, shipping, returns, sizing, and the ASUR drop model.",
-  alternates: { canonical: "https://asur.in/faq" }
+  alternates: { canonical: "https://weareasur.in/faq" }
 };
 
 const faqs: { q: string; a: string }[] = [
@@ -53,7 +53,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "I got the wrong item or something's damaged.",
-    a: "Email us at support@asur.in within 48 hours of delivery with your order number and photos. We'll sort a free pickup and send a replacement or issue a full refund.",
+    a: "Email us at support@weareasur.in within 48 hours of delivery with your order number and photos. We'll sort a free pickup and send a replacement or issue a full refund.",
   },
   {
     q: "I forgot to apply my coupon code.",
@@ -96,8 +96,8 @@ export default function FaqPage() {
           </h1>
           <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-muted)" }}>
             Can&apos;t find an answer?{" "}
-            <a href="mailto:support@asur.in" style={{ color: "#f97316", textDecoration: "none" }}>
-              support@asur.in
+            <a href="mailto:support@weareasur.in" style={{ color: "#f97316", textDecoration: "none" }}>
+              support@weareasur.in
             </a>
           </p>
         </div>
@@ -155,7 +155,7 @@ export default function FaqPage() {
         <div style={{ marginTop: "2.5rem", padding: "1.25rem", borderRadius: 12, border: "1px solid var(--border)", background: "rgba(255,255,255,0.02)", textAlign: "center" }}>
           <p style={{ margin: "0 0 0.35rem", fontWeight: 700, fontSize: "0.9rem" }}>Still stuck?</p>
           <p style={{ margin: 0, fontSize: "0.84rem", color: "var(--text-muted)" }}>
-            <a href="mailto:support@asur.in" style={{ color: "#f97316", textDecoration: "none" }}>support@asur.in</a>
+            <a href="mailto:support@weareasur.in" style={{ color: "#f97316", textDecoration: "none" }}>support@weareasur.in</a>
             {" "}— we reply within 24 hours on business days.
           </p>
         </div>

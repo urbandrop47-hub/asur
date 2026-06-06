@@ -139,7 +139,7 @@ export default function NotificationsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setError("Data export failed. Please try again or email privacy@asur.in");
+      setError("Data export failed. Please try again or email privacy@weareasur.in");
     } finally {
       setExporting(false);
     }
@@ -154,7 +154,7 @@ export default function NotificationsPage() {
       clearSession();
       router.push("/?account_deleted=1");
     } catch {
-      setError("Account deletion failed. Please email privacy@asur.in");
+      setError("Account deletion failed. Please email privacy@weareasur.in");
       setDeleting(false);
       setConfirmDelete(false);
     }
@@ -291,7 +291,7 @@ export default function NotificationsPage() {
 
         <p style={{ margin: "1rem 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>
           For questions about your data, email{" "}
-          <a href="mailto:privacy@asur.in" style={{ color: "#f97316", textDecoration: "none" }}>privacy@asur.in</a>.
+          <a href="mailto:privacy@weareasur.in" style={{ color: "#f97316", textDecoration: "none" }}>privacy@weareasur.in</a>.
           Read our{" "}
           <Link href="/privacy" style={{ color: "#f97316", textDecoration: "none" }}>Privacy Policy</Link>.
         </p>

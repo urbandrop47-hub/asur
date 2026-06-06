@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Terms of Use",
   description: "Terms governing your use of the ASUR website and purchase of ASUR products.",
-  alternates: { canonical: "https://asur.in/terms" }
+  alternates: { canonical: "https://weareasur.in/terms" }
 };
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -29,7 +29,7 @@ export default function TermsPage() {
       </div>
 
       <p style={{ fontSize: "0.9rem", lineHeight: 1.8, color: "rgba(246,241,234,0.72)", marginBottom: "2rem", padding: "1.25rem", borderRadius: 12, border: "1px solid rgba(249,115,22,0.2)", background: "rgba(249,115,22,0.05)" }}>
-        By accessing or using asur.in ("the Site") or purchasing any ASUR product, you agree to be bound by these Terms of Use. Please read them carefully before using the Site.
+        By accessing or using weareasur.in ("the Site") or purchasing any ASUR product, you agree to be bound by these Terms of Use. Please read them carefully before using the Site.
       </p>
 
       <Section title="1. Acceptance of Terms">
@@ -53,7 +53,7 @@ export default function TermsPage() {
       </Section>
 
       <Section title="5. Returns & Refunds">
-        <p>Our returns policy is available at <a href="/returns" style={{ color: "#f97316", textDecoration: "none" }}>asur.in/returns</a>. Key terms: 7-day window from delivery, items must be unworn, unwashed, and in original packaging with tags attached. Sale items are final sale.</p>
+        <p>Our returns policy is available at <a href="/returns" style={{ color: "#f97316", textDecoration: "none" }}>weareasur.in/returns</a>. Key terms: 7-day window from delivery, items must be unworn, unwashed, and in original packaging with tags attached. Sale items are final sale.</p>
       </Section>
 
       <Section title="6. Intellectual Property">
@@ -61,7 +61,7 @@ export default function TermsPage() {
       </Section>
 
       <Section title="7. User Accounts">
-        <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. Notify us immediately at support@asur.in if you suspect unauthorised use. We reserve the right to terminate accounts that violate these Terms.</p>
+        <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. Notify us immediately at support@weareasur.in if you suspect unauthorised use. We reserve the right to terminate accounts that violate these Terms.</p>
       </Section>
 
       <Section title="8. Prohibited Conduct">
@@ -85,7 +85,7 @@ export default function TermsPage() {
       </Section>
 
       <Section title="11. Governing Law & Disputes">
-        <p>These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of courts in Mumbai, Maharashtra. We encourage you to contact us first at support@asur.in to resolve issues amicably.</p>
+        <p>These Terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of courts in Mumbai, Maharashtra. We encourage you to contact us first at support@weareasur.in to resolve issues amicably.</p>
       </Section>
 
       <Section title="12. Changes to Terms">
@@ -94,8 +94,8 @@ export default function TermsPage() {
 
       <Section title="13. Contact">
         <p>
-          For legal or compliance enquiries: <strong>legal@asur.in</strong><br />
-          For order or product support: <strong>support@asur.in</strong>
+          For legal or compliance enquiries: <strong>legal@weareasur.in</strong><br />
+          For order or product support: <strong>support@weareasur.in</strong>
         </p>
       </Section>
     </div>

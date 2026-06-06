@@ -28,7 +28,7 @@ export function baseLayout(title: string, body: string): string {
           <tr>
             <td style="padding:24px 0 0 0;text-align:center;font-size:12px;color:#555;line-height:1.6;">
               ASUR · India's premium streetwear drop label<br/>
-              Questions? Reply to this email or contact us at support@asur.in
+              Questions? Reply to this email or contact us at support@weareasur.in
             </td>
           </tr>
         </table>

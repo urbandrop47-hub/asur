@@ -154,7 +154,7 @@ export default function WishlistPage() {
               Copy
             </button>
             <a
-              href={`https://wa.me/?text=${encodeURIComponent("My ASUR wishlist 🖤\n\n" + entries.map((e) => `• ${e.product.title} — ${typeof window !== "undefined" ? window.location.origin : "https://asur.in"}/products/${e.product.slug}`).join("\n"))}`}
+              href={`https://wa.me/?text=${encodeURIComponent("My ASUR wishlist 🖤\n\n" + entries.map((e) => `• ${e.product.title} — ${typeof window !== "undefined" ? window.location.origin : "https://weareasur.in"}/products/${e.product.slug}`).join("\n"))}`}
               target="_blank"
               rel="noopener noreferrer"
               title="Share via WhatsApp"

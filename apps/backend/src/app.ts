@@ -17,10 +17,10 @@ import { Sentry } from "./lib/sentry";
 const ALLOWED_ORIGINS =
   env.NODE_ENV === "production"
     ? [
-        "https://asur.in",
-        "https://www.asur.in",
-        "https://admin.asur.in",
-        "https://vendor.asur.in"
+        "https://weareasur.in",
+        "https://www.weareasur.in",
+        "https://admin.weareasur.in",
+        "https://vendor.weareasur.in"
       ]
     : [
         "http://localhost:3000",

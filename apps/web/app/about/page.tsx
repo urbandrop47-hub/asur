@@ -4,11 +4,11 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "About ASUR — Neither Divine. Nor Damned.",
   description: "ASUR is Indian streetwear built on a drop model. Limited runs, intentional design, no restocks. This is who we are.",
-  alternates: { canonical: "https://asur.in/about" },
+  alternates: { canonical: "https://weareasur.in/about" },
   openGraph: {
     title: "About ASUR",
     description: "Neither Divine. Nor Damned. Indian streetwear built for those who move in silence.",
-    url: "https://asur.in/about",
+    url: "https://weareasur.in/about",
     siteName: "ASUR",
     type: "website",
   },
@@ -41,10 +41,10 @@ const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "ASUR",
-  url: "https://asur.in",
-  logo: "https://asur.in/icon-512.png",
+  url: "https://weareasur.in",
+  logo: "https://weareasur.in/icon-512.png",
   description: "Premium Indian streetwear built on a drop model. Limited quantities. Single price. No restocks.",
-  email: "support@asur.in",
+  email: "support@weareasur.in",
   foundingDate: "2024",
   foundingLocation: { "@type": "Place", addressCountry: "IN" },
   sameAs: ["https://instagram.com/wearASUR"],
@@ -54,8 +54,8 @@ const breadcrumb = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   itemListElement: [
-    { "@type": "ListItem", position: 1, name: "Home", item: "https://asur.in" },
-    { "@type": "ListItem", position: 2, name: "About", item: "https://asur.in/about" },
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://weareasur.in" },
+    { "@type": "ListItem", position: 2, name: "About", item: "https://weareasur.in/about" },
   ],
 };
 
