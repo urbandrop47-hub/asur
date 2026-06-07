@@ -20,6 +20,16 @@ export type MediaAsset = {
   height?: number;
 };
 
+/** A short-form video attached to a product — stored separately from static images. */
+export type ProductVideo = {
+  /** R2 public URL for the video file (MP4 or WebM) */
+  url: string;
+  /** Optional poster-frame image URL shown before playback */
+  poster?: string;
+  /** Admin-supplied label e.g. "Front view", "Detail shot" */
+  label?: string;
+};
+
 export type ProductStatus = "draft" | "active" | "archived" | "preorder";
 export type ProductFit = "regular" | "oversized" | "boxy" | "relaxed";
 
@@ -57,6 +67,10 @@ export type Product = {
   preorderShipDate?: string;
   /** Short customer-facing note shown on PDP (e.g. "Ships September 2026") */
   preorderNote?: string;
+  /** Short-form product videos — shown in the gallery alongside images */
+  videos?: ProductVideo[];
+  /** ISO timestamp set by Mongoose on first creation — used for New In / freshness signals */
+  createdAt?: string;
 };
 
 export type Category = {

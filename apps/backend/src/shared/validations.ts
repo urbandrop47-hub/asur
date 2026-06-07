@@ -167,15 +167,18 @@ export const createOrderSchema = z.object({
 
 // amount is intentionally omitted — the server derives it from order.total
 // to prevent clients from submitting a tampered (e.g. 1 paise) amount.
+// guestPhone is the ownership credential for guest orders (no session).
 export const paymentCreateOrderSchema = z.object({
-  orderId: z.string().min(1)
+  orderId: z.string().min(1),
+  guestPhone: z.string().regex(/^\+?[\d\s\-]{10,15}$/).optional()
 });
 
 export const paymentVerificationSchema = z.object({
   orderId: z.string().min(1),
   razorpayOrderId: z.string().min(1),
   razorpayPaymentId: z.string().min(1),
-  razorpaySignature: z.string().min(1)
+  razorpaySignature: z.string().min(1),
+  guestPhone: z.string().regex(/^\+?[\d\s\-]{10,15}$/).optional()
 });
 
 export type ProductInput = z.infer<typeof productSchema>;

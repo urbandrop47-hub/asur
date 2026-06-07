@@ -293,5 +293,63 @@ export const productRepository = {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     return pool.slice(0, limit);
+  },
+
+  // ── New In ─────────────────────────────────────────────────────────────────
+  /** Products created in the last `days` days, sorted newest first. */
+  async newIn(days = 30, limit = 24): Promise<Product[]> {
+    if (hasMongoConnection) {
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      return ProductModel
+        .find({ status: "active", createdAt: { $gte: since } })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean<Product[]>()
+        .exec();
+    }
+    // Mock: return the last `limit` active products (mock has no createdAt)
+    return mockStore.products.filter((p) => p.status === "active").slice(-limit).reverse();
+  },
+
+  // ── Bestsellers ────────────────────────────────────────────────────────────
+  /** Product slugs ranked by total units sold in the last `days` days.
+   *  Requires OrderModel — imported lazily to avoid circular deps. */
+  async bestsellers(days = 30, limit = 24): Promise<Product[]> {
+    if (hasMongoConnection) {
+      // Import lazily so this file doesn't create a circular dep with order.model
+      const { OrderModel } = await import("../models/order.model");
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const agg: { _id: string; total: number }[] = await OrderModel.aggregate([
+        { $match: { status: { $nin: ["cancelled", "refunded"] }, createdAt: { $gte: since } } },
+        { $unwind: "$items" },
+        { $group: { _id: "$items.productId", total: { $sum: "$items.quantity" } } },
+        { $sort: { total: -1 } },
+        { $limit: limit * 3 } // fetch more so we can still reach `limit` after filtering
+      ]).exec();
+
+      if (agg.length === 0) {
+        // Fallback: return active products sorted by title
+        return ProductModel.find({ status: "active" }).sort({ title: 1 }).limit(limit).lean<Product[]>().exec();
+      }
+
+      const productIds = agg.map((a) => a._id);
+      const products = await ProductModel
+        .find({ id: { $in: productIds }, status: "active" })
+        .lean<Product[]>()
+        .exec();
+
+      // Preserve aggregation order (rank by sales)
+      const byId = new Map(products.map((p) => [p.id, p]));
+      return productIds.map((id) => byId.get(id)).filter(Boolean).slice(0, limit) as Product[];
+    }
+    // Mock: return active products sorted by stock (proxy for popularity)
+    return mockStore.products
+      .filter((p) => p.status === "active")
+      .sort((a, b) => {
+        const stockA = a.variants.reduce((s, v) => s + v.stock, 0);
+        const stockB = b.variants.reduce((s, v) => s + v.stock, 0);
+        return stockA - stockB; // lower stock = sold more
+      })
+      .slice(0, limit);
   }
 };

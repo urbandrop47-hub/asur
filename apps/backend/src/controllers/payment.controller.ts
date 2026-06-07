@@ -51,18 +51,35 @@ import { notificationRepository } from "../repositories/notification.repository"
  *                   type: string
  */
 export const createPaymentOrderController: RequestHandler = asyncHandler(async (req, res) => {
-  const { orderId } = paymentCreateOrderSchema.parse(req.body);
-  const requestingUserId = res.locals.user.id as string;
+  const { orderId, guestPhone } = paymentCreateOrderSchema.parse(req.body);
+  const requestingUserId = res.locals.user?.id as string | undefined;
+
+  // Must have either a session or a guestPhone credential
+  if (!requestingUserId && !guestPhone) {
+    res.status(401).json({ success: false, message: "Authentication required" });
+    return;
+  }
 
   // Ownership: only the order's owner may create a Razorpay payment intent for it
-  const existingOrder = await orderRepository.findByIdAdmin(orderId) as (Order & { providerOrderId?: string }) | null;
+  const existingOrder = await orderRepository.findByIdAdmin(orderId) as (Order & { providerOrderId?: string; guestPhone?: string }) | null;
   if (!existingOrder) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
   }
-  if (existingOrder.customerId !== requestingUserId) {
-    res.status(403).json({ success: false, message: "Access denied" });
-    return;
+  // Ownership is checked via ONE credential path — never mix session + guestPhone,
+  // which would allow an authenticated attacker to pass the guest check.
+  if (requestingUserId) {
+    // Authenticated path: session user must match the order's customerId
+    if (existingOrder.customerId !== requestingUserId) {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
+  } else {
+    // Guest path: guestPhone must match the order's recorded phone
+    if (!existingOrder.guestPhone || existingOrder.guestPhone !== guestPhone) {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
   }
 
   // Guard: cancelled orders cannot be paid
@@ -150,18 +167,30 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
   // Look up the order and verify the razorpayOrderId matches what we stored.
   // This prevents a replay attack where an attacker reuses a valid signature
   // from their own paid order to mark a different order as paid.
-  const requestingUserId = res.locals.user.id as string;
+  const requestingUserId = res.locals.user?.id as string | undefined;
 
-  const order = await orderRepository.findByIdAdmin(payload.orderId) as (Order & { providerOrderId?: string }) | null;
+  if (!requestingUserId && !payload.guestPhone) {
+    res.status(401).json({ success: false, message: "Authentication required" });
+    return;
+  }
+
+  const order = await orderRepository.findByIdAdmin(payload.orderId) as (Order & { providerOrderId?: string; guestPhone?: string }) | null;
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
   }
 
-  // Ownership: only the customer who placed this order may verify its payment
-  if (order.customerId !== requestingUserId) {
-    res.status(403).json({ success: false, message: "Access denied" });
-    return;
+  // Ownership — mutually exclusive paths; never allow mixing session + guestPhone.
+  if (requestingUserId) {
+    if (order.customerId !== requestingUserId) {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
+  } else {
+    if (!order.guestPhone || order.guestPhone !== payload.guestPhone) {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
   }
 
   // Reject verification on terminal statuses — prevents a Razorpay payment from

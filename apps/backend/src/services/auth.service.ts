@@ -3,6 +3,7 @@ import type { AuthSession } from "@asur/types";
 import { verifyFirebaseIdToken } from "../auth/firebase";
 import { userRepository } from "../repositories/user.repository";
 import { orderRepository } from "../repositories/order.repository";
+import { logger } from "../lib/logger";
 
 export async function createSession(idToken: string): Promise<AuthSession> {
   const user = await resolveUserFromIdToken(idToken);
@@ -26,7 +27,9 @@ export async function resolveUserFromIdToken(idToken: string) {
 
   // Phone sign-in: link any guest orders placed with this number to the new account
   if (identity.phoneNumber) {
-    void orderRepository.linkGuestOrders(identity.phoneNumber, user.id).catch(() => {});
+    void orderRepository.linkGuestOrders(identity.phoneNumber, user.id).catch((err: unknown) => {
+      logger.error({ err, phone: identity.phoneNumber, userId: user.id }, "linkGuestOrders failed — guest orders not linked");
+    });
   }
 
   return user;

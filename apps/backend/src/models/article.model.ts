@@ -1,6 +1,6 @@
 import { Schema, model, models } from "mongoose";
 
-export type ArticleBlockType = "text" | "image" | "product_embed";
+export type ArticleBlockType = "text" | "image" | "product_embed" | "video";
 
 export type ArticleBlock = {
   type: ArticleBlockType;
@@ -33,7 +33,7 @@ export type ArticleDoc = {
 
 const blockSchema = new Schema<ArticleBlock>(
   {
-    type: { type: String, enum: ["text", "image", "product_embed"], required: true },
+    type: { type: String, enum: ["text", "image", "product_embed", "video"], required: true },
     content: { type: String, required: true },
     caption: { type: String },
     order: { type: Number, required: true, default: 0 },

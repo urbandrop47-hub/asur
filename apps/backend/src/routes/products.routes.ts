@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Router as ExpressRouter, Request, Response, NextFunction } from "express";
-import { getProductController, listProductsController, relatedProductsController, suggestController, stockStreamController, verifyDropAccessController } from "../controllers/product.controller";
+import { getProductController, listProductsController, relatedProductsController, suggestController, stockStreamController, verifyDropAccessController, newInController, bestsellersController } from "../controllers/product.controller";
 import { listProductReviewsController } from "../controllers/review.controller";
 
 function swr(maxAge: number, staleWhileRevalidate: number) {
@@ -13,8 +13,10 @@ function swr(maxAge: number, staleWhileRevalidate: number) {
 export const productsRouter: ExpressRouter = Router();
 
 productsRouter.get("/", swr(300, 3600), listProductsController);
-// /suggest must be registered before /:slug to avoid the slug param swallowing it
-productsRouter.get("/suggest", swr(600, 1800), suggestController);
+// Static paths MUST be registered before /:slug to prevent the param swallowing them
+productsRouter.get("/suggest",     swr(600, 1800),  suggestController);
+productsRouter.get("/new-in",      swr(300, 1800),  newInController);
+productsRouter.get("/bestsellers", swr(600, 3600),  bestsellersController);
 productsRouter.get("/:slug", swr(300, 3600), getProductController);
 productsRouter.get("/:slug/related", swr(600, 1800), relatedProductsController);
 productsRouter.get("/:slug/reviews", swr(900, 3600), listProductReviewsController);

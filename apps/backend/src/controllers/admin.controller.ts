@@ -42,6 +42,9 @@ const createProductSchema = z.object({
   preorderNote: z.string().max(200).optional(),
   media: z
     .array(z.object({ url: z.string().url(), alt: z.string().optional(), width: z.number().optional(), height: z.number().optional() }))
+    .default([]),
+  videos: z
+    .array(z.object({ url: z.string().url(), poster: z.string().url().optional(), label: z.string().optional() }))
     .default([])
 });
 
@@ -146,7 +149,6 @@ export const createAdminProductController: RequestHandler = asyncHandler(async (
     return;
   }
 
-  const now = new Date().toISOString();
   const product: Product = {
     id: createId("prd"),
     title: body.title,
@@ -159,9 +161,7 @@ export const createAdminProductController: RequestHandler = asyncHandler(async (
     collectionSlugs: body.collectionSlugs,
     fit: body.fit,
     status: body.status,
-    // @ts-expect-error createdAt/updatedAt not in Product type but stored for ordering
-    createdAt: now,
-    updatedAt: now
+    // createdAt / updatedAt are set automatically by Mongoose { timestamps: true }
   };
   const created = await productRepository.create(product);
   logAudit("product.create", "product", product.id, req.ip, { title: product.title });
@@ -171,10 +171,8 @@ export const createAdminProductController: RequestHandler = asyncHandler(async (
 export const updateAdminProductController: RequestHandler = asyncHandler(async (req, res) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const body = updateProductSchema.parse(req.body);
-  const updates: Partial<Product> & { updatedAt?: string } = {
-    ...body,
-    updatedAt: new Date().toISOString()
-  };
+  // updatedAt is managed by Mongoose { timestamps: true } — no manual set needed
+  const updates: Partial<Product> = { ...body };
   // Only derive a slug from the title when the caller explicitly provides a new
   // title but no slug — never overwrite an existing custom slug silently.
   if (body.slug) {

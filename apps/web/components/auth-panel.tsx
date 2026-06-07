@@ -208,6 +208,7 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
   }
 
   async function handleSendOtp() {
+    if (busy) return; // guard against double-tap before React re-renders the disabled state
     if (!firebaseAuth || !hasFirebaseConfig()) { setMessage("Firebase config is missing."); return; }
     const phone = phoneNumber.trim().startsWith("+") ? phoneNumber.trim() : `+91${phoneNumber.trim()}`;
     if (!/^\+\d{10,15}$/.test(phone.replace(/[\s\-]/g, ""))) {
@@ -239,7 +240,17 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
       await confirmationResult.confirm(otp.trim());
       // onAuthStateChanged fires → syncSessionFromFirebaseUser handles the rest
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Invalid OTP — please try again");
+      const fbCode = (error as { code?: string }).code;
+      if (fbCode === "auth/code-expired") {
+        // OTP expired — auto-reset so user can request a fresh code without hunting for the
+        // "← Change number" link. This matters now that phoneStep is preserved across tab switches.
+        setPhoneStep("input");
+        setConfirmationResult(null);
+        setOtp("");
+        setMessage("Your OTP has expired. Please re-enter your number to request a new one.");
+      } else {
+        setMessage(error instanceof Error ? error.message : "Invalid OTP — please try again");
+      }
     } finally { setBusy(false); }
   }
 
@@ -337,13 +348,29 @@ export function AuthPanel({ redirectTo = "/" }: AuthPanelProps) {
       <div className="auth-mode-tabs" style={{ marginBottom: "1rem" }}>
         <button
           className={`auth-mode-tab${authTab === "email" ? " active" : ""}`}
-          onClick={() => { setAuthTab("email"); setMessage(null); setPhoneStep("input"); }}
+          onClick={() => {
+            // Destroy the reCAPTCHA verifier so it's recreated fresh next time the
+            // Phone tab is entered — reusing a verifier after its container is
+            // unmounted throws "reCAPTCHA has already been rendered in this element".
+            recaptchaVerifierRef.current?.clear();
+            recaptchaVerifierRef.current = null;
+            // Do NOT reset phoneStep / confirmationResult here — if the user has an
+            // OTP SMS in-flight and accidentally clicks Email, switching back to Phone
+            // should still let them enter the code. State is reset only on explicit
+            // "← Change number" click or on successful sign-in.
+            setAuthTab("email"); setMessage(null);
+          }}
         >
           Email
         </button>
         <button
           className={`auth-mode-tab${authTab === "phone" ? " active" : ""}`}
-          onClick={() => { setAuthTab("phone"); setMessage(null); }}
+          onClick={() => {
+            // Do NOT reset phoneStep / confirmationResult — preserves an in-flight
+            // OTP session if the user briefly switches tabs. The user always sees
+            // whichever step they were on last, which is the correct UX.
+            setAuthTab("phone"); setMessage(null);
+          }}
         >
           Phone (OTP)
         </button>

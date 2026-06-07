@@ -24,7 +24,8 @@ export const getPublicConfigController: RequestHandler = asyncHandler(async (_re
     announcementBar: config.announcementBar,
     freeShippingThreshold: config.freeShippingThreshold,
     shippingFee: config.shippingFee,
-    gstRate: config.gstRate
+    gstRate: config.gstRate,
+    brandReel: config.brandReel?.isActive ? config.brandReel : undefined
   }, "Config fetched");
 });
 
@@ -46,7 +47,13 @@ const patchConfigSchema = z.object({
   gstRate:               z.coerce.number().min(0).max(1).optional(),
   gstin:                 z.string().max(15).optional(),
   businessName:          z.string().max(200).optional(),
-  businessAddress:       z.string().max(500).optional()
+  businessAddress:       z.string().max(500).optional(),
+  brandReel: z.object({
+    url:      z.string().url(),
+    poster:   z.string().url().optional(),
+    headline: z.string().max(120).optional(),
+    isActive: z.boolean()
+  }).optional()
 }).refine((d) => Object.keys(d).length > 0, { message: "At least one field required" });
 
 // ── PATCH /api/v1/admin/config ────────────────────────────────────────────────
@@ -73,6 +80,14 @@ export const updateAdminConfigController: RequestHandler = asyncHandler(async (r
     if (parsed.data.gstin !== undefined) updateFields.gstin = parsed.data.gstin;
     if (parsed.data.businessName !== undefined) updateFields.businessName = parsed.data.businessName;
     if (parsed.data.businessAddress !== undefined) updateFields.businessAddress = parsed.data.businessAddress;
+    if (parsed.data.brandReel !== undefined) {
+      // Use dot-notation keys so MongoDB $set only touches the provided sub-fields,
+      // instead of replacing the entire subdocument (which would wipe poster/headline).
+      updateFields["brandReel.url"]      = parsed.data.brandReel.url;
+      updateFields["brandReel.isActive"] = parsed.data.brandReel.isActive;
+      if (parsed.data.brandReel.poster !== undefined)   updateFields["brandReel.poster"]   = parsed.data.brandReel.poster;
+      if (parsed.data.brandReel.headline !== undefined) updateFields["brandReel.headline"] = parsed.data.brandReel.headline;
+    }
 
     const doc = await SiteConfigModel.findByIdAndUpdate(
       "singleton",
@@ -91,6 +106,7 @@ export const updateAdminConfigController: RequestHandler = asyncHandler(async (r
   if (parsed.data.gstin !== undefined) mockConfig.gstin = parsed.data.gstin;
   if (parsed.data.businessName !== undefined) mockConfig.businessName = parsed.data.businessName;
   if (parsed.data.businessAddress !== undefined) mockConfig.businessAddress = parsed.data.businessAddress;
+  if (parsed.data.brandReel !== undefined) mockConfig.brandReel = parsed.data.brandReel;
   mockConfig.updatedAt = now;
   sendSuccess(res, mockConfig, "Config updated (mock)");
 });

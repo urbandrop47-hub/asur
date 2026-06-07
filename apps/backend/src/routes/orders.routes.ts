@@ -8,12 +8,15 @@ export const ordersRouter: ExpressRouter = Router();
 
 // POST /orders — guest checkout allowed (session optional, guestPhone in body)
 ordersRouter.post("/", createOrderController);
-// GET /:id — session OR ?guestPhone query param (session optional)
-ordersRouter.get("/:id", getOrderController);
 
-// All remaining routes require a valid session
-ordersRouter.use(requireSession);
-ordersRouter.get("/", listOrdersController);
-ordersRouter.get("/returns", listMyReturnsController);
-ordersRouter.post("/:id/cancel", cancelOrderController);
-ordersRouter.post("/:id/return", requestReturnController);
+// ⚠️  Static sub-paths MUST be registered before /:id — otherwise Express
+//     matches GET /returns as /:id with id="returns" and the real handler is
+//     never reached. These routes each carry an inline requireSession guard.
+ordersRouter.get("/", requireSession, listOrdersController);
+ordersRouter.get("/returns", requireSession, listMyReturnsController);
+ordersRouter.post("/:id/cancel", requireSession, cancelOrderController);
+ordersRouter.post("/:id/return", requireSession, requestReturnController);
+
+// GET /:id — session optional: controller handles session OR ?guestPhone param.
+// Registered last so the static paths above take precedence.
+ordersRouter.get("/:id", getOrderController);

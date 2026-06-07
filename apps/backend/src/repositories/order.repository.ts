@@ -132,24 +132,29 @@ export const orderRepository = {
     return mockStore.orders.find((o) => o.id === id && o.customerId === customerId) ?? null;
   },
 
-  /** Look up a guest order by id + the phone number used at checkout (no auth session). */
+  /** Look up a guest order by id + the phone number used at checkout (no auth session).
+   *  Only matches UNLINKED orders (no customerId) — once an order is claimed by an account
+   *  the guestPhone credential is retired and the order must be fetched via authenticated session.
+   *  This prevents IDOR: knowing a phone number cannot reveal a linked account's order history. */
   async findByIdForGuest(id: string, guestPhone: string) {
     if (hasMongoConnection) {
-      const doc = await OrderModel.findOne({ id, guestPhone }).lean();
+      const doc = await OrderModel.findOne({ id, guestPhone, customerId: { $exists: false } }).lean();
       if (!doc) return null;
       const { _id, __v, ...rest } = doc as Record<string, unknown>;
       void _id; void __v;
       return rest as Order;
     }
-    return mockStore.orders.find((o) => o.id === id && o.guestPhone === guestPhone) ?? null;
+    return mockStore.orders.find((o) => o.id === id && o.guestPhone === guestPhone && !o.customerId) ?? null;
   },
 
-  /** After phone sign-in: assign all matching guest orders to the new customer account. */
+  /** After phone sign-in: assign all matching guest orders to the new customer account.
+   *  guestPhone is intentionally NOT unset — it serves as a permanent ownership credential
+   *  so that bookmarked confirmation URLs (?guestPhone=...) continue to resolve after linking. */
   async linkGuestOrders(guestPhone: string, customerId: string) {
     if (hasMongoConnection) {
       const result = await OrderModel.updateMany(
         { guestPhone, customerId: { $exists: false } },
-        { $set: { customerId, updatedAt: new Date().toISOString() }, $unset: { guestPhone: "" } }
+        { $set: { customerId, updatedAt: new Date().toISOString() } }
       );
       return result.modifiedCount;
     }
@@ -158,7 +163,7 @@ export const orderRepository = {
     for (const o of mockStore.orders) {
       if (o.guestPhone === guestPhone && !o.customerId) {
         o.customerId = customerId;
-        o.guestPhone = undefined;
+        // guestPhone kept intentionally — see comment above
         o.updatedAt = new Date().toISOString();
         linked++;
       }

@@ -898,11 +898,20 @@ function CheckoutPageContent() {
         });
         order = orderRes.data.order;
         setPendingOrderId(order.id);
-        // Persist guestPhone in sessionStorage so the confirmation page can fetch the order
-        if (!session && guestPhone) {
-          try { sessionStorage.setItem(`guest_order_${order.id}`, guestPhone); } catch { /* ignore */ }
+      }
+
+      // Persist guestPhone in sessionStorage so confirmation page can fetch the order
+      // on F5 or revisit after the URL param is lost. Written here (not just in the
+      // new-order branch above) so pendingOrderId retries also get the entry.
+      if (!session && guestPhone) {
+        try { sessionStorage.setItem(`guest_order_${order.id}`, guestPhone); } catch {
+          // sessionStorage unavailable (e.g. iOS Safari Private Browsing).
+          // The ?guestPhone= query param in the confirmation URL is the primary mechanism —
+          // sessionStorage is only a fallback for revisiting a bookmarked confirmation URL.
+          // No action needed; the confirmation URL itself always carries the phone.
         }
       }
+
       // Use the server-computed total — never re-derive from client cart prices,
       // which may differ if the catalogue changed between add-to-cart and checkout.
       const totalPaise = Math.round((order.total ?? 0) * 100);
@@ -912,7 +921,7 @@ function CheckoutPageContent() {
       //    (gift card / loyalty covered 100%) — skip straight to confirmation.
       const payRes = await api.post<{ data: { providerOrderId?: string | null; id?: string; amount: number; zeroCost?: boolean } }>(
         "/api/v1/payments/razorpay/order",
-        { orderId: order.id }
+        { orderId: order.id, ...(!session && guestPhone ? { guestPhone } : {}) }
       );
 
       if (payRes.data.zeroCost) {
@@ -921,7 +930,7 @@ function CheckoutPageContent() {
         if (session?.user.email) {
           void api.post("/api/v1/abandoned-cart/convert", { email: session.user.email }).catch(() => {});
         }
-        router.push(`/orders/${order.id}/confirmation${!session ? `?guestPhone=${encodeURIComponent(guestPhone)}` : ""}`);
+        router.push(`/orders/${order.id}/confirmation${!session && guestPhone ? `?guestPhone=${encodeURIComponent(guestPhone)}` : ""}`);
         return;
       }
 
@@ -953,14 +962,15 @@ function CheckoutPageContent() {
               orderId: order.id,
               razorpayOrderId: payload.razorpay_order_id,
               razorpayPaymentId: payload.razorpay_payment_id,
-              razorpaySignature: payload.razorpay_signature
+              razorpaySignature: payload.razorpay_signature,
+              ...(!session && guestPhone ? { guestPhone } : {})
             });
             setPendingOrderId(null);
             clearCart();
             if (session?.user.email) {
               void api.post("/api/v1/abandoned-cart/convert", { email: session.user.email }).catch(() => {});
             }
-            router.push(`/orders/${order.id}/confirmation${!session ? `?guestPhone=${encodeURIComponent(guestPhone)}` : ""}`);
+            router.push(`/orders/${order.id}/confirmation${!session && guestPhone ? `?guestPhone=${encodeURIComponent(guestPhone)}` : ""}`);
           } catch {
             setError("Payment succeeded but verification failed. Please contact support with your order ID: " + order.id);
             setProcessing(false);
@@ -978,10 +988,14 @@ function CheckoutPageContent() {
   const showGuestPhoneCapture = !session && !guestPhone;
 
   function handleGuestPhoneConfirm() {
-    const raw = guestPhoneInput.trim().replace(/\D/g, "");
-    if (raw.length < 10) { setGuestPhoneError("Enter a valid 10-digit mobile number"); return; }
-    const normalized = raw.startsWith("91") && raw.length === 12 ? `+${raw}` : `+91${raw}`;
-    setGuestPhone(normalized);
+    let raw = guestPhoneInput.trim().replace(/\D/g, "");
+    // Strip international prefixes before validating:
+    //   0091XXXXXXXXXX (14 digits) → XXXXXXXXXX
+    //   91XXXXXXXXXX   (12 digits) → XXXXXXXXXX
+    if (raw.startsWith("0091") && raw.length === 14) raw = raw.slice(4);
+    else if (raw.startsWith("91") && raw.length === 12) raw = raw.slice(2);
+    if (raw.length !== 10) { setGuestPhoneError("Enter a valid 10-digit mobile number. Country code (+91, 91, or 0091) is stripped automatically if pasted."); return; }
+    setGuestPhone(`+91${raw}`);
     setGuestPhoneError(null);
   }
 
@@ -1016,7 +1030,12 @@ function CheckoutPageContent() {
                 inputMode="numeric"
                 autoComplete="tel-national"
                 value={guestPhoneInput}
-                onChange={(e) => { setGuestPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 10)); setGuestPhoneError(null); }}
+                onChange={(e) => {
+                  // Accept up to 15 raw digits — prefix stripping happens in handleGuestPhoneConfirm,
+                  // not here, so pastes like 0091XXXXXXXXXX (14 digits) are never silently truncated.
+                  setGuestPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 15));
+                  setGuestPhoneError(null);
+                }}
                 onKeyDown={(e) => e.key === "Enter" && handleGuestPhoneConfirm()}
                 placeholder="98765 43210"
                 style={{ flex: 1, border: `1px solid ${guestPhoneError ? "var(--danger)" : "rgba(255,255,255,0.12)"}`, borderRadius: 12, background: "rgba(255,255,255,0.05)", color: "var(--text)", padding: "0.85rem 1rem", font: "inherit", fontSize: "1rem", outline: "none", minHeight: 48 }}

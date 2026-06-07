@@ -313,7 +313,7 @@ export default function AdminOrderDetailPage() {
             <p style={{ margin: "0 0 0.3rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <p style={{ margin: 0, fontSize: "0.82rem", fontFamily: "monospace", color: "var(--text-muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</p>
-              <CopyButton text={value} />
+              {value && <CopyButton text={value} />}
             </div>
           </div>
         ))}

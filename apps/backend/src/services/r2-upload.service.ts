@@ -26,6 +26,44 @@ function getClient(): S3Client {
   return _client;
 }
 
+/** Generate a presigned R2 upload URL for a product video (admin-only). */
+export async function getProductVideoUploadUrl(
+  contentType: "video/mp4" | "video/webm"
+): Promise<{ uploadUrl: string; publicUrl: string }> {
+  if (!hasR2) {
+    throw new Error("R2 storage is not configured — set R2_ACCESS_KEY, R2_SECRET_KEY, R2_BUCKET, R2_ACCOUNT_ID, R2_PUBLIC_URL");
+  }
+  const ext = contentType === "video/webm" ? "webm" : "mp4";
+  const key = `products/videos/${createId("vid")}.${ext}`;
+  const command = new PutObjectCommand({
+    Bucket: env.R2_BUCKET,
+    Key: key,
+    ContentType: contentType,
+  });
+  const uploadUrl = await getSignedUrl(getClient(), command, { expiresIn: 900 }); // 15 min — videos are larger
+  const publicUrl = `${env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
+  return { uploadUrl, publicUrl };
+}
+
+/** Generate a presigned R2 upload URL for a video poster image (admin-only). */
+export async function getProductPosterUploadUrl(
+  contentType: "image/jpeg" | "image/png" | "image/webp"
+): Promise<{ uploadUrl: string; publicUrl: string }> {
+  if (!hasR2) {
+    throw new Error("R2 storage is not configured");
+  }
+  const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+  const key = `products/posters/${createId("pos")}.${ext}`;
+  const command = new PutObjectCommand({
+    Bucket: env.R2_BUCKET,
+    Key: key,
+    ContentType: contentType,
+  });
+  const uploadUrl = await getSignedUrl(getClient(), command, { expiresIn: 300 });
+  const publicUrl = `${env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
+  return { uploadUrl, publicUrl };
+}
+
 export async function getReviewImageUploadUrl(
   contentType: "image/jpeg" | "image/png" | "image/webp"
 ): Promise<{ uploadUrl: string; publicUrl: string }> {

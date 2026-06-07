@@ -589,7 +589,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
       <div className="pdp-layout">
         {/* Gallery */}
         <div className="pdp-gallery">
-          <ProductImageGallery media={product.media} title={product.title} />
+          <ProductImageGallery media={product.media} videos={product.videos} title={product.title} />
         </div>
 
         {/* Info panel */}

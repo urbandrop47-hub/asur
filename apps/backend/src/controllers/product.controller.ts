@@ -3,6 +3,7 @@ import { z } from "zod";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
 import { getProductBySlug, getRelatedProducts, searchProducts, suggestProducts } from "../services/product.service";
+import { productRepository } from "../repositories/product.repository";
 import { SearchEventModel } from "../models/search-event.model";
 import { ProductModel } from "../models/product.model";
 import { ArticleModel } from "../models/article.model";
@@ -165,4 +166,20 @@ export const verifyDropAccessController: RequestHandler = asyncHandler(async (re
   }
 
   res.status(200).json({ success: true, message: "Access granted" });
+});
+
+// ── GET /api/v1/products/new-in ───────────────────────────────────────────────
+export const newInController: RequestHandler = asyncHandler(async (req, res) => {
+  const days  = Math.min(90, Math.max(1, Number(req.query.days)  || 30));
+  const limit = Math.min(48, Math.max(1, Number(req.query.limit) || 24));
+  const products = await productRepository.newIn(days, limit);
+  sendSuccess(res, products, "New-in products fetched");
+});
+
+// ── GET /api/v1/products/bestsellers ─────────────────────────────────────────
+export const bestsellersController: RequestHandler = asyncHandler(async (req, res) => {
+  const days  = Math.min(365, Math.max(1, Number(req.query.days)  || 30));
+  const limit = Math.min(48, Math.max(1, Number(req.query.limit) || 24));
+  const products = await productRepository.bestsellers(days, limit);
+  sendSuccess(res, products, "Bestsellers fetched");
 });

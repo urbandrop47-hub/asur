@@ -75,6 +75,7 @@ import {
   addCustomerNoteController,
   emailSegmentController
 } from "../controllers/customer.controller";
+import { getProductVideoUploadUrlController, getProductPosterUploadUrlController } from "../controllers/media-upload.controller";
 
 export const adminRouter: ExpressRouter = Router();
 
@@ -88,6 +89,9 @@ adminRouter.post("/invites/accept", acceptAdminInviteController);
 adminRouter.get("/products", adminOnlyMiddleware, listAdminProductsController);
 adminRouter.post("/products", adminOnlyMiddleware, requirePermission("catalog:write"), createAdminProductController);
 adminRouter.patch("/products/bulk", adminOnlyMiddleware, requirePermission("catalog:write"), bulkProductActionController);
+// Media upload URLs — must be before /:id to avoid param swallowing
+adminRouter.post("/products/upload-video-url", adminOnlyMiddleware, requirePermission("catalog:write"), getProductVideoUploadUrlController);
+adminRouter.post("/products/upload-poster-url", adminOnlyMiddleware, requirePermission("catalog:write"), getProductPosterUploadUrlController);
 adminRouter.get("/products/:id", adminOnlyMiddleware, getAdminProductController);
 adminRouter.patch("/products/:id", adminOnlyMiddleware, requirePermission("catalog:write"), updateAdminProductController);
 adminRouter.delete("/products/:id", adminOnlyMiddleware, requirePermission("catalog:write"), deleteAdminProductController);
