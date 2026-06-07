@@ -28,13 +28,15 @@ type FormState = {
   publishedAt: string;
   seoTitle: string;
   seoDescription: string;
+  /** Drop access code — empty string = open access */
+  accessCode: string;
   blocks: Block[];
 };
 
 const EMPTY: FormState = {
   title: "", slug: "", type: "blog", status: "draft",
   heroImage: "", excerpt: "", tags: "", collectionSlug: "",
-  publishedAt: "", seoTitle: "", seoDescription: "", blocks: [],
+  publishedAt: "", seoTitle: "", seoDescription: "", accessCode: "", blocks: [],
 };
 
 function slugify(title: string) {
@@ -69,6 +71,7 @@ export default function ArticleEditorPage() {
           publishedAt: d.publishedAt ? new Date(d.publishedAt as unknown as string).toISOString().slice(0, 16) : "",
           seoTitle: d.seoTitle ?? "",
           seoDescription: d.seoDescription ?? "",
+          accessCode: (d as FormState & { accessCode?: string }).accessCode ?? "",
           blocks: (d.blocks as Block[]) ?? [],
         });
         setLoading(false);
@@ -125,6 +128,7 @@ export default function ArticleEditorPage() {
         publishedAt: form.publishedAt ? new Date(form.publishedAt).toISOString() : undefined,
         seoTitle: form.seoTitle.trim() || undefined,
         seoDescription: form.seoDescription.trim() || undefined,
+        accessCode: form.accessCode.trim() || "",
         blocks: form.blocks,
       };
 
@@ -234,12 +238,34 @@ export default function ArticleEditorPage() {
           <input style={inputStyle} value={form.tags} onChange={(e) => set("tags", e.target.value)} placeholder="streetwear, drop, lookbook" />
         </div>
 
-        {/* Collection slug (for drops) */}
+        {/* Collection slug + access code (for drops) */}
         {form.type === "drop" && (
-          <div>
-            <label style={labelStyle}>Collection slug (links products to this drop)</label>
-            <input style={{ ...inputStyle, fontFamily: "var(--f-mono)", fontSize: "0.82rem" }} value={form.collectionSlug} onChange={(e) => set("collectionSlug", e.target.value)} placeholder="void-season-2026" />
-          </div>
+          <>
+            <div>
+              <label style={labelStyle}>Collection slug (links products to this drop)</label>
+              <input style={{ ...inputStyle, fontFamily: "var(--f-mono)", fontSize: "0.82rem" }} value={form.collectionSlug} onChange={(e) => set("collectionSlug", e.target.value)} placeholder="void-season-2026" />
+            </div>
+            <div>
+              <label style={labelStyle}>
+                Access code{" "}
+                <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>
+                  — leave blank for open access. Customers must enter this code on the drop page.
+                </span>
+              </label>
+              <input
+                style={{ ...inputStyle, fontFamily: "var(--f-mono)", fontSize: "0.9rem", letterSpacing: "0.1em", textTransform: "uppercase" }}
+                value={form.accessCode}
+                onChange={(e) => set("accessCode", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                placeholder="e.g. GOLDTIER26"
+                maxLength={64}
+              />
+              {form.accessCode && (
+                <p style={{ margin: "0.35rem 0 0", fontSize: "0.75rem", color: "var(--warning)" }}>
+                  🔒 This drop will require code: <strong style={{ fontFamily: "var(--f-mono)" }}>{form.accessCode}</strong>
+                </p>
+              )}
+            </div>
+          </>
         )}
 
         {/* SEO */}

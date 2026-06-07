@@ -62,7 +62,7 @@ export default function NewsletterPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `asur-newsletter-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `WeAreASUR-newsletter-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }

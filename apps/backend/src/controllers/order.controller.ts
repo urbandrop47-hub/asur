@@ -3,13 +3,14 @@ import { z } from "zod";
 import { asyncHandler } from "../lib/async-handler";
 import { sendSuccess } from "../lib/response";
 import { cartItemSchema, addressSchema } from "../shared/validations";
-import { cancelOrder, createOrder, getOrderById, listOrdersByCustomer } from "../services/order.service";
+import { cancelOrder, createOrder, getOrderById, getOrderByIdForGuest, listOrdersByCustomer } from "../services/order.service";
 import { orderRepository } from "../repositories/order.repository";
 import { logAudit } from "../repositories/audit-log.repository";
 
 const createOrderBodySchema = z.object({
   items: z.array(cartItemSchema).min(1),
   shippingAddress: addressSchema,
+  guestPhone: z.string().regex(/^\+?[\d\s\-]{10,15}$/).optional(),
   couponCode: z.string().trim().toUpperCase().optional(),
   loyaltyPointsToRedeem: z.number().int().nonnegative().optional().default(0),
   referralCode: z.string().trim().toUpperCase().optional(),
@@ -47,9 +48,27 @@ const createOrderBodySchema = z.object({
  *         description: Not authenticated
  */
 export const createOrderController: RequestHandler = asyncHandler(async (req, res) => {
-  const { items, shippingAddress, couponCode, loyaltyPointsToRedeem, referralCode, giftCardCode } = createOrderBodySchema.parse(req.body);
-  const customerId: string = res.locals.user.id;
-  const result = await createOrder({ customerId, items, shippingAddress, couponCode, loyaltyPointsToRedeem, referralCode, giftCardCode });
+  const { items, shippingAddress, guestPhone, couponCode, loyaltyPointsToRedeem, referralCode, giftCardCode } = createOrderBodySchema.parse(req.body);
+
+  // Authenticated customer — inject customerId from verified session
+  const customerId: string | undefined = res.locals.user?.id;
+
+  // Must have either a session (customerId) or a guest phone
+  if (!customerId && !guestPhone) {
+    res.status(401).json({ success: false, message: "Sign in or provide a phone number to place an order" });
+    return;
+  }
+
+  const result = await createOrder({
+    ...(customerId ? { customerId } : {}),
+    ...(guestPhone && !customerId ? { guestPhone } : {}),
+    items,
+    shippingAddress,
+    couponCode,
+    loyaltyPointsToRedeem,
+    referralCode,
+    giftCardCode
+  });
   sendSuccess(res, result, "Order created", 201);
 });
 
@@ -104,8 +123,21 @@ export const listOrdersController: RequestHandler = asyncHandler(async (_req, re
  */
 export const getOrderController: RequestHandler = asyncHandler(async (req, res) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const customerId: string = res.locals.user.id;
-  const order = await getOrderById(id, customerId);
+  const customerId: string | undefined = res.locals.user?.id;
+
+  let order;
+  if (customerId) {
+    // Authenticated: fetch by customerId (IDOR guard)
+    order = await getOrderById(id, customerId);
+  } else {
+    // Guest: fetch by guestPhone from query param
+    const guestPhone = typeof req.query.guestPhone === "string" ? req.query.guestPhone : null;
+    if (!guestPhone) {
+      res.status(401).json({ success: false, message: "Authentication required" });
+      return;
+    }
+    order = await getOrderByIdForGuest(id, guestPhone);
+  }
 
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });

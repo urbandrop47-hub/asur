@@ -62,8 +62,8 @@ const breadcrumb = {
 export default function AboutPage() {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema).replace(/</g, "\\u003C").replace(/>/g, "\\u003E") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb).replace(/</g, "\\u003C").replace(/>/g, "\\u003E") }} />
     <div style={{ maxWidth: 800, margin: "0 auto", padding: "3rem 1.25rem 6rem" }}>
 
       {/* Hero */}

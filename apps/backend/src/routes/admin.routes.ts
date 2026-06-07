@@ -69,6 +69,13 @@ import {
   adminUpdateArticleController,
   adminDeleteArticleController,
 } from "../controllers/article.controller";
+import {
+  listCustomersController,
+  getCustomerProfileController,
+  addCustomerNoteController,
+  emailSegmentController
+} from "../controllers/customer.controller";
+import { getProductVideoUploadUrlController, getProductPosterUploadUrlController } from "../controllers/media-upload.controller";
 
 export const adminRouter: ExpressRouter = Router();
 
@@ -82,6 +89,9 @@ adminRouter.post("/invites/accept", acceptAdminInviteController);
 adminRouter.get("/products", adminOnlyMiddleware, listAdminProductsController);
 adminRouter.post("/products", adminOnlyMiddleware, requirePermission("catalog:write"), createAdminProductController);
 adminRouter.patch("/products/bulk", adminOnlyMiddleware, requirePermission("catalog:write"), bulkProductActionController);
+// Media upload URLs — must be before /:id to avoid param swallowing
+adminRouter.post("/products/upload-video-url", adminOnlyMiddleware, requirePermission("catalog:write"), getProductVideoUploadUrlController);
+adminRouter.post("/products/upload-poster-url", adminOnlyMiddleware, requirePermission("catalog:write"), getProductPosterUploadUrlController);
 adminRouter.get("/products/:id", adminOnlyMiddleware, getAdminProductController);
 adminRouter.patch("/products/:id", adminOnlyMiddleware, requirePermission("catalog:write"), updateAdminProductController);
 adminRouter.delete("/products/:id", adminOnlyMiddleware, requirePermission("catalog:write"), deleteAdminProductController);
@@ -149,6 +159,13 @@ adminRouter.post("/articles", adminOnlyMiddleware, requirePermission("content:wr
 adminRouter.get("/articles/:id", adminOnlyMiddleware, adminGetArticleController);
 adminRouter.patch("/articles/:id", adminOnlyMiddleware, requirePermission("content:write"), adminUpdateArticleController);
 adminRouter.delete("/articles/:id", adminOnlyMiddleware, requirePermission("content:write"), adminDeleteArticleController);
+
+// Customer CRM
+adminRouter.get("/customers", adminOnlyMiddleware, listCustomersController);
+// email-segment must be before /:id to avoid param swallowing
+adminRouter.post("/customers/email-segment", adminOnlyMiddleware, requirePermission("users:invite"), emailSegmentController);
+adminRouter.get("/customers/:id", adminOnlyMiddleware, getCustomerProfileController);
+adminRouter.post("/customers/:id/note", adminOnlyMiddleware, addCustomerNoteController);
 
 // Audit log
 adminRouter.get("/audit-log", adminOnlyMiddleware, listAuditLogsController);

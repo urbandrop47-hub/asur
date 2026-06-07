@@ -25,6 +25,15 @@ const STATUS_CLASS: Record<string, string> = {
 // Statuses admin can set (not pending_payment/draft — those are system-set)
 const UPDATABLE_STATUSES = ["processing", "packed", "shipped", "delivered"] as const;
 
+// Logical progression order — used to detect backward transitions
+const STATUS_ORDER = ["pending_payment", "paid", "processing", "packed", "shipped", "delivered", "cancelled"];
+
+function isBackwardTransition(from: string, to: string) {
+  const fi = STATUS_ORDER.indexOf(from);
+  const ti = STATUS_ORDER.indexOf(to);
+  return fi !== -1 && ti !== -1 && ti < fi;
+}
+
 function getDefaultAdminStatus(status: Order["status"]) {
   return status === "paid" ? "processing" : status;
 }
@@ -60,6 +69,7 @@ export default function AdminOrderDetailPage() {
   const [nextStatus, setNextStatus] = useState<string>("");
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [confirmBackward, setConfirmBackward] = useState(false);
 
   const loadOrder = () => {
     if (!id) return;
@@ -77,11 +87,18 @@ export default function AdminOrderDetailPage() {
 
   async function handleStatusUpdate() {
     if (!order || !nextStatus || nextStatus === order.status) return;
+    // Require explicit confirmation for backward transitions
+    if (isBackwardTransition(order.status, nextStatus) && !confirmBackward) {
+      setConfirmBackward(true);
+      return;
+    }
+    setConfirmBackward(false);
     setStatusSaving(true);
     setStatusMsg(null);
     try {
       await api.post("/api/v1/admin/orders/bulk-status", { ids: [order.id], status: nextStatus });
       setOrder((o) => o ? { ...o, status: nextStatus as Order["status"] } : o);
+      setNextStatus(nextStatus);
       setStatusMsg({ ok: true, text: `Status updated to "${STATUS_LABEL[nextStatus] ?? nextStatus}"` });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch {
@@ -127,7 +144,7 @@ export default function AdminOrderDetailPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
           <h1 style={{ margin: 0, fontSize: "1.3rem" }}>{order.orderNumber}</h1>
           <span className={STATUS_CLASS[order.status] ?? "badge"}>{STATUS_LABEL[order.status] ?? order.status}</span>
-          {["shipped", "delivered", "processing", "packed"].includes(order.status) && (
+          {["shipped", "delivered"].includes(order.status) && (
             <button
               onClick={async () => {
                 const token = readAdminToken();
@@ -139,7 +156,7 @@ export default function AdminOrderDetailPage() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `ASUR-Invoice-${order.orderNumber}.pdf`;
+                a.download = `WeAreASUR-Invoice-${order.orderNumber}.pdf`;
                 a.click();
                 setTimeout(() => URL.revokeObjectURL(url), 10000);
               }}
@@ -165,7 +182,7 @@ export default function AdminOrderDetailPage() {
           <div style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap" }}>
             <select
               value={nextStatus}
-              onChange={(e) => setNextStatus(e.target.value)}
+              onChange={(e) => { setNextStatus(e.target.value); setConfirmBackward(false); }}
               style={{
                 flex: 1, minWidth: 140, padding: "0.55rem 0.75rem", borderRadius: 8,
                 border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
@@ -187,9 +204,17 @@ export default function AdminOrderDetailPage() {
                 fontFamily: "inherit", opacity: statusSaving ? 0.65 : 1, transition: "all 0.15s"
               }}
             >
-              {statusSaving ? "Saving…" : "Save"}
+              {statusSaving ? "Saving…" : confirmBackward ? "Confirm" : "Save"}
             </button>
           </div>
+          {confirmBackward && (
+            <div style={{ marginTop: "0.5rem", padding: "0.6rem 0.85rem", borderRadius: 8, background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.25)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+              <p style={{ margin: 0, fontSize: "0.78rem", color: "var(--accent)" }}>
+                ⚠ Moving backwards: <strong>{STATUS_LABEL[order.status]}</strong> → <strong>{STATUS_LABEL[nextStatus] ?? nextStatus}</strong>. Click Confirm to proceed.
+              </p>
+              <button onClick={() => setConfirmBackward(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.75rem", padding: 0, flexShrink: 0 }}>Cancel</button>
+            </div>
+          )}
           {statusMsg && (
             <p style={{ margin: "0.5rem 0 0", fontSize: "0.78rem", color: statusMsg.ok ? "var(--success,#22c55e)" : "var(--danger,#ef4444)" }}>
               {statusMsg.ok ? "✓ " : "✗ "}{statusMsg.text}
@@ -288,7 +313,7 @@ export default function AdminOrderDetailPage() {
             <p style={{ margin: "0 0 0.3rem", fontSize: "0.7rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <p style={{ margin: 0, fontSize: "0.82rem", fontFamily: "monospace", color: "var(--text-muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</p>
-              <CopyButton text={value} />
+              {value && <CopyButton text={value} />}
             </div>
           </div>
         ))}

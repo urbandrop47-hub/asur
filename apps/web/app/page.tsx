@@ -181,6 +181,49 @@ function JournalPreview() {
   );
 }
 
+// ─── Brand reel ──────────────────────────────────────────────────────────────
+
+type BrandReelConfig = { url: string; poster?: string; headline?: string };
+
+function BrandReel({ reel }: { reel: BrandReelConfig }) {
+  return (
+    <section style={{ position: "relative", overflow: "hidden", marginBottom: "3.5rem", borderRadius: 24 }}>
+      <div style={{ position: "relative", aspectRatio: "16/7", maxHeight: 520, minHeight: 260, borderRadius: 24, overflow: "hidden" }}>
+        <video
+          src={reel.url}
+          poster={reel.poster}
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%",
+            objectFit: "cover", display: "block"
+          }}
+        />
+        {/* Dark scrim for headline legibility */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)" }} />
+        {reel.headline && (
+          <div style={{ position: "absolute", bottom: "clamp(1.25rem, 4vw, 2.5rem)", left: "clamp(1.25rem, 4vw, 2.5rem)" }}>
+            <p style={{
+              margin: 0,
+              fontFamily: "var(--f-display)",
+              fontSize: "clamp(1.5rem, 4vw, 2.75rem)",
+              fontWeight: 900,
+              letterSpacing: "-0.02em",
+              color: "#f6f1ea",
+              textShadow: "0 2px 16px rgba(0,0,0,0.5)",
+              lineHeight: 1.1
+            }}>
+              {reel.headline}
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ─── Testimonials ────────────────────────────────────────────────────────────
 
 const TESTIMONIALS = [
@@ -403,12 +446,54 @@ function ValueStrip() {
   );
 }
 
+// ─── Home strip (New In / Bestsellers) ───────────────────────────────────────
+
+function HomeStrip({ title, href, accentColor, products }: { title: string; href: string; accentColor: string; products: Product[] }) {
+  return (
+    <section style={{ marginBottom: "3rem" }}>
+      <div className="section-title" style={{ marginBottom: "1rem" }}>
+        <h2 style={{ fontSize: "1.15rem", fontWeight: 800, letterSpacing: "-0.02em", margin: 0 }}>
+          <span style={{ color: accentColor }}>{title}</span>
+        </h2>
+        <Link
+          href={href}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            padding: "0.35rem 0.8rem", borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)",
+            color: "var(--text-muted)", fontSize: "0.75rem", fontWeight: 600,
+            letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: "var(--f-mono)",
+            textDecoration: "none",
+          }}
+        >
+          View all
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+      </div>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: "1rem",
+      }}>
+        {products.map((p, i) => (
+          <ProductCard key={p.slug} product={p} priority={i === 0} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [recentSlugs, setRecentSlugs] = useState<{ slug: string; title: string; image?: string }[]>([]);
+  const [brandReel, setBrandReel] = useState<BrandReelConfig | null>(null);
+  const [newInProducts, setNewInProducts] = useState<Product[]>([]);
+  const [bestsellersProducts, setBestsellersProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     api
@@ -417,6 +502,18 @@ export default function HomePage() {
       .catch(() => {})
       .finally(() => setLoading(false));
     setRecentSlugs(getRecent().slice(0, 4));
+    // Fetch site config for brand reel
+    api
+      .get<{ data: { brandReel?: BrandReelConfig } }>("/api/v1/config/public")
+      .then((res) => { if (res.data.brandReel) setBrandReel(res.data.brandReel); })
+      .catch(() => {});
+    // Smart collection strips — non-critical, fail silently
+    api.get<{ data: Product[] }>("/api/v1/products/new-in?limit=4")
+      .then((res) => setNewInProducts(res.data ?? []))
+      .catch(() => {});
+    api.get<{ data: Product[] }>("/api/v1/products/bestsellers?limit=4")
+      .then((res) => setBestsellersProducts(res.data ?? []))
+      .catch(() => {});
   }, []);
 
   const collections = [
@@ -433,6 +530,9 @@ export default function HomePage() {
 
       {/* Hero */}
       <Hero />
+
+      {/* Brand reel — shown when admin has set and activated one */}
+      {brandReel && <BrandReel reel={brandReel} />}
 
       {/* Editorial story grid — replaces flat collection pills */}
       <EditorialGrid collections={collections} />
@@ -480,6 +580,16 @@ export default function HomePage() {
           </div>
         )}
       </section>
+
+      {/* ── New In strip ── */}
+      {newInProducts.length > 0 && (
+        <HomeStrip title="New In" href="/new-in" accentColor="#818cf8" products={newInProducts} />
+      )}
+
+      {/* ── Bestsellers strip ── */}
+      {bestsellersProducts.length > 0 && (
+        <HomeStrip title="Bestsellers" href="/bestsellers" accentColor="var(--accent)" products={bestsellersProducts} />
+      )}
 
       {/* Recently viewed */}
       {recentSlugs.length > 0 && (

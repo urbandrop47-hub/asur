@@ -12,6 +12,7 @@ import { giftCardDeliveryHtml, giftCardDeliveryText } from "./email-templates/gi
 import { abandonedCart1Html, abandonedCart1Text } from "./email-templates/abandoned-cart-1";
 import { abandonedCart2Html, abandonedCart2Text } from "./email-templates/abandoned-cart-2";
 import { newsletterConfirmHtml, newsletterConfirmText } from "./email-templates/newsletter-confirm";
+import { campaignHtml, campaignText } from "./email-templates/campaign";
 import type { AbandonedCartDoc } from "../models/abandoned-cart.model";
 
 const FROM_ADDRESS = "ASUR <noreply@weareasur.in>";
@@ -235,4 +236,45 @@ export async function sendReviewRequestEmail(
     html,
     text
   });
+}
+
+export async function sendCampaignEmail(
+  subject: string,
+  body: string,
+  recipients: { email: string; name: string }[]
+): Promise<{ sent: number; failed: number }> {
+  if (!resend) {
+    console.log(`[email] Resend not configured — skipping campaign to ${recipients.length} recipients`);
+    return { sent: 0, failed: 0 };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  const BATCH = 50;
+
+  for (let i = 0; i < recipients.length; i += BATCH) {
+    const batch = recipients.slice(i, i + BATCH);
+    try {
+      const { error } = await resend.batch.send(
+        batch.map((r) => ({
+          from: FROM_ADDRESS,
+          to: [r.email],
+          subject,
+          html: campaignHtml(subject, body, r.name),
+          text: campaignText(subject, body, r.name)
+        }))
+      );
+      if (error) {
+        console.error("[email] Campaign batch error:", error);
+        failed += batch.length;
+      } else {
+        sent += batch.length;
+      }
+    } catch (err) {
+      console.error("[email] Campaign batch unexpected error:", err);
+      failed += batch.length;
+    }
+  }
+
+  return { sent, failed };
 }

@@ -17,15 +17,19 @@ export function startReviewRequestCron(): void {
     try {
       const now = new Date();
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const eightDaysAgo = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
+      // Use a generous lookback (21 days) so server restarts / deploy gaps never
+      // cause orders to fall through the crack. reviewEmailSentAt guards duplicates.
+      const twentyOneDaysAgo = new Date(now.getTime() - 21 * 24 * 60 * 60 * 1000);
 
       const orders = await OrderModel.find({
         status: "delivered",
         reviewEmailSentAt: { $exists: false },
-        updatedAt: {
-          $gte: eightDaysAgo.toISOString(),
-          $lte: sevenDaysAgo.toISOString()
-        }
+        // Prefer deliveredAt (set since S42 bug fix); fall back to updatedAt for
+        // older orders that pre-date the deliveredAt stamp.
+        $or: [
+          { deliveredAt: { $gte: twentyOneDaysAgo.toISOString(), $lte: sevenDaysAgo.toISOString() } },
+          { deliveredAt: { $exists: false }, updatedAt: { $gte: twentyOneDaysAgo.toISOString(), $lte: sevenDaysAgo.toISOString() } }
+        ]
       }).lean();
 
       logger.info({ count: orders.length }, "[review-cron] Processing review request emails");

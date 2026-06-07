@@ -12,6 +12,15 @@ const mediaSchema = new Schema(
   { _id: false }
 );
 
+const videoSchema = new Schema(
+  {
+    url:    { type: String, required: true },
+    poster: { type: String },
+    label:  { type: String }
+  },
+  { _id: false }
+);
+
 const variantSchema = new Schema(
   {
     size: { type: String, required: true },
@@ -43,9 +52,12 @@ const productSchema = new Schema<Product>(
     },
     fit: { type: String, enum: productFits },
     seo: { type: Schema.Types.Mixed },
-    status: { type: String, required: true, default: "active" }
+    status: { type: String, required: true, default: "active" },
+    preorderShipDate: { type: String },
+    preorderNote:     { type: String },
+    videos:           { type: [videoSchema], default: [] }
   },
-  { versionKey: false }
+  { versionKey: false, timestamps: true }
 );
 
 // Full-text search index for S10 search feature

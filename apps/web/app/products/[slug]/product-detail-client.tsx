@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Product, Review } from "@asur/types";
 import { formatCurrency } from "@asur/utils";
@@ -15,6 +16,7 @@ import { HeartButton } from "../../../components/heart-button";
 import { ProductCard } from "../../../components/product-card";
 import { recordView } from "../../../lib/recently-viewed";
 import { getLowestVariantPrice, hasVariants } from "../../../lib/product-utils";
+import { useStockStream } from "../../../lib/use-stock-stream";
 
 const FIT_DESCRIPTIONS: Record<string, string> = {
   regular:  "Classic silhouette — follows the body without being tight. True to size.",
@@ -437,7 +439,7 @@ function AiSizeRec({ sizes, onSelect }: { sizes: string[]; onSelect: (s: string)
         <div style={{ padding: "0.85rem", borderRadius: 12, background: "rgba(249,115,22,0.05)", border: "1px solid rgba(249,115,22,0.18)", animation: "fadeInUp 0.2s ease both" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.65rem" }}>
             <p style={{ margin: 0, fontSize: "0.78rem", fontWeight: 700, color: "var(--accent)" }}>AI Size Finder</p>
-            <button onClick={() => { setOpen(false); setResult(null); setError(null); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.8rem", padding: 0 }}>✕</button>
+            <button onClick={() => { setOpen(false); setResult(null); setError(null); }} aria-label="Close size finder" style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.8rem", padding: "0.2rem" }}>✕</button>
           </div>
           {result ? (
             <div>
@@ -504,6 +506,10 @@ export function ProductDetailClient({ product }: { product: Product }) {
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const atcRef = useRef<HTMLDivElement | null>(null);
   const addItem = useCartStore((s) => s.addItem);
+  const router = useRouter();
+
+  // Live stock via SSE — falls back to initial variant data if unavailable
+  const { stockMap, live: stockLive } = useStockStream(product.slug, product.variants);
 
   useEffect(() => {
     track("product_viewed", { id: product.id, slug: product.slug, title: product.title });
@@ -534,7 +540,8 @@ export function ProductDetailClient({ product }: { product: Product }) {
       ? product.variants.find((v) => v.size === selectedSize && v.color === selectedColor)
       : null;
 
-  const variantStock = selectedVariant ? selectedVariant.stock : null;
+  // Use live stockMap (SSE) over static variant.stock
+  const variantStock = selectedVariant ? (stockMap[selectedVariant.sku] ?? selectedVariant.stock) : null;
   const displayPrice = selectedVariant
     ? selectedVariant.price
     : getLowestVariantPrice(product);
@@ -545,22 +552,23 @@ export function ProductDetailClient({ product }: { product: Product }) {
       : undefined);
 
   const stockInfo = variantStock !== null ? stockLabel(variantStock) : null;
-  const canAddToCart = !!selectedVariant && variantStock !== 0;
+  // Preorder products are always addable (stock may be 0 by design)
+  const canAddToCart = !!selectedVariant && (product.status === "preorder" || variantStock !== 0);
   const comingSoon = !productHasVariants;
 
   function isComboAvailable(size: string, color: string) {
-    return product.variants.some((v) => v.size === size && v.color === color && v.stock > 0);
+    return product.variants.some((v) => v.size === size && v.color === color && (stockMap[v.sku] ?? v.stock) > 0);
   }
 
   const pickerBtn = (selected: boolean, available: boolean): React.CSSProperties => ({
     minWidth: 52, minHeight: 44, padding: "0.45rem 0.9rem", borderRadius: 10,
     border: selected ? "2px solid var(--accent)" : "1px solid rgba(255,255,255,0.14)",
-    background: selected ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.04)",
-    color: available ? "var(--text)" : "rgba(246,241,234,0.25)",
+    background: selected ? "rgba(249,115,22,0.12)" : available ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
+    color: "var(--text)",
     fontWeight: selected ? 700 : 500, fontSize: "0.88rem",
     cursor: available ? "pointer" : "not-allowed",
-    textDecoration: available ? "none" : "line-through",
-    transition: "border-color 150ms ease, background 150ms ease, transform 100ms ease",
+    opacity: available ? 1 : 0.32,
+    transition: "border-color 150ms ease, background 150ms ease, transform 100ms ease, opacity 150ms ease",
     transform: selected ? "scale(1.04)" : "scale(1)",
   });
 
@@ -581,7 +589,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
       <div className="pdp-layout">
         {/* Gallery */}
         <div className="pdp-gallery">
-          <ProductImageGallery media={product.media} title={product.title} />
+          <ProductImageGallery media={product.media} videos={product.videos} title={product.title} />
         </div>
 
         {/* Info panel */}
@@ -680,7 +688,42 @@ export function ProductDetailClient({ product }: { product: Product }) {
                 </span>
               </span>
             )}
+            {/* Live indicator — shown once SSE connects */}
+            {stockLive && (
+              <span title="Stock updates in real-time" style={{
+                display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                fontSize: "0.68rem", color: "rgba(246,241,234,0.35)",
+                fontFamily: "var(--f-mono)", letterSpacing: "0.06em",
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: "var(--success)",
+                  boxShadow: "0 0 0 2px rgba(34,197,94,0.2)",
+                  animation: "pulse 2s infinite",
+                }} />
+                LIVE
+              </span>
+            )}
           </div>
+
+          {/* Pre-order banner */}
+          {product.status === "preorder" && (
+            <div style={{
+              padding: "0.85rem 1rem", borderRadius: 12,
+              background: "rgba(249,115,22,0.07)",
+              border: "1px solid rgba(249,115,22,0.2)",
+              display: "grid", gap: "0.3rem",
+            }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: "0.83rem", color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                📦 Pre-order
+              </p>
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "rgba(246,241,234,0.7)", lineHeight: 1.5 }}>
+                {product.preorderNote ?? (product.preorderShipDate
+                  ? `Estimated ship: ${new Date(product.preorderShipDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`
+                  : "Pay now. We'll ship as soon as it's ready.")}
+              </p>
+            </div>
+          )}
 
           <hr className="pdp-divider" />
 
@@ -705,7 +748,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
                 {sizes.map((size) => {
                   const available = selectedColor
                     ? isComboAvailable(size, selectedColor)
-                    : product.variants.some((v) => v.size === size && v.stock > 0);
+                    : product.variants.some((v) => v.size === size && (stockMap[v.sku] ?? v.stock) > 0);
                   const selected = selectedSize === size;
                   return (
                     <button key={size} onClick={() => { setSelectedSize(selected ? null : size); if (!selected) track("size_selected", { size, slug: product.slug }); }} disabled={!available} style={pickerBtn(selected, available)}>
@@ -739,7 +782,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
                 {colors.map((color) => {
                   const available = selectedSize
                     ? isComboAvailable(selectedSize, color)
-                    : product.variants.some((v) => v.color === color && v.stock > 0);
+                    : product.variants.some((v) => v.color === color && (stockMap[v.sku] ?? v.stock) > 0);
                   const selected = selectedColor === color;
                   return (
                     <button key={color} onClick={() => { setSelectedColor(selected ? null : color); if (!selected) track("color_selected", { color, slug: product.slug }); }} disabled={!available} style={pickerBtn(selected, available)}>
@@ -779,6 +822,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
                   ? "linear-gradient(135deg, #f97316, #fb7185)"
                   : "rgba(255,255,255,0.07)",
               color: canAddToCart || added ? "#130f0b" : "var(--text-muted)",
+              cursor: canAddToCart ? "pointer" : "not-allowed",
               transition: "background 300ms ease, transform 120ms ease",
             }}
             onClick={() => {
@@ -793,9 +837,9 @@ export function ProductDetailClient({ product }: { product: Product }) {
                 quantity: 1,
                 size: selectedVariant.size,
                 color: selectedVariant.color,
-                maxStock: selectedVariant.stock,
+                maxStock: variantStock ?? selectedVariant.stock, // use live stock value
               });
-              track("add_to_cart", { id: product.id, slug: product.slug, sku: selectedVariant.sku, price: selectedVariant.price });
+              // Note: add_to_cart event is also fired inside addItem() in cart-store — don't double-fire here
               setAdded(true);
               if (addedTimer.current) clearTimeout(addedTimer.current);
               addedTimer.current = setTimeout(() => setAdded(false), 2200);
@@ -807,24 +851,60 @@ export function ProductDetailClient({ product }: { product: Product }) {
                 ? "Select size & color"
                 : variantStock === 0
                   ? "Out of stock"
-                  : "Add to cart"}
+                  : product.status === "preorder"
+                    ? "Pre-order now"
+                    : "Add to cart"}
           </button>
           <HeartButton product={product} size={20} />
           </div>
 
-          {added && (
-            <Link href="/cart" style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "var(--accent)", fontSize: "0.88rem", fontWeight: 600,
-              textDecoration: "none", gap: 6,
-              animation: "fadeInUp 0.3s ease both",
-            }}>
-              View cart
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-          )}
+          {/* Buy now / View cart — same height slot, no layout shift */}
+          <div style={{ minHeight: 48, position: "relative" }}>
+            {added ? (
+              <Link href="/cart" style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: "100%", minHeight: 48, borderRadius: 999,
+                border: "1px solid rgba(34,197,94,0.35)", background: "rgba(34,197,94,0.06)",
+                color: "var(--success)", fontSize: "0.88rem", fontWeight: 600,
+                textDecoration: "none", gap: 6,
+                animation: "fadeInUp 0.2s ease both",
+              }}>
+                View cart
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            ) : (
+              <button
+                onClick={() => {
+                  if (!selectedVariant) return;
+                  addItem({
+                    productId: product.id,
+                    productTitle: product.title,
+                    productSlug: product.slug,
+                    imageUrl: product.media?.[0]?.url,
+                    variantSku: selectedVariant.sku,
+                    unitPrice: selectedVariant.price,
+                    quantity: 1,
+                    size: selectedVariant.size,
+                    color: selectedVariant.color,
+                    maxStock: variantStock ?? selectedVariant.stock,
+                  });
+                  router.push("/checkout");
+                }}
+                disabled={!canAddToCart}
+                style={{
+                  width: "100%", borderRadius: 999, padding: "0.8rem", fontSize: "0.92rem", fontWeight: 700,
+                  background: "transparent", color: canAddToCart ? "var(--text)" : "var(--text-muted)",
+                  border: "1px solid rgba(255,255,255,0.2)", cursor: canAddToCart ? "pointer" : "not-allowed",
+                  transition: "border-color 150ms, background 150ms, opacity 150ms",
+                  minHeight: 48, opacity: canAddToCart ? 1 : 0.4,
+                }}
+              >
+                {product.status === "preorder" ? "Pre-order & pay" : "Buy now"}
+              </button>
+            )}
+          </div>
 
           {/* Back-in-stock signup when selected variant is OOS */}
           {selectedVariant && variantStock === 0 && (
@@ -900,7 +980,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
               quantity: 1,
               size: selectedVariant.size,
               color: selectedVariant.color,
-              maxStock: selectedVariant.stock,
+              maxStock: variantStock ?? selectedVariant.stock,
             });
             setAdded(true);
             if (addedTimer.current) clearTimeout(addedTimer.current);

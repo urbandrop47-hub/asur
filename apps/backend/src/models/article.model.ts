@@ -1,6 +1,6 @@
 import { Schema, model, models } from "mongoose";
 
-export type ArticleBlockType = "text" | "image" | "product_embed";
+export type ArticleBlockType = "text" | "image" | "product_embed" | "video";
 
 export type ArticleBlock = {
   type: ArticleBlockType;
@@ -25,13 +25,15 @@ export type ArticleDoc = {
   publishedAt?: Date;
   seoTitle?: string;
   seoDescription?: string;
+  /** Optional access code gate for drops — set to a non-empty string to require it */
+  accessCode?: string;
   createdAt: Date;
   updatedAt: Date;
 };
 
 const blockSchema = new Schema<ArticleBlock>(
   {
-    type: { type: String, enum: ["text", "image", "product_embed"], required: true },
+    type: { type: String, enum: ["text", "image", "product_embed", "video"], required: true },
     content: { type: String, required: true },
     caption: { type: String },
     order: { type: Number, required: true, default: 0 },
@@ -53,6 +55,7 @@ const articleSchema = new Schema<ArticleDoc>(
     publishedAt: { type: Date, index: true },
     seoTitle: { type: String },
     seoDescription: { type: String },
+    accessCode: { type: String },
     createdAt: { type: Date, default: () => new Date() },
     updatedAt: { type: Date, default: () => new Date() },
   },

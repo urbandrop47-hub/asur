@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatCurrency } from "@asur/utils";
 import { useAuthStore } from "../../store/auth-store";
 import { useCartStore } from "../../store/cart-store";
@@ -26,6 +27,7 @@ const emptyForm: Form = {
 };
 
 export default function GiftCardsPage() {
+  const router = useRouter();
   const { session } = useAuthStore();
   const cartItems = useCartStore((s) => s.items);
   const [form, setForm] = useState<Form>(emptyForm);
@@ -42,7 +44,7 @@ export default function GiftCardsPage() {
 
   async function handlePurchase() {
     if (!session) {
-      window.location.href = "/auth?next=/gift-cards";
+      router.push("/auth?next=/gift-cards");
       return;
     }
 

@@ -1,6 +1,16 @@
 import type { Product } from "@asur/types";
 import { getVariantPriceRange, getTotalStock } from "../../../lib/product-utils";
 
+/** Safely serialise JSON for embedding in a <script> tag.
+ *  JSON.stringify does NOT escape < > & by default, so a product description
+ *  containing "</script>" would break out of the script tag (stored XSS). */
+function safeJsonLd(data: unknown): string {
+  return JSON.stringify(data)
+    .replace(/</g, "\\u003C")
+    .replace(/>/g, "\\u003E")
+    .replace(/&/g, "\\u0026");
+}
+
 type Aggregate = { averageRating: number; count: number } | null;
 
 export function ProductJsonLd({ product, siteUrl, aggregate }: { product: Product; siteUrl: string; aggregate?: Aggregate }) {
@@ -82,11 +92,11 @@ export function ProductJsonLd({ product, siteUrl, aggregate }: { product: Produc
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }}
       />
     </>
   );

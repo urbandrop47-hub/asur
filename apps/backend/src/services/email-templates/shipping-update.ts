@@ -1,9 +1,11 @@
 import type { Order, VendorTask } from "@asur/types";
+import { getCourierTrackingUrl } from "@asur/constants";
 import { baseLayout, badge, button, divider, h1, kv, p } from "./base";
 
 export function shippingUpdateHtml(order: Order, task: VendorTask, customerName: string, webBaseUrl: string): string {
   const trackingUrl = task.courierName && task.trackingId
-    ? `https://www.google.com/search?q=${encodeURIComponent(task.courierName + " tracking " + task.trackingId)}`
+    ? (getCourierTrackingUrl(task.courierName, task.trackingId) ??
+       `https://www.google.com/search?q=${encodeURIComponent(task.courierName + " tracking " + task.trackingId)}`)
     : null;
 
   const body = `

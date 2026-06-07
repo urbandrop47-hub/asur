@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@asur/types";
@@ -8,6 +9,7 @@ import { HeartButton } from "./heart-button";
 import { getLowestVariantPrice, getTotalStock, hasVariants } from "../lib/product-utils";
 
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const lowestPrice = getLowestVariantPrice(product);
   const lowestCompare = hasVariants(product)
@@ -18,13 +20,23 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   const comingSoon = !hasVariants(product);
   const coverImage = product.media?.[0];
   const hoverImage = product.media?.[1]; // used for hover crossfade
+  const previewVideo = product.videos?.[0]; // first video used for hover-play preview
   const isSoldOut = !comingSoon && totalStock === 0;
   const isLowStock = !comingSoon && !isSoldOut && totalStock < 5;
+  // "New" badge: product was created within the last 14 days
+  const isNew = product.createdAt
+    ? Date.now() - new Date(product.createdAt).getTime() < 14 * 24 * 60 * 60 * 1000
+    : false;
 
   return (
     <article className="product-card" style={{ display: "flex", flexDirection: "column" }}>
       {/* ── Image ── */}
-      <Link href={`/products/${product.slug}`} style={{ display: "block", textDecoration: "none", flexShrink: 0 }}>
+      <Link
+        href={`/products/${product.slug}`}
+        style={{ display: "block", textDecoration: "none", flexShrink: 0 }}
+        onMouseEnter={() => { videoRef.current?.play().catch(() => {}); }}
+        onMouseLeave={() => { if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0; } }}
+      >
         <div
           className="product-image"
           style={{ position: "relative", overflow: "hidden", borderRadius: "20px 20px 0 0" }}
@@ -39,7 +51,8 @@ export function ProductCard({ product, priority = false }: { product: Product; p
                 style={{ objectFit: "cover" }}
                 priority={priority}
               />
-              {hoverImage?.url && (
+              {/* Hover crossfade to second image (if no video) */}
+              {hoverImage?.url && !previewVideo && (
                 <Image
                   src={hoverImage.url}
                   alt={hoverImage.alt ?? `${product.title} — alternate view`}
@@ -47,6 +60,21 @@ export function ProductCard({ product, priority = false }: { product: Product; p
                   sizes="(max-width: 640px) 100vw, 360px"
                   className="product-image-second"
                   aria-hidden="true"
+                />
+              )}
+              {/* Hover video preview — replaces crossfade when product has a video */}
+              {previewVideo && (
+                <video
+                  ref={videoRef}
+                  src={previewVideo.url}
+                  poster={previewVideo.poster}
+                  muted
+                  loop
+                  playsInline
+                  preload="none"
+                  className="product-image-second"
+                  aria-hidden="true"
+                  style={{ objectFit: "cover" }}
                 />
               )}
             </>
@@ -95,6 +123,19 @@ export function ProductCard({ product, priority = false }: { product: Product; p
             <HeartButton product={product} size={16} />
           </div>
 
+          {/* New badge */}
+          {isNew && !isSoldOut && (
+            <div style={{
+              position: "absolute", top: 10, right: 10,
+              padding: "0.25rem 0.6rem", borderRadius: 999,
+              background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.35)",
+              fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em",
+              textTransform: "uppercase", color: "#818cf8",
+            }}>
+              New
+            </div>
+          )}
+
           {/* Low-stock badge */}
           {isLowStock && !isSoldOut && (
             <div style={{
@@ -111,7 +152,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           {/* Discount badge */}
           {hasDiscount && !isSoldOut && (
             <div style={{
-              position: "absolute", top: isLowStock ? 36 : 10, right: 10,
+              position: "absolute", top: isLowStock ? 36 : isNew ? 36 : 10, right: 10,
               padding: "0.25rem 0.6rem", borderRadius: 999,
               background: "rgba(249,115,22,0.18)", border: "1px solid rgba(249,115,22,0.35)",
               fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em",

@@ -37,7 +37,7 @@ function ordersToCSV(orders: Order[]): string {
   const rows = orders.map((o) => {
     const items = (o.items ?? []).map((i) => `${i.title} x${i.quantity}`).join(" | ");
     return [
-      o.orderNumber, String(o.createdAt).slice(0, 10), o.customerId,
+      o.orderNumber, String(o.createdAt).slice(0, 10), o.customerId ?? o.guestPhone ?? "Guest",
       `"${items.replace(/"/g, '""')}"`,
       o.subtotal, o.discount ?? 0, o.shipping, o.tax, o.total, o.status, o.paymentStatus
     ].join(",");
@@ -385,7 +385,7 @@ export default function AdminOrdersPage() {
                     <p style={{ margin: "0.1rem 0 0", fontSize: "0.72rem", color: "var(--text-muted)" }}>{date}</p>
                   </div>
                   <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {o.customerId.slice(0, 16)}…
+                    {o.customerId ? `${o.customerId.slice(0, 16)}…` : (o.guestPhone ?? "Guest")}
                   </span>
                   <span className={STATUS_CLASS[o.status] ?? "badge"}>{o.status.replace("_", " ")}</span>
                   <span style={{ fontSize: "0.82rem", textTransform: "capitalize", color: "var(--text-muted)" }}>

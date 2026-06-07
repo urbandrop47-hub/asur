@@ -83,7 +83,7 @@ export default function NewProductPage() {
           <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Details</p>
           <div className="form-field">
             <label className="form-label">Title *</label>
-            <input className="form-input" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="ASUR Ember Overshirt" />
+            <input className="form-input" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="WeAreASUR Ember Overshirt" />
           </div>
           <div className="form-field">
             <label className="form-label">Description *</label>

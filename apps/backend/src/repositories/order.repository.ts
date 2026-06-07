@@ -46,6 +46,7 @@ export const orderRepository = {
     referralCode?: string;
     giftCardCode?: string;
     giftCardAmount?: number;
+    guestPhone?: string;
   }) {
     const now = new Date().toISOString();
     const items = createLineItems(input.items);
@@ -70,10 +71,11 @@ export const orderRepository = {
     const giftCardAmount = input.giftCardAmount ?? 0;
     const total = Math.max(0, taxableAmount + shipping + tax - loyaltyDiscount - giftCardAmount);
 
-    const orderData: Order & { loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number } = {
+    const orderData: Order & { loyaltyPointsRedeemed?: number; loyaltyPointsEarned?: number; loyaltyDiscount?: number; referralCode?: string; giftCardCode?: string; giftCardAmount?: number; guestPhone?: string } = {
       id: createId("ord"),
       orderNumber: toOrderNumber(),
-      customerId: input.customerId,
+      ...(input.customerId ? { customerId: input.customerId } : {}),
+      ...(input.guestPhone ? { guestPhone: input.guestPhone } : {}),
       items,
       subtotal,
       shipping,
@@ -106,16 +108,17 @@ export const orderRepository = {
     return orderData;
   },
 
-  async listByCustomer(customerId: string) {
+  async listByCustomer(customerId: string, limit = 200) {
     if (hasMongoConnection) {
-      const docs = await OrderModel.find({ customerId }).sort({ createdAt: -1 }).lean();
+      // Capped at 200 to prevent runaway queries on accounts with many test orders
+      const docs = await OrderModel.find({ customerId }).sort({ createdAt: -1 }).limit(limit).lean();
       return docs.map((doc) => {
         const { _id, __v, ...rest } = doc as Record<string, unknown>;
         void _id; void __v;
         return rest as Order;
       });
     }
-    return mockStore.orders.filter((o) => o.customerId === customerId);
+    return mockStore.orders.filter((o) => o.customerId === customerId).slice(0, limit);
   },
 
   async findById(id: string, customerId: string) {
@@ -129,11 +132,55 @@ export const orderRepository = {
     return mockStore.orders.find((o) => o.id === id && o.customerId === customerId) ?? null;
   },
 
+  /** Look up a guest order by id + the phone number used at checkout (no auth session).
+   *  Only matches UNLINKED orders (no customerId) — once an order is claimed by an account
+   *  the guestPhone credential is retired and the order must be fetched via authenticated session.
+   *  This prevents IDOR: knowing a phone number cannot reveal a linked account's order history. */
+  async findByIdForGuest(id: string, guestPhone: string) {
+    if (hasMongoConnection) {
+      const doc = await OrderModel.findOne({ id, guestPhone, customerId: { $exists: false } }).lean();
+      if (!doc) return null;
+      const { _id, __v, ...rest } = doc as Record<string, unknown>;
+      void _id; void __v;
+      return rest as Order;
+    }
+    return mockStore.orders.find((o) => o.id === id && o.guestPhone === guestPhone && !o.customerId) ?? null;
+  },
+
+  /** After phone sign-in: assign all matching guest orders to the new customer account.
+   *  guestPhone is intentionally NOT unset — it serves as a permanent ownership credential
+   *  so that bookmarked confirmation URLs (?guestPhone=...) continue to resolve after linking. */
+  async linkGuestOrders(guestPhone: string, customerId: string) {
+    if (hasMongoConnection) {
+      const result = await OrderModel.updateMany(
+        { guestPhone, customerId: { $exists: false } },
+        { $set: { customerId, updatedAt: new Date().toISOString() } }
+      );
+      return result.modifiedCount;
+    }
+    // mock store
+    let linked = 0;
+    for (const o of mockStore.orders) {
+      if (o.guestPhone === guestPhone && !o.customerId) {
+        o.customerId = customerId;
+        // guestPhone kept intentionally — see comment above
+        o.updatedAt = new Date().toISOString();
+        linked++;
+      }
+    }
+    return linked;
+  },
+
   async updateStatus(id: string, status: Order["status"]) {
     if (hasMongoConnection) {
+      const now = new Date().toISOString();
+      // Stamp deliveredAt the first time an order reaches "delivered" so the
+      // return window and review cron use real delivery time, not createdAt.
+      const extra: Record<string, string> = {};
+      if (status === "delivered") extra.deliveredAt = now;
       const doc = await OrderModel.findOneAndUpdate(
         { id },
-        { status, updatedAt: new Date().toISOString() },
+        { status, updatedAt: now, ...extra },
         { new: true }
       ).lean();
       if (!doc) return null;

@@ -18,7 +18,7 @@ export const adminPermissions = [
   "settings:write"
 ] as const;
 export const adminInviteStatuses = ["pending", "accepted", "revoked", "expired"] as const;
-export const productStatuses = ["draft", "active", "archived"] as const;
+export const productStatuses = ["draft", "active", "archived", "preorder"] as const;
 export const productDropSchema = z.object({
   slug: z.string().min(1),
   name: z.string().min(1),
@@ -84,7 +84,9 @@ export const productSchema = z.object({
       canonical: z.string().url().optional()
     })
     .optional(),
-  status: productStatusSchema
+  status: productStatusSchema,
+  preorderShipDate: z.string().optional(),
+  preorderNote: z.string().max(200).optional()
 });
 
 export const addressSchema = z.object({
@@ -147,28 +149,36 @@ export const cartItemSchema = z.object({
   productTitle: z.string().optional()
 });
 
-// Server-side schema — includes customerId (injected from session, never trusted from request body).
+// Server-side schema — customerId injected from session (authenticated) OR
+// guestPhone provided in body (guest checkout). Exactly one must be present.
 export const createOrderSchema = z.object({
-  customerId: z.string().min(1),
+  customerId: z.string().min(1).optional(),
+  guestPhone: z.string().regex(/^\+?[\d\s\-]{10,15}$/, "Invalid phone number").optional(),
   items: z.array(cartItemSchema).min(1),
   shippingAddress: addressSchema,
   couponCode: z.string().trim().toUpperCase().optional(),
+  // Loyalty + gift card only available to authenticated customers
   loyaltyPointsToRedeem: z.number().int().nonnegative().optional().default(0),
   referralCode: z.string().trim().toUpperCase().optional(),
   giftCardCode: z.string().trim().toUpperCase().optional()
+}).refine((d) => d.customerId || d.guestPhone, {
+  message: "Either a signed-in session or a guest phone number is required to place an order"
 });
 
 // amount is intentionally omitted — the server derives it from order.total
 // to prevent clients from submitting a tampered (e.g. 1 paise) amount.
+// guestPhone is the ownership credential for guest orders (no session).
 export const paymentCreateOrderSchema = z.object({
-  orderId: z.string().min(1)
+  orderId: z.string().min(1),
+  guestPhone: z.string().regex(/^\+?[\d\s\-]{10,15}$/).optional()
 });
 
 export const paymentVerificationSchema = z.object({
   orderId: z.string().min(1),
   razorpayOrderId: z.string().min(1),
   razorpayPaymentId: z.string().min(1),
-  razorpaySignature: z.string().min(1)
+  razorpaySignature: z.string().min(1),
+  guestPhone: z.string().regex(/^\+?[\d\s\-]{10,15}$/).optional()
 });
 
 export type ProductInput = z.infer<typeof productSchema>;

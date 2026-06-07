@@ -32,6 +32,9 @@ self.addEventListener("fetch", (event) => {
   let url;
   try { url = new URL(request.url); } catch { return; }
 
+  // ── SSE streams — never intercept, let browser handle natively ───────────
+  if (url.pathname.endsWith("/stock-stream") || request.headers.get("accept") === "text/event-stream") return;
+
   // ── Product & article API — network-first, cache fallback ────────────────
   if (
     url.pathname.startsWith("/api/v1/products") ||

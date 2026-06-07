@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { Address, Order } from "@asur/types";
@@ -107,8 +107,26 @@ const INDIA_STATES = [
   "Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
   "Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana",
   "Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu and Kashmir","Ladakh",
-  "Chandigarh","Puducherry"
+  "Chandigarh","Puducherry","Andaman and Nicobar Islands","Lakshadweep",
+  "Dadra and Nagar Haveli and Daman and Diu"
 ];
+
+// India Post API state name → our INDIA_STATES value
+const STATE_NAME_MAP: Record<string, string> = {
+  "Orissa": "Odisha",
+  "Uttaranchal": "Uttarakhand",
+  "Pondicherry": "Puducherry",
+  "Jammu And Kashmir": "Jammu and Kashmir",
+  "Andaman And Nicobar Islands": "Andaman and Nicobar Islands",
+  "Andaman & Nicobar Islands": "Andaman and Nicobar Islands",
+  "Dadra And Nagar Haveli And Daman And Diu": "Dadra and Nagar Haveli and Daman and Diu",
+  "Dadra And Nagar Haveli": "Dadra and Nagar Haveli and Daman and Diu",
+  "Daman And Diu": "Dadra and Nagar Haveli and Daman and Diu",
+};
+
+function normaliseStateName(raw: string): string {
+  return STATE_NAME_MAP[raw] ?? raw;
+}
 
 function AddressStep({
   savedAddresses,
@@ -122,13 +140,53 @@ function AddressStep({
   });
   const [errors, setErrors] = useState<AddressErrors>({});
   const [saving, setSaving] = useState(false);
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [pincodeError, setPincodeError] = useState<string | null>(null);
+  const [selectedSavedIdx, setSelectedSavedIdx] = useState<number | null>(null);
+  const activePinRef = useRef<string>("");
 
   function set(field: keyof AddressFormState, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
     setErrors((e) => ({ ...e, [field]: undefined }));
+    setSelectedSavedIdx(null);
   }
 
-  function useSaved(addr: Address) {
+  function validateField(field: keyof AddressFormState, value: string) {
+    const errs = validateAddress({ ...form, [field]: value });
+    if (errs[field]) setErrors((e) => ({ ...e, [field]: errs[field] }));
+  }
+
+  async function autofillPincode(pin: string) {
+    if (!/^\d{6}$/.test(pin)) return;
+    activePinRef.current = pin;
+    setPincodeLoading(true);
+    setPincodeError(null);
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      // Bail out if a newer pincode was typed while this request was in flight
+      if (activePinRef.current !== pin) return;
+      if (!res.ok) { setPincodeError("Couldn't autofill — enter city/state manually"); return; }
+      const data = await res.json() as Array<{ Status: string; PostOffice?: Array<{ District: string; State: string }> }>;
+      if (activePinRef.current !== pin) return;
+      if (data?.[0]?.Status === "Success" && data[0].PostOffice?.length) {
+        const po = data[0].PostOffice[0];
+        setForm((f) => ({
+          ...f,
+          city: po.District || f.city,
+          state: normaliseStateName(po.State) || f.state
+        }));
+        setErrors((e) => ({ ...e, city: undefined, state: undefined }));
+      } else {
+        setPincodeError("Pincode not found — enter city/state manually");
+      }
+    } catch {
+      if (activePinRef.current === pin) setPincodeError("Couldn't autofill — enter city/state manually");
+    } finally {
+      if (activePinRef.current === pin) setPincodeLoading(false);
+    }
+  }
+
+  function useSaved(addr: Address, idx: number) {
     setForm({
       fullName: addr.fullName,
       phone: addr.phone,
@@ -140,6 +198,7 @@ function AddressStep({
       country: addr.country
     });
     setErrors({});
+    setSelectedSavedIdx(idx);
   }
 
   async function handleSubmit() {
@@ -181,20 +240,27 @@ function AddressStep({
         <div>
           <p style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Saved addresses</p>
           <div style={{ display: "grid", gap: "0.6rem" }}>
-            {savedAddresses.map((addr, i) => (
-              <button
-                key={i}
-                onClick={() => useSaved(addr)}
-                style={{
-                  width: "100%", textAlign: "left", background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "0.85rem 1rem",
-                  color: "var(--text)", cursor: "pointer", fontSize: "0.88rem", lineHeight: 1.5,
-                }}
-              >
-                <strong>{addr.fullName}</strong> · {addr.phone}<br />
-                {addr.line1}, {addr.city}, {addr.state} {addr.postalCode}
-              </button>
-            ))}
+            {savedAddresses.map((addr, i) => {
+              const isSelected = selectedSavedIdx === i;
+              return (
+                <button
+                  key={i}
+                  onClick={() => useSaved(addr, i)}
+                  style={{
+                    width: "100%", textAlign: "left",
+                    background: isSelected ? "rgba(249,115,22,0.07)" : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${isSelected ? "rgba(249,115,22,0.4)" : "rgba(255,255,255,0.1)"}`,
+                    borderRadius: 12, padding: "0.85rem 1rem",
+                    color: "var(--text)", cursor: "pointer", fontSize: "0.88rem", lineHeight: 1.5,
+                    transition: "border-color 150ms, background 150ms",
+                  }}
+                >
+                  {isSelected && <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--accent)", display: "block", marginBottom: "0.2rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>✓ Selected</span>}
+                  <strong>{addr.fullName}</strong> · {addr.phone}<br />
+                  {addr.line1}, {addr.city}, {addr.state} {addr.postalCode}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -203,19 +269,19 @@ function AddressStep({
         <div className="checkout-grid-2">
           <div>
             <label style={labelStyle}>Full name *</label>
-            <input style={inputStyle} type="text" autoComplete="name" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} placeholder="Rahul Sharma" />
+            <input style={inputStyle} type="text" autoComplete="name" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} onBlur={(e) => validateField("fullName", e.target.value)} placeholder="Rahul Sharma" />
             {errors.fullName && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.fullName}</p>}
           </div>
           <div>
             <label style={labelStyle}>Phone *</label>
-            <input style={inputStyle} type="tel" autoComplete="tel" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+91 98765 43210" />
+            <input style={inputStyle} type="tel" autoComplete="tel" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} onBlur={(e) => validateField("phone", e.target.value)} placeholder="+91 98765 43210" />
             {errors.phone && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.phone}</p>}
           </div>
         </div>
 
         <div>
           <label style={labelStyle}>Address line 1 *</label>
-          <input style={inputStyle} type="text" autoComplete="address-line1" value={form.line1} onChange={(e) => set("line1", e.target.value)} placeholder="42 MG Road" />
+          <input style={inputStyle} type="text" autoComplete="address-line1" value={form.line1} onChange={(e) => set("line1", e.target.value)} onBlur={(e) => validateField("line1", e.target.value)} placeholder="42 MG Road" />
           {errors.line1 && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.line1}</p>}
         </div>
 
@@ -227,13 +293,30 @@ function AddressStep({
         <div className="checkout-grid-2">
           <div>
             <label style={labelStyle}>City *</label>
-            <input style={inputStyle} type="text" autoComplete="address-level2" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Bengaluru" />
+            <input style={inputStyle} type="text" autoComplete="address-level2" value={form.city} onChange={(e) => set("city", e.target.value)} onBlur={(e) => validateField("city", e.target.value)} placeholder="Bengaluru" />
             {errors.city && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.city}</p>}
           </div>
           <div>
-            <label style={labelStyle}>Pincode *</label>
-            <input style={inputStyle} type="text" inputMode="numeric" autoComplete="postal-code" value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} placeholder="560001" maxLength={6} />
+            <label style={labelStyle}>
+              Pincode *{pincodeLoading && <span style={{ fontWeight: 400, color: "var(--accent)", marginLeft: "0.4rem" }}>Autofilling…</span>}
+            </label>
+            <input
+              style={inputStyle}
+              type="text"
+              inputMode="numeric"
+              autoComplete="postal-code"
+              value={form.postalCode}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                set("postalCode", val);
+                setPincodeError(null);
+                if (val.length === 6) void autofillPincode(val);
+              }}
+              placeholder="560001"
+              maxLength={6}
+            />
             {errors.postalCode && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{errors.postalCode}</p>}
+            {pincodeError && !errors.postalCode && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--text-muted)" }}>{pincodeError}</p>}
           </div>
         </div>
 
@@ -622,7 +705,7 @@ function ReviewStep({
           </span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
-          <span style={{ color: "var(--text-muted)" }}>GST (18%)</span>
+          <span style={{ color: "var(--text-muted)" }}>GST ({Math.round(config.gstRate * 100)}%)</span>
           <span>{formatCurrency(tax)}</span>
         </div>
         {loyaltyDiscount > 0 && (
@@ -644,29 +727,37 @@ function ReviewStep({
         </div>
       </div>
 
-      <button
-        onClick={() => onConfirm(coupon, pointsToUse, giftCard)}
-        disabled={confirming}
-        style={{
-          width: "100%", borderRadius: 999, padding: "0.95rem", fontSize: "1rem", fontWeight: 700,
-          background: confirming ? "rgba(249,115,22,0.5)" : "linear-gradient(135deg, #f97316, #fb7185)",
-          color: "#130f0b", border: "none",
-          cursor: confirming ? "not-allowed" : "pointer", minHeight: 52,
-          opacity: confirming ? 0.7 : 1, transition: "opacity 0.15s"
-        }}
-      >
-        {confirming ? "Processing…" : `Confirm & Pay ${formatCurrency(total)}`}
-      </button>
-
       {/* Trust signals */}
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-        {[
-          "🔒 Razorpay secured",
-          "7-day returns",
-          "No hidden fees",
-        ].map((t) => (
+        {["🔒 Razorpay secured", "7-day returns", "No hidden fees"].map((t) => (
           <span key={t} style={{ fontSize: "0.72rem", color: "rgba(246,241,234,0.35)" }}>{t}</span>
         ))}
+      </div>
+
+      {/* Sticky CTA — sticks to bottom of viewport on mobile, sits inline on desktop */}
+      <div style={{
+        position: "sticky",
+        bottom: 0,
+        zIndex: 20,
+        background: "linear-gradient(to bottom, transparent 0%, #06070b 28%)",
+        paddingTop: "1.25rem",
+        paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+        marginTop: "0.25rem",
+      }}>
+        <button
+          onClick={() => onConfirm(coupon, pointsToUse, giftCard)}
+          disabled={confirming}
+          style={{
+            width: "100%", borderRadius: 999, padding: "0.95rem", fontSize: "1rem", fontWeight: 700,
+            background: confirming ? "rgba(249,115,22,0.5)" : "linear-gradient(135deg, #f97316, #fb7185)",
+            color: "#130f0b", border: "none",
+            cursor: confirming ? "not-allowed" : "pointer", minHeight: 52,
+            opacity: confirming ? 0.7 : 1, transition: "opacity 0.15s",
+            boxShadow: "0 -8px 24px rgba(249,115,22,0.18)"
+          }}
+        >
+          {confirming ? "Processing…" : `Place order — ${formatCurrency(total)}`}
+        </button>
       </div>
     </div>
   );
@@ -704,16 +795,21 @@ function CheckoutPageContent() {
   // so we don't create a second orphaned order if the user dismisses the modal.
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
+  // Guest checkout — phone number collected before address step
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestPhoneInput, setGuestPhoneInput] = useState("");
+  const [guestPhoneError, setGuestPhoneError] = useState<string | null>(null);
+
   useEffect(() => { setMounted(true); }, []);
 
-  // Auth guard + checkout_started event
+  // If signed in: load saved addresses + track checkout_started
+  // If guest: allow checkout without redirect
   useEffect(() => {
     if (!mounted) return;
-    if (!session) { router.replace("/auth?next=/checkout"); return; }
-    track("checkout_started", { itemCount: cartItems.length });
-  }, [mounted, session, router, cartItems.length]);
+    if (cartItems.length > 0) track("checkout_started", { itemCount: cartItems.length });
+  }, [mounted, cartItems.length]);
 
-  // Load saved addresses
+  // Load saved addresses (only for signed-in users)
   useEffect(() => {
     if (!session) return;
     api.get<{ data: Address[] }>("/api/v1/auth/addresses")
@@ -721,7 +817,7 @@ function CheckoutPageContent() {
       .catch(() => {});
   }, [session]);
 
-  if (!mounted || !session) {
+  if (!mounted) {
     return (
       <div style={{ paddingTop: "3rem", display: "grid", gap: "1.25rem", maxWidth: 560, margin: "0 auto" }}>
         <div className="skeleton skeleton-line" style={{ height: 36, width: "30%" }} />
@@ -769,15 +865,18 @@ function CheckoutPageContent() {
   }
 
   async function handlePayment(confirmedAddress: Address, coupon: AppliedCoupon | null, loyaltyPts = 0, gc: AppliedGiftCard | null = null) {
-    if (!session) return;
     setProcessing(true);
     setError(null);
+
+    // Resolve the phone used for Razorpay contact — guest phone or address phone
+    const contactPhone = confirmedAddress.phone;
 
     try {
       // 1. Create backend order (or reuse a pending one from a prior dismissed attempt)
       let order: Order;
       if (pendingOrderId) {
-        const existingRes = await api.get<{ data: Order }>(`/api/v1/orders/${pendingOrderId}`);
+        const guestPhoneParam = !session && guestPhone ? `?guestPhone=${encodeURIComponent(guestPhone)}` : "";
+        const existingRes = await api.get<{ data: Order }>(`/api/v1/orders/${pendingOrderId}${guestPhoneParam}`);
         order = existingRes.data;
       } else {
         const referralCode = getReferralCodeFromCookie();
@@ -789,14 +888,30 @@ function CheckoutPageContent() {
             unitPrice: i.unitPrice
           })),
           shippingAddress: confirmedAddress,
+          // Guest: send guestPhone so the order can be linked on sign-in later
+          ...(!session && guestPhone ? { guestPhone } : {}),
           ...(coupon ? { couponCode: coupon.code } : {}),
-          ...(loyaltyPts > 0 ? { loyaltyPointsToRedeem: loyaltyPts } : {}),
+          // Loyalty + gift card only available to signed-in customers
+          ...(session && loyaltyPts > 0 ? { loyaltyPointsToRedeem: loyaltyPts } : {}),
           ...(referralCode ? { referralCode } : {}),
-          ...(gc ? { giftCardCode: gc.code } : {})
+          ...(session && gc ? { giftCardCode: gc.code } : {})
         });
         order = orderRes.data.order;
         setPendingOrderId(order.id);
       }
+
+      // Persist guestPhone in sessionStorage so confirmation page can fetch the order
+      // on F5 or revisit after the URL param is lost. Written here (not just in the
+      // new-order branch above) so pendingOrderId retries also get the entry.
+      if (!session && guestPhone) {
+        try { sessionStorage.setItem(`guest_order_${order.id}`, guestPhone); } catch {
+          // sessionStorage unavailable (e.g. iOS Safari Private Browsing).
+          // The ?guestPhone= query param in the confirmation URL is the primary mechanism —
+          // sessionStorage is only a fallback for revisiting a bookmarked confirmation URL.
+          // No action needed; the confirmation URL itself always carries the phone.
+        }
+      }
+
       // Use the server-computed total — never re-derive from client cart prices,
       // which may differ if the catalogue changed between add-to-cart and checkout.
       const totalPaise = Math.round((order.total ?? 0) * 100);
@@ -806,7 +921,7 @@ function CheckoutPageContent() {
       //    (gift card / loyalty covered 100%) — skip straight to confirmation.
       const payRes = await api.post<{ data: { providerOrderId?: string | null; id?: string; amount: number; zeroCost?: boolean } }>(
         "/api/v1/payments/razorpay/order",
-        { orderId: order.id }
+        { orderId: order.id, ...(!session && guestPhone ? { guestPhone } : {}) }
       );
 
       if (payRes.data.zeroCost) {
@@ -815,7 +930,7 @@ function CheckoutPageContent() {
         if (session?.user.email) {
           void api.post("/api/v1/abandoned-cart/convert", { email: session.user.email }).catch(() => {});
         }
-        router.push(`/orders/${order.id}/confirmation`);
+        router.push(`/orders/${order.id}/confirmation${!session && guestPhone ? `?guestPhone=${encodeURIComponent(guestPhone)}` : ""}`);
         return;
       }
 
@@ -834,8 +949,8 @@ function CheckoutPageContent() {
         providerOrderId,
         orderId: order.id,
         name: "ASUR",
-        email: session.user.email ?? undefined,
-        contact: confirmedAddress.phone,
+        email: session?.user.email ?? undefined,
+        contact: contactPhone,
         onDismiss: () => {
           setProcessing(false);
           setStep(2); // return to review step so user can retry
@@ -847,14 +962,15 @@ function CheckoutPageContent() {
               orderId: order.id,
               razorpayOrderId: payload.razorpay_order_id,
               razorpayPaymentId: payload.razorpay_payment_id,
-              razorpaySignature: payload.razorpay_signature
+              razorpaySignature: payload.razorpay_signature,
+              ...(!session && guestPhone ? { guestPhone } : {})
             });
             setPendingOrderId(null);
             clearCart();
             if (session?.user.email) {
               void api.post("/api/v1/abandoned-cart/convert", { email: session.user.email }).catch(() => {});
             }
-            router.push(`/orders/${order.id}/confirmation`);
+            router.push(`/orders/${order.id}/confirmation${!session && guestPhone ? `?guestPhone=${encodeURIComponent(guestPhone)}` : ""}`);
           } catch {
             setError("Payment succeeded but verification failed. Please contact support with your order ID: " + order.id);
             setProcessing(false);
@@ -868,18 +984,81 @@ function CheckoutPageContent() {
     }
   }
 
+  // Guest phone capture: shown when not signed in and guestPhone not yet confirmed
+  const showGuestPhoneCapture = !session && !guestPhone;
+
+  function handleGuestPhoneConfirm() {
+    let raw = guestPhoneInput.trim().replace(/\D/g, "");
+    // Strip international prefixes before validating:
+    //   0091XXXXXXXXXX (14 digits) → XXXXXXXXXX
+    //   91XXXXXXXXXX   (12 digits) → XXXXXXXXXX
+    if (raw.startsWith("0091") && raw.length === 14) raw = raw.slice(4);
+    else if (raw.startsWith("91") && raw.length === 12) raw = raw.slice(2);
+    if (raw.length !== 10) { setGuestPhoneError("Enter a valid 10-digit mobile number. Country code (+91, 91, or 0091) is stripped automatically if pasted."); return; }
+    setGuestPhone(`+91${raw}`);
+    setGuestPhoneError(null);
+  }
+
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", paddingTop: "1.5rem" }}>
       <div style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ margin: "0 0 0.35rem", fontSize: "clamp(1.4rem, 3vw, 1.8rem)", fontWeight: 800 }}>Checkout</h1>
         <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.88rem" }}>
-          {cartItems.length} item{cartItems.length !== 1 ? "s" : ""} · {session.user.email ?? session.user.name ?? ""}
+          {cartItems.length} item{cartItems.length !== 1 ? "s" : ""}{session ? ` · ${session.user.email ?? session.user.name ?? ""}` : guestPhone ? ` · Guest · ${guestPhone}` : " · Guest checkout"}
         </p>
       </div>
 
-      <StepIndicator current={step} />
+      {/* ── Guest phone capture ── shown instead of steps until phone is entered */}
+      {showGuestPhoneCapture && (
+        <div style={{ border: "1px solid var(--border)", borderRadius: 20, padding: "1.75rem", display: "grid", gap: "1.25rem" }}>
+          <div>
+            <p style={{ margin: "0 0 0.3rem", fontWeight: 700, fontSize: "1.05rem" }}>Continue as guest</p>
+            <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Your phone number lets you track this order and links it to your account if you sign in later.
+            </p>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>
+              Mobile number *
+            </label>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <span style={{ padding: "0 0.85rem", borderRadius: 12, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "var(--text-muted)", display: "flex", alignItems: "center", fontSize: "0.92rem", flexShrink: 0 }}>
+                +91
+              </span>
+              <input
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                value={guestPhoneInput}
+                onChange={(e) => {
+                  // Accept up to 15 raw digits — prefix stripping happens in handleGuestPhoneConfirm,
+                  // not here, so pastes like 0091XXXXXXXXXX (14 digits) are never silently truncated.
+                  setGuestPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 15));
+                  setGuestPhoneError(null);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleGuestPhoneConfirm()}
+                placeholder="98765 43210"
+                style={{ flex: 1, border: `1px solid ${guestPhoneError ? "var(--danger)" : "rgba(255,255,255,0.12)"}`, borderRadius: 12, background: "rgba(255,255,255,0.05)", color: "var(--text)", padding: "0.85rem 1rem", font: "inherit", fontSize: "1rem", outline: "none", minHeight: 48 }}
+              />
+            </div>
+            {guestPhoneError && <p style={{ margin: "0.3rem 0 0", fontSize: "0.78rem", color: "var(--danger)" }}>{guestPhoneError}</p>}
+          </div>
+          <button
+            onClick={handleGuestPhoneConfirm}
+            style={{ width: "100%", borderRadius: 999, padding: "0.95rem", fontSize: "1rem", fontWeight: 700, background: "linear-gradient(135deg, #f97316, #fb7185)", color: "#130f0b", border: "none", cursor: "pointer", minHeight: 52 }}
+          >
+            Continue to address →
+          </button>
+          <p style={{ margin: 0, textAlign: "center" as const, fontSize: "0.82rem", color: "var(--text-muted)" }}>
+            Already have an account?{" "}
+            <Link href={`/auth?next=/checkout`} style={{ color: "var(--accent)" }}>Sign in</Link>
+          </p>
+        </div>
+      )}
 
-      {error && (
+      {!showGuestPhoneCapture && <StepIndicator current={step} />}
+
+      {!showGuestPhoneCapture && error && (
         <div className="error-banner" style={{ marginBottom: "1.5rem" }}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
             <circle cx="9" cy="9" r="8" stroke="currentColor" strokeWidth="1.5" />
@@ -889,7 +1068,7 @@ function CheckoutPageContent() {
         </div>
       )}
 
-      {processing && (
+      {!showGuestPhoneCapture && processing && (
         <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
           <div style={{ marginBottom: "1rem" }}>
             <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style={{ animation: "spin 0.8s linear infinite" }} aria-hidden="true">
@@ -908,7 +1087,7 @@ function CheckoutPageContent() {
         </div>
       )}
 
-      {!processing && step === 1 && (
+      {!showGuestPhoneCapture && !processing && step === 1 && (
         <AddressStep
           savedAddresses={savedAddresses}
           onConfirm={(addr) => {
@@ -920,7 +1099,7 @@ function CheckoutPageContent() {
         />
       )}
 
-      {!processing && step === 2 && address && (
+      {!showGuestPhoneCapture && !processing && step === 2 && address && (
         <ReviewStep
           address={address}
           onBack={() => setStep(1)}

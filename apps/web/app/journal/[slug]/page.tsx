@@ -9,7 +9,7 @@ import { api } from "../../../lib/api";
 import { ProductCard } from "../../../components/product-card";
 
 type ArticleBlock = {
-  type: "text" | "image" | "product_embed";
+  type: "text" | "image" | "product_embed" | "video";
   content: string;
   caption?: string;
   order: number;
@@ -47,6 +47,28 @@ function ImageBlock({ content, caption }: { content: string; caption?: string })
     <figure style={{ margin: "1.5rem 0" }}>
       <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", borderRadius: 16, overflow: "hidden", background: "rgba(255,255,255,0.04)" }}>
         <Image src={content} alt={caption ?? "Article image"} fill sizes="(max-width:768px) 100vw, 760px" style={{ objectFit: "cover" }} />
+      </div>
+      {caption && (
+        <figcaption style={{ marginTop: "0.6rem", fontSize: "0.78rem", color: "var(--text-muted)", textAlign: "center", fontStyle: "italic" }}>
+          {caption}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
+
+function VideoBlock({ url, caption }: { url: string; caption?: string }) {
+  return (
+    <figure style={{ margin: "1.5rem 0" }}>
+      <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", borderRadius: 16, overflow: "hidden", background: "rgba(255,255,255,0.04)" }}>
+        <video
+          src={url}
+          controls
+          muted
+          playsInline
+          preload="metadata"
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
       </div>
       {caption && (
         <figcaption style={{ marginTop: "0.6rem", fontSize: "0.78rem", color: "var(--text-muted)", textAlign: "center", fontStyle: "italic" }}>
@@ -186,6 +208,7 @@ export default function JournalSlugPage() {
         {sortedBlocks.map((block, i) => {
           if (block.type === "text") return <TextBlock key={i} content={block.content} />;
           if (block.type === "image") return <ImageBlock key={i} content={block.content} caption={block.caption} />;
+          if (block.type === "video") return <VideoBlock key={i} url={block.content} caption={block.caption} />;
           if (block.type === "product_embed") {
             const slugs = block.content.split(",").map((s) => s.trim()).filter(Boolean);
             return <ProductEmbedBlock key={i} slugs={slugs} />;

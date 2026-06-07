@@ -39,7 +39,7 @@ function AuthPageInner() {
           </div>
         </div>
 
-        <p className="auth-brand-bottom">© ASUR 2025 · New Delhi, India</p>
+        <p className="auth-brand-bottom">© ASUR {new Date().getFullYear()} · New Delhi, India</p>
       </div>
 
       {/* ── Right form panel ── */}

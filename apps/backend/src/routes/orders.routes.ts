@@ -6,11 +6,17 @@ import { requireSession } from "../middlewares/require-session";
 
 export const ordersRouter: ExpressRouter = Router();
 
-ordersRouter.use(requireSession); // all order routes require a valid session
-
-ordersRouter.get("/", listOrdersController);
+// POST /orders — guest checkout allowed (session optional, guestPhone in body)
 ordersRouter.post("/", createOrderController);
-ordersRouter.get("/returns", listMyReturnsController);
+
+// ⚠️  Static sub-paths MUST be registered before /:id — otherwise Express
+//     matches GET /returns as /:id with id="returns" and the real handler is
+//     never reached. These routes each carry an inline requireSession guard.
+ordersRouter.get("/", requireSession, listOrdersController);
+ordersRouter.get("/returns", requireSession, listMyReturnsController);
+ordersRouter.post("/:id/cancel", requireSession, cancelOrderController);
+ordersRouter.post("/:id/return", requireSession, requestReturnController);
+
+// GET /:id — session optional: controller handles session OR ?guestPhone param.
+// Registered last so the static paths above take precedence.
 ordersRouter.get("/:id", getOrderController);
-ordersRouter.post("/:id/cancel", cancelOrderController);
-ordersRouter.post("/:id/return", requestReturnController);

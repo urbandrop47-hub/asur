@@ -4,8 +4,8 @@ import { AdminSidebar } from "../components/admin-sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ASUR Admin",
-  description: "Operations dashboard for ASUR commerce"
+  title: "WeAreASUR Admin",
+  description: "Operations dashboard for WeAreASUR commerce"
 };
 
 export default function Layout({ children }: Readonly<{ children: ReactNode }>) {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Order, OrderItem } from "@asur/types";
+import { getCourierTrackingUrl } from "@asur/constants";
 import { formatCurrency } from "@asur/utils";
 import { useAuthStore } from "../../../store/auth-store";
 import { api } from "../../../lib/api";
@@ -150,25 +151,31 @@ function ReturnDialog({
   }
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 1000,
-      background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
-      display: "flex", alignItems: "flex-end", justifyContent: "center",
-      padding: "0 0 0 0",
-      animation: "fadeIn 0.15s ease both"
-    }}>
-      <div style={{
-        width: "100%", maxWidth: 520, maxHeight: "90dvh",
-        background: "var(--surface, #161616)", borderRadius: "20px 20px 0 0",
-        border: "1px solid var(--border)", overflow: "auto",
-        animation: "slideUp 0.25s cubic-bezier(0.22,1,0.36,1) both"
-      }}>
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "flex-end", justifyContent: "center",
+        padding: "0 0 0 0",
+        animation: "fadeIn 0.15s ease both"
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 520, maxHeight: "90dvh",
+          background: "var(--surface, #161616)", borderRadius: "20px 20px 0 0",
+          border: "1px solid var(--border)", overflow: "auto",
+          animation: "slideUp 0.25s cubic-bezier(0.22,1,0.36,1) both"
+        }}
+      >
         <div style={{ position: "sticky", top: 0, background: "var(--surface, #161616)", padding: "1.1rem 1.25rem 0.85rem", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <p style={{ margin: 0, fontWeight: 800, fontSize: "1rem" }}>Request a return</p>
             <p style={{ margin: "0.15rem 0 0", fontSize: "0.78rem", color: "var(--text-muted)" }}>Order #{order.orderNumber}</p>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "1.3rem", lineHeight: 1 }}>×</button>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "1.3rem", lineHeight: 1, padding: "0.25rem" }}>×</button>
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: "1.25rem", display: "grid", gap: "1.25rem" }}>
@@ -275,6 +282,7 @@ export default function OrderDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
   const [returnSubmitted, setReturnSubmitted] = useState(false);
+  const [trackingCopied, setTrackingCopied] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -355,25 +363,54 @@ export default function OrderDetailPage() {
           <p style={{ margin: "0 0 0.6rem", fontSize: "0.72rem", fontWeight: 600, color: "var(--success)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Shipment details
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {order.courierName && (
               <p style={{ margin: 0, fontSize: "0.88rem", fontWeight: 600 }}>{order.courierName}</p>
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
               <p style={{ margin: 0, fontSize: "0.85rem", fontFamily: "monospace", color: "var(--text-muted)" }}>
                 {order.trackingNumber}
               </p>
               <button
-                onClick={() => navigator.clipboard.writeText(order.trackingNumber!)}
+                onClick={() => {
+                  navigator.clipboard.writeText(order.trackingNumber!);
+                  setTrackingCopied(true);
+                  setTimeout(() => setTrackingCopied(false), 2000);
+                }}
                 style={{
-                  padding: "2px 8px", borderRadius: 6, border: "1px solid var(--border)",
-                  background: "transparent", color: "var(--text-muted)", fontSize: "0.72rem",
-                  cursor: "pointer", fontFamily: "inherit"
+                  padding: "2px 8px", borderRadius: 6,
+                  border: `1px solid ${trackingCopied ? "rgba(34,197,94,0.3)" : "var(--border)"}`,
+                  background: trackingCopied ? "rgba(34,197,94,0.08)" : "transparent",
+                  color: trackingCopied ? "var(--success)" : "var(--text-muted)", fontSize: "0.72rem",
+                  cursor: "pointer", fontFamily: "inherit", transition: "color 150ms, border-color 150ms, background 150ms"
                 }}
               >
-                Copy
+                {trackingCopied ? "Copied!" : "Copy"}
               </button>
             </div>
+            {(() => {
+              const trackUrl = order.courierName
+                ? getCourierTrackingUrl(order.courierName, order.trackingNumber!)
+                : null;
+              return trackUrl ? (
+                <a
+                  href={trackUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "0.35rem",
+                    padding: "0.5rem 1rem", borderRadius: 999, fontSize: "0.82rem", fontWeight: 700,
+                    background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)",
+                    color: "var(--success)", textDecoration: "none", alignSelf: "flex-start"
+                  }}
+                >
+                  Track shipment
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <path d="M2 10L10 2M10 2H4M10 2v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </a>
+              ) : null;
+            })()}
           </div>
         </div>
       )}
@@ -520,17 +557,38 @@ export default function OrderDetailPage() {
       )}
 
       {/* Actions */}
-      <Link
-        href="/products"
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          borderRadius: 999, padding: "0.9rem", fontSize: "0.92rem", fontWeight: 600,
-          border: "1px solid rgba(255,255,255,0.14)", color: "var(--text)",
-          textDecoration: "none", minHeight: 48
-        }}
-      >
-        Continue shopping
-      </Link>
+      <div style={{ display: "grid", gap: "0.6rem" }}>
+        <Link
+          href="/products"
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: 999, padding: "0.9rem", fontSize: "0.92rem", fontWeight: 600,
+            border: "1px solid rgba(255,255,255,0.14)", color: "var(--text)",
+            textDecoration: "none", minHeight: 48
+          }}
+        >
+          Continue shopping
+        </Link>
+        {process.env.NEXT_PUBLIC_WHATSAPP_NUMBER && (
+          <a
+            href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hi ASUR team, I need help with my order #${order.orderNumber}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+              borderRadius: 999, padding: "0.9rem", fontSize: "0.92rem", fontWeight: 600,
+              border: "1px solid rgba(37,211,102,0.3)", color: "#25d366",
+              background: "rgba(37,211,102,0.06)", textDecoration: "none", minHeight: 48
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.557 4.123 1.528 5.855L.057 23.2a.5.5 0 0 0 .62.62l5.388-1.466A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.808 9.808 0 0 1-5.003-1.371l-.36-.213-3.724 1.014 1.02-3.635-.234-.375A9.818 9.818 0 1 1 12 21.818z"/>
+            </svg>
+            Chat on WhatsApp
+          </a>
+        )}
+      </div>
 
       {/* Return dialog */}
       {showReturnDialog && order && (

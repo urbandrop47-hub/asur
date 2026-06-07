@@ -47,6 +47,13 @@ export const reviewRepository = {
     return review;
   },
 
+  async findById(id: string): Promise<Review | null> {
+    if (hasMongoConnection) {
+      return ReviewModel.findOne({ id }).lean<Review>().exec();
+    }
+    return mockReviews.find((r) => r.id === id) ?? null;
+  },
+
   async findByCustomerAndProduct(customerId: string, productId: string): Promise<Review | null> {
     if (hasMongoConnection) {
       return ReviewModel.findOne({ customerId, productId }).lean<Review>().exec();

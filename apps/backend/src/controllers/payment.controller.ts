@@ -51,18 +51,35 @@ import { notificationRepository } from "../repositories/notification.repository"
  *                   type: string
  */
 export const createPaymentOrderController: RequestHandler = asyncHandler(async (req, res) => {
-  const { orderId } = paymentCreateOrderSchema.parse(req.body);
-  const requestingUserId = res.locals.user.id as string;
+  const { orderId, guestPhone } = paymentCreateOrderSchema.parse(req.body);
+  const requestingUserId = res.locals.user?.id as string | undefined;
+
+  // Must have either a session or a guestPhone credential
+  if (!requestingUserId && !guestPhone) {
+    res.status(401).json({ success: false, message: "Authentication required" });
+    return;
+  }
 
   // Ownership: only the order's owner may create a Razorpay payment intent for it
-  const existingOrder = await orderRepository.findByIdAdmin(orderId) as (Order & { providerOrderId?: string }) | null;
+  const existingOrder = await orderRepository.findByIdAdmin(orderId) as (Order & { providerOrderId?: string; guestPhone?: string }) | null;
   if (!existingOrder) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
   }
-  if (existingOrder.customerId !== requestingUserId) {
-    res.status(403).json({ success: false, message: "Access denied" });
-    return;
+  // Ownership is checked via ONE credential path — never mix session + guestPhone,
+  // which would allow an authenticated attacker to pass the guest check.
+  if (requestingUserId) {
+    // Authenticated path: session user must match the order's customerId
+    if (existingOrder.customerId !== requestingUserId) {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
+  } else {
+    // Guest path: guestPhone must match the order's recorded phone
+    if (!existingOrder.guestPhone || existingOrder.guestPhone !== guestPhone) {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
   }
 
   // Guard: cancelled orders cannot be paid
@@ -93,7 +110,7 @@ export const createPaymentOrderController: RequestHandler = asyncHandler(async (
       void (async () => {
         // Zero-amount orders earn 0 loyalty points (nothing paid), but referral bonus still applies.
         const orderReferralCode = (paidOrder as typeof paidOrder & { referralCode?: string }).referralCode;
-        if (orderReferralCode) {
+        if (orderReferralCode && existingOrder.customerId) {
           const referral = await referralRepository.findByCode(orderReferralCode);
           if (referral && referral.userId !== existingOrder.customerId) {
             const wasNew = await referralRepository.markUsed(orderReferralCode, existingOrder.customerId);
@@ -150,18 +167,30 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
   // Look up the order and verify the razorpayOrderId matches what we stored.
   // This prevents a replay attack where an attacker reuses a valid signature
   // from their own paid order to mark a different order as paid.
-  const requestingUserId = res.locals.user.id as string;
+  const requestingUserId = res.locals.user?.id as string | undefined;
 
-  const order = await orderRepository.findByIdAdmin(payload.orderId) as (Order & { providerOrderId?: string }) | null;
+  if (!requestingUserId && !payload.guestPhone) {
+    res.status(401).json({ success: false, message: "Authentication required" });
+    return;
+  }
+
+  const order = await orderRepository.findByIdAdmin(payload.orderId) as (Order & { providerOrderId?: string; guestPhone?: string }) | null;
   if (!order) {
     res.status(404).json({ success: false, message: "Order not found" });
     return;
   }
 
-  // Ownership: only the customer who placed this order may verify its payment
-  if (order.customerId !== requestingUserId) {
-    res.status(403).json({ success: false, message: "Access denied" });
-    return;
+  // Ownership — mutually exclusive paths; never allow mixing session + guestPhone.
+  if (requestingUserId) {
+    if (order.customerId !== requestingUserId) {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
+  } else {
+    if (!order.guestPhone || order.guestPhone !== payload.guestPhone) {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
   }
 
   // Reject verification on terminal statuses — prevents a Razorpay payment from
@@ -213,41 +242,45 @@ export const verifyPaymentController: RequestHandler = asyncHandler(async (req, 
   // Fire-and-forget: receipt email + loyalty points earn
   if (paidOrder) {
     void (async () => {
-      const customer = await userRepository.findById(order.customerId);
+      // Guest orders (no customerId) skip loyalty/referral — they have no account
+      const customerId = order.customerId;
+      const customer = customerId ? await userRepository.findById(customerId) : null;
       const customerEmail = customer?.email ?? "";
       const customerName = customer?.name ?? "there";
       if (customerEmail) {
         await sendPaymentReceiptEmail(paidOrder, captured.payment, customerEmail, customerName);
       }
 
-      // Earn 1pt per ₹10 spent (on the amount actually paid after all discounts)
-      const paidAmount = paidOrder.total ?? 0;
-      const pointsEarned = Math.floor(paidAmount / EARN_RATE);
-      if (pointsEarned > 0) {
-        await loyaltyRepository.earnPoints(
-          order.customerId,
-          pointsEarned,
-          `Earned for order #${paidOrder.orderNumber}`,
-          paidOrder.id
-        );
-        await notificationRepository.create({
-          userId: order.customerId,
-          type: "loyalty",
-          title: `You earned ${pointsEarned} points!`,
-          body: `${pointsEarned} loyalty points credited for order #${paidOrder.orderNumber}.`,
-          link: "/account/loyalty"
-        });
-      }
+      if (customerId) {
+        // Earn 1pt per ₹10 spent (on the amount actually paid after all discounts)
+        const paidAmount = paidOrder.total ?? 0;
+        const pointsEarned = Math.floor(paidAmount / EARN_RATE);
+        if (pointsEarned > 0) {
+          await loyaltyRepository.earnPoints(
+            customerId,
+            pointsEarned,
+            `Earned for order #${paidOrder.orderNumber}`,
+            paidOrder.id
+          );
+          await notificationRepository.create({
+            userId: customerId,
+            type: "loyalty",
+            title: `You earned ${pointsEarned} points!`,
+            body: `${pointsEarned} loyalty points credited for order #${paidOrder.orderNumber}.`,
+            link: "/account/loyalty"
+          });
+        }
 
-      // Credit referral bonus now that payment is confirmed — avoids farming via create+cancel
-      const orderReferralCode = (paidOrder as typeof paidOrder & { referralCode?: string }).referralCode;
-      if (orderReferralCode) {
-        const referral = await referralRepository.findByCode(orderReferralCode);
-        if (referral && referral.userId !== order.customerId) {
-          const wasNew = await referralRepository.markUsed(orderReferralCode, order.customerId);
-          if (wasNew) {
-            await loyaltyRepository.earnPoints(referral.userId, 100, `Referral bonus — ${orderReferralCode}`, paidOrder.id, "referral_bonus");
-            await loyaltyRepository.earnPoints(order.customerId, 50, "Referral signup bonus", paidOrder.id, "referral_bonus");
+        // Credit referral bonus now that payment is confirmed — avoids farming via create+cancel
+        const orderReferralCode = (paidOrder as typeof paidOrder & { referralCode?: string }).referralCode;
+        if (orderReferralCode) {
+          const referral = await referralRepository.findByCode(orderReferralCode);
+          if (referral && referral.userId !== customerId) {
+            const wasNew = await referralRepository.markUsed(orderReferralCode, customerId);
+            if (wasNew) {
+              await loyaltyRepository.earnPoints(referral.userId, 100, `Referral bonus — ${orderReferralCode}`, paidOrder.id, "referral_bonus");
+              await loyaltyRepository.earnPoints(customerId, 50, "Referral signup bonus", paidOrder.id, "referral_bonus");
+            }
           }
         }
       }

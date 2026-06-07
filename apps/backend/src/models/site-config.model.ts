@@ -7,6 +7,16 @@ export type AnnouncementBarConfig = {
   isActive: boolean;
 };
 
+export type BrandReelConfig = {
+  /** R2 public URL for the homepage reel video (MP4/WebM) */
+  url: string;
+  /** Poster frame image shown while the video loads */
+  poster?: string;
+  /** Optional short headline overlaid on the reel */
+  headline?: string;
+  isActive: boolean;
+};
+
 export type ISiteConfig = {
   _id: string;          // always "singleton"
   announcementBar: AnnouncementBarConfig;
@@ -16,6 +26,8 @@ export type ISiteConfig = {
   gstin?: string;                 // GST Identification Number for invoices
   businessName?: string;
   businessAddress?: string;
+  /** Full-viewport brand reel shown on the homepage between hero and products */
+  brandReel?: BrandReelConfig;
   updatedAt: string;
 };
 
@@ -54,6 +66,12 @@ const siteConfigSchema = new Schema<ISiteConfig>(
     gstin:                 { type: String },
     businessName:          { type: String },
     businessAddress:       { type: String },
+    brandReel: {
+      url:       { type: String },
+      poster:    { type: String },
+      headline:  { type: String },
+      isActive:  { type: Boolean, default: false }
+    },
     updatedAt:             { type: String, required: true }
   },
   { versionKey: false, _id: false }
